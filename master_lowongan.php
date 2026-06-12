@@ -12,29 +12,28 @@ $koneksi = mysqli_connect($host, $user_db, $pass_db, $nama_db);
 if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
-
-// 2. FITUR PENCARIAN DATA LOWONGAN MAGANG
+// 2. FITUR PENCARIAN DATA LOWONGAN (NAMA TABEL DISESUAIKAN: rekrutmen_lowongan)
 $keyword = "";
 if (isset($_POST['cari'])) {
     $keyword = mysqli_real_escape_string($koneksi, $_POST['keyword']);
-    $query = "SELECT * FROM lowongan_tahapan 
+    $query = "SELECT * FROM rekrutmen_lowongan 
               WHERE kode_lowongan LIKE '%$keyword%' OR judul_lowongan LIKE '%$keyword%' 
               ORDER BY id DESC";
 } else {
-    $query = "SELECT * FROM lowongan_tahapan ORDER BY id DESC";
+    $query = "SELECT * FROM rekrutmen_lowongan ORDER BY id DESC";
 }
 $hasil = mysqli_query($koneksi, $query);
 
-// 3. FITUR HAPUS LOWONGAN MAGANG
+// 3. FITUR HAPUS LOWONGAN
 if (isset($_GET['hapus'])) {
     $id_hapus = mysqli_real_escape_string($koneksi, $_GET['hapus']);
-    $query_hapus = "DELETE FROM lowongan_tahapan WHERE id = '$id_hapus'";
+    $query_hapus = "DELETE FROM rekrutmen_lowongan WHERE id = '$id_hapus'";
     if (mysqli_query($koneksi, $query_hapus)) {
-        echo "<script>alert('Data lowongan magang berhasil dihapus!'); window.location='master_lowongan.php';</script>";
+        echo "<script>alert('Data lowongan berhasil dihapus!'); window.location='master_lowongan.php';</script>";
     }
 }
 
-// 4. FITUR TAMBAH DATA LOWONGAN MAGANG BARU
+// 4. FITUR TAMBAH DATA LOWONGAN BARU (16 KOLOM DATABASE)
 if (isset($_POST['simpan_lowongan'])) {
     $kode_lowongan   = mysqli_real_escape_string($koneksi, $_POST['kode_lowongan']);
     $jabatan_id      = mysqli_real_escape_string($koneksi, $_POST['jabatan_id']);
@@ -51,7 +50,7 @@ if (isset($_POST['simpan_lowongan'])) {
     $gambar = "default.png"; 
     $created_by = "1";
 
-    $query_tambah = "INSERT INTO lowongan_tahapan (kode_lowongan, jabatan_id, unit_id, judul_lowongan, jumlah_kebutuhan, deskripsi, kualifikasi, persyaratan, tanggal_mulai, tanggal_selesai, status, gambar, created_by, created_at) 
+    $query_tambah = "INSERT INTO rekrutmen_lowongan (kode_lowongan, jabatan_id, unit_id, judul_lowongan, jumlah_kebutuhan, deskripsi, kualifikasi, persyaratan, tanggal_mulai, tanggal_selesai, status, gambar, created_by, created_at) 
                      VALUES ('$kode_lowongan', '$jabatan_id', '$unit_id', '$judul_lowongan', '$jumlah_kebutuhan', '$deskripsi', '$kualifikasi', '$persyaratan', '$tanggal_mulai', '$tanggal_selesai', '$status', '$gambar', '$created_by', NOW())";
     
     if (mysqli_query($koneksi, $query_tambah)) {
@@ -59,7 +58,7 @@ if (isset($_POST['simpan_lowongan'])) {
     }
 }
 
-// 5. FITUR UPDATE / EDIT LOWONGAN MAGANG
+// 5. FITUR UPDATE / EDIT LOWONGAN
 if (isset($_POST['update_lowongan'])) {
     $id_edit         = mysqli_real_escape_string($koneksi, $_POST['id_lowongan']);
     $kode_lowongan   = mysqli_real_escape_string($koneksi, $_POST['kode_lowongan']);
@@ -74,10 +73,10 @@ if (isset($_POST['update_lowongan'])) {
     $tanggal_selesai = mysqli_real_escape_string($koneksi, $_POST['tanggal_selesai']);
     $status          = mysqli_real_escape_string($koneksi, $_POST['status']);
 
-    $query_update = "UPDATE lowongan_tahapan SET kode_lowongan='$kode_lowongan', jabatan_id='$jabatan_id', unit_id='$unit_id', judul_lowongan='$judul_lowongan', jumlah_kebutuhan='$jumlah_kebutuhan', deskripsi='$deskripsi', kualifikasi='$kualifikasi', persyaratan='$persyaratan', tanggal_mulai='$tanggal_mulai', tanggal_selesai='$tanggal_selesai', status='$status', updated_at=NOW() WHERE id='$id_edit'";
+    $query_update = "UPDATE rekrutmen_lowongan SET kode_lowongan='$kode_lowongan', jabatan_id='$jabatan_id', unit_id='$unit_id', judul_lowongan='$judul_lowongan', jumlah_kebutuhan='$jumlah_kebutuhan', deskripsi='$deskripsi', kualifikasi='$kualifikasi', persyaratan='$persyaratan', tanggal_mulai='$tanggal_mulai', tanggal_selesai='$tanggal_selesai', status='$status', updated_at=NOW() WHERE id='$id_edit'";
     
     if (mysqli_query($koneksi, $query_update)) {
-        echo "<script>alert('Data lowongan magang berhasil diperbarui!'); window.location='master_lowongan.php';</script>";
+        echo "<script>alert('Data lowongan berhasil diperbarui!'); window.location='master_lowongan.php';</script>";
     }
 }
 
