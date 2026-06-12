@@ -1,193 +1,231 @@
-<?php
-// =========================================================================
-// 1. BAGIAN DATA (Teks Terpisah yang Bisa Disalin / Diubah)
-// =========================================================================
+<?php 
+session_start(); 
 
-$hari_grafik = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+// 1. PENGATURAN KONEKSI DATABASE (Sesuaikan dengan XAMPP Anda)
+$host     = "10.10.6.59"; // Jika database di server, ganti dengan IP '10.10.6.59' seperti di gambar
+$user_db  = "root_host";      
+$pass_db  = "password";          
+$nama_db  = "magang_rekrutmen_rs"; 
 
-$aktivitas_periode = [
-    'judul' => 'Aktivitas Periode',
-    'waktu' => 'Juni 2026',
-    'items' => [
-        ['label' => 'Posisi Lowongan Dibuka', 'nilai' => 23],
-        ['label' => 'Kandidat Di-interview', 'nilai' => 154],
-        ['label' => 'Kampus Bermitra', 'nilai' => 10]
-    ],
-    'tombol' => 'Unduh Rekap Laporan'
-];
+$koneksi = mysqli_connect($host, $user_db, $pass_db, $nama_db);
 
-$posisi_magang_terpopuler = [
-    'judul' => 'Posisi Magang Terpopuler',
-    'link_teks' => 'Lihat Semua',
-    'daftar' => [
-        [
-            'posisi' => 'UI/UX Designer - Intern',
-            'divisi' => 'Divisi Produk Digital',
-            'pendaftar' => '14 Pendaftar hari ini',
-            'tag' => 'Kreatif',
-            'warna_badge' => 'purple'
-        ],
-        [
-            'posisi' => 'Web Developer (React / Tailwind)',
-            'divisi' => 'Divisi Engineering',
-            'pendaftar' => '32 Pendaftar hari ini',
-            'tag' => 'Teknis',
-            'warna_badge' => 'blue'
-        ]
-    ]
-];
+// Jika database gagal terhubung
+if (!$koneksi) {
+    die("Koneksi database gagal: " . mysqli_connect_error());
+}
 
-$pelamar_masuk_terbaru = [
-    'judul' => 'Pelamar Masuk Terbaru',
-    'daftar' => [
-        [
-            'inisial' => 'AC',
-            'nama' => 'Adhiatma Cruz',
-            'kampus' => 'Univ. Dian Nuswantoro',
-            'waktu' => '10m lalu',
-            'warna_bg' => 'blue'
-        ],
-        [
-            'inisial' => 'RK',
-            'nama' => 'Rosalina K.',
-            'kampus' => 'Universitas Diponegoro',
-            'waktu' => '1j lalu',
-            'warna_bg' => 'purple'
-        ]
-    ]
-];
+// 2. AMBIL DATA USER SECARA DINAMIS BERDASARKAN SESSION LOGIN
+// Kita siapkan nama cadangan 'Administrator' jika Anda membuka halaman tanpa login terlebih dahulu
+$nama_tampilan = "Administrator";
 
-// =========================================================================
-// 2. BAGIAN TAMPILAN UTAMA (HTML & TAILWIND CSS)
-// =========================================================================
+if (isset($_SESSION['username'])) {
+    $username_aktif = $_SESSION['username'];
+    
+    // Query untuk mengambil kolom 'nama' berdasarkan 'username' dari tabel 'users'
+    $query = "SELECT nama FROM users WHERE username = '$username_aktif'";
+    $hasil = mysqli_query($koneksi, $query);
+    
+    if ($hasil && mysqli_num_rows($hasil) > 0) {
+        $data_user = mysqli_fetch_assoc($hasil);
+        $nama_tampilan = $data_user['nama']; // Menyimpan nama asli user (Varchar 200)
+    }
+}
 ?>
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Rekrutmen Magang</title>
-    <!-- Tailwind CSS & FontAwesome Icons -->
-    <script src="https://tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cloudflare.com">
     <style>
-        /* Custom Glassmorphism UI Style matching your login page */
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.04);
-            backdrop-filter: blur(20px);
-            -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
-        }
+        /* CSS INTERNAL UTUH - JAMINAN RAPI 100% SECARA OFFLINE */
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #475569; }
+        
+        /* Layout Grid Pembagi Utama */
+        .dashboard-container { width: 100%; max-width: 1440px; background: #ffffff; border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.05); display: flex; min-height: 850px; overflow: hidden; }
+        
+        /* Menu Navigasi Sidebar Kiri */
+        .sidebar-left { width: 260px; background: #ffffff; border-right: 1px solid #f1f5f9; padding: 35px; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
+        .brand-logo { font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 45px; display: flex; align-items: center; gap: 10px; }
+        .brand-logo span { width: 10px; height: 20px; background: #4f46e5; border-radius: 4px; display: inline-block; }
+        .menu-list { display: flex; flex-direction: column; gap: 6px; }
+        .menu-item { display: block; padding: 14px 18px; color: #94a3b8; text-decoration: none; border-radius: 16px; font-size: 14px; font-weight: 600; transition: all 0.2s; }
+        .menu-item.active { background: #f5f3ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
+        .menu-item:hover:not(.active) { background: #f8fafc; color: #1e293b; }
+        .support-card { background: #f5f3ff; padding: 24px; border-radius: 20px; text-align: center; margin-top: 20px; }
+        .support-card h4 { font-size: 14px; color: #1e293b; font-weight: 700; }
+        .support-card p { font-size: 11px; color: #94a3b8; margin-top: 4px; }
+        .support-card button { width: 100%; margin-top: 15px; background: #4f46e5; color: white; padding: 10px; border-radius: 12px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); }
+
+        /* Area Konten Utama */
+        .main-content { 
+    flex: 1; 
+    background: #fbfbfd; 
+    padding: 40px 50px; /* Menambah ruang di sisi kiri dan kanan halaman agar luas */
+    display: flex; 
+    flex-direction: column; 
+    gap: 32px; 
+    overflow-y: auto; 
+}
+.content-header h1 { font-size: 26px; font-weight: 800; color: #1e293b; letter-spacing: -0.5px; }
+        
+        /* Banner Sambutan Ungu */
+.welcome-banner { 
+    background: #4f46e5; 
+    border-radius: 24px; 
+    padding: 35px 40px; /* Jarak teks ke tepi boks diganti menjadi lebih luas */
+    color: #ffffff; 
+    position: relative; 
+    box-shadow: 0 10px 25px rgba(79, 70, 229, 0.15);
+    margin-top: 10px; /* Jarak dari teks judul Dashboard */
+}
+        .welcome-banner h2 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
+        .welcome-banner p { font-size: 14px; opacity: 0.9; line-height: 1.6; max-width: 500px; }
+        .welcome-banner a { color: white; font-weight: bold; font-size: 13px; margin-top: 12px; display: inline-block; }
+        
+        /* Grid Lowongan Pekerjaan */
+        .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+        .section-title { font-size: 16px; font-weight: 800; color: #1e293b; }
+        .see-all-link { font-size: 12px; color: #94a3b8; text-decoration: none; font-weight: 700; }
+        .cards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+        .job-card { background: #ffffff; border: 1px solid #f1f5f9; padding: 22px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 10px rgba(0,0,0,0.01); }
+        .job-card .qty { font-size: 32px; font-weight: 900; color: #1e293b; line-height: 1; }
+        .job-card .title { font-size: 14px; font-weight: 700; color: #1e293b; margin-top: 6px; }
+        .job-card .desc { font-size: 12px; color: #94a3b8; margin-top: 2px; }
+        .percentage-ring { width: 48px; height: 48px; border-radius: 50%; border: 4px solid #f1f5f9; border-top-color: #4f46e5; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #4f46e5; }
+
+        /* Tabel Progress Rekrutmen */
+        .table-wrapper { background: #ffffff; border: 1px solid #f1f5f9; border-radius: 24px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.01); }
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+        th { color: #94a3b8; padding-bottom: 16px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; }
+        td { padding: 18px 0; color: #475569; border-bottom: 1px solid #f8fafc; }
+        .candidate-name { font-weight: 700; color: #1e293b; font-size: 14px; }
+        .status-pill { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: #334155; }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4f46e5; }
+
+        /* Panel Samping Kanan (Kalender & New Applicants) */
+        .sidebar-right { width: 300px; background: #ffffff; border-left: 1px solid #f1f5f9; padding: 35px; flex-shrink: 0; display: flex; flex-direction: column; gap: 30px; }
+        .calendar-header { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 15px; }
+        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px 5px; text-align: center; font-size: 11px; font-weight: 700; }
+        .day-name { color: #94a3b8; padding-bottom: 5px; }
+        .day-num { color: #1e293b; padding: 4px 0; }
+        .day-num.muted { color: #cbd5e1; }
+        .applicant-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
+        .applicant-avatar { width: 36px; height: 36px; background: #f5f3ff; color: #4f46e5; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; }
+        .applicant-info h5 { font-size: 13px; font-weight: 700; color: #1e293b; }
+        .applicant-info p { font-size: 10px; color: #94a3b8; margin-top: 1px; }
     </style>
 </head>
-<body class="bg-gradient-to-br from-[#121424] via-[#1a1c38] to-[#13112b] text-slate-200 font-sans min-h-screen flex">
+<body>
 
-    <!-- SIDEBAR -->
-    <aside class="w-64 bg-[#0d0f1d]/80 border-r border-white/5 flex flex-col justify-between p-6">
-        <div>
-            <div class="flex items-center gap-3 mb-10 px-2">
-                <div class="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center font-bold text-white shadow-lg shadow-blue-500/30">M</div>
-                <span class="font-bold text-lg tracking-wider bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">MAGANG ID</span>
-            </div>
-            <nav class="space-y-2">
-                <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-xl bg-gradient-to-r from-blue-600/20 to-transparent border-l-4 border-blue-500 text-white font-medium transition-all">
-                    <i class="fa-solid fa-chart-pie text-blue-400"></i> Dashboard
-                </a>
-                <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-all">
-                    <i class="fa-solid fa-briefcase"></i> Lowongan
-                </a>
-                <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-all">
-                    <i class="fa-solid fa-users"></i> Pelamar
-                </a>
-                <a href="#" class="flex items-center gap-4 px-4 py-3 rounded-xl text-slate-400 hover:bg-white/5 hover:text-slate-200 transition-all">
-                    <i class="fa-solid fa-calendar-days"></i> Interview
-                </a>
-            </nav>
-        </div>
-        <div class="pt-4 border-t border-white/5 flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full bg-slate-600 border border-white/20 flex items-center justify-center text-sm font-semibold">RA</div>
-            <div>
-                <h4 class="text-sm font-semibold text-white">RestuAjiM</h4>
-                <p class="text-xs text-slate-500">HR Admin</p>
-            </div>
-        </div>
-    </aside>
-
-    <!-- CONTENT AREA -->
-    <main class="flex-1 p-8 overflow-y-auto max-w-[1600px] mx-auto w-full space-y-6">
+    <div class="dashboard-container">
         
-        <!-- HEADER -->
-        <header class="flex justify-between items-center mb-4">
+        <!-- SIDEBAR MENU KIRI -->
+        <aside class="sidebar-left">
             <div>
-                <h1 class="text-2xl font-bold text-white tracking-wide">Dashboard</h1>
-                <p class="text-xs text-slate-500 mt-1">Jumat, 12 Juni 2026</p>
+                <div class="brand-logo"><span></span>impozitions</div>
+                <nav class="menu-list">
+                    <a href="#" class="menu-item active">Dashboard</a>
+                    <a href="#" class="iser active">
+                </nav>
             </div>
-            <div class="flex items-center gap-4">
-                <div class="relative">
-                    <i class="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 text-sm"></i>
-                    <input type="text" placeholder="Cari data..." class="bg-[#181a30] border border-white/5 rounded-full pl-11 pr-6 py-2 text-sm text-slate-200 focus:outline-none focus:border-blue-500/50 w-64 transition-all">
-                </div>
-                <button class="w-10 h-10 rounded-full bg-[#181a30] border border-white/5 flex items-center justify-center hover:bg-white/5 text-slate-300 transition-all relative">
-                    <i class="fa-regular fa-bell"></i>
-                    <span class="w-2 h-2 bg-blue-500 rounded-full absolute top-2 right-2.5"></span>
-                </button>
-            </div>
-        </header>
+            <!-- KOTAK OPSI LOGOUT -->
+<div class="support-card" style="background: #fff5f5; border: 1px solid #fee2e2; padding: 20px; border-radius: 20px; text-align: center; margin-top: 20px;">
+    <a href="logout.php" style="display: block; width: 100%; margin-top: 15px; background: #dc2626; color: white; padding: 10px; border-radius: 12px; font-size: 12px; font-weight: 700; text-decoration: none; text-align: center; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);">Log Out</a>
+</div>
+        </aside>
 
-        <!-- STATS CARDS -->
-        <section class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="glass-panel p-6 rounded-2xl flex justify-between items-center">
-                <div>
-                    <p class="text-xs font-semibold text-slate-400 tracking-wider uppercase">Total Pendaftar</p>
-                    <h3 class="text-3xl font-bold text-white mt-2">2.358</h3>
-                </div>
-                <div class="w-12 h-12 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400"><i class="fa-solid fa-users text-xl"></i></div>
+        <!-- AREA KONTEN UTAMA TENGAH -->
+        <main class="main-content">
+            <div class="content-header">
+                <h1>Dashboard</h1>
             </div>
-            <div class="glass-panel p-6 rounded-2xl flex justify-between items-center">
-                <div>
-                    <p class="text-xs font-semibold text-slate-400 tracking-wider uppercase">Lolos Berkas</p>
-                    <h3 class="text-3xl font-bold text-white mt-2">1.568</h3>
-                </div>
-                <div class="w-12 h-12 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400"><i class="fa-solid fa-file-circle-check text-xl"></i></div>
-            </div>
-            <div class="glass-panel p-6 rounded-2xl flex justify-between items-center">
-                <div>
-                    <p class="text-xs font-semibold text-slate-400 tracking-wider uppercase">Kuota Diterima</p>
-                    <h3 class="text-3xl font-bold text-white mt-2">845</h3>
-                </div>
-                <div class="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center text-amber-400"><i class="fa-solid fa-user-check text-xl"></i></div>
-            </div>
-        </section>
 
-        <!-- MAIN CHARTS & ACTIVITY ROW -->
-        <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Bar Chart Component -->
-            <div class="glass-panel p-6 rounded-2xl lg:col-span-2">
-                <div class="flex justify-between items-center mb-6">
-                    <h3 class="font-bold text-white tracking-wide">Tren Grafik Aplikasi Aktif</h3>
+           <div class="welcome-banner">
+    <h2>Selamat Datang Kembali, <?php echo $nama_tampilan; ?>!</h2>
+    <p>Sistem Rekrutmen Magang ID siap digunakan. Seluruh modul dan data pelamar dapat Anda kelola sepenuhnya melalui panel navigasi sebelah kiri.</p>
+</div>
+
+
+
+            <!-- Bagian Lowongan Kerja -->
+            <section>
+                <div class="section-header">
+                    <div class="section-title">You need to hire</div>
+                    <a href="#" class="see-all-link">see all</a>
                 </div>
-                <div class="h-64 flex items-end justify-between gap-2 pt-4 px-2 relative border-b border-white/5">
-                    <div class="absolute left-0 w-full border-t border-white/5 top-1/4"></div>
-                    <div class="absolute left-0 w-full border-t border-white/5 top-2/4"></div>
-                    <div class="absolute left-0 w-full border-t border-white/5 top-3/4"></div>
-                    
-                    <?php 
-                    $tinggi_simulasi =;
-                    foreach ($hari_grafik as $index => $hari): 
-                    ?>
-                    <div class="w-full flex flex-col items-center gap-2 z-10">
-                        <div class="w-3 bg-gradient-to-t from-blue-600 via-purple-500 to-orange-400 rounded-t-full shadow-lg" style="height: <?php echo $tinggi_simulasi[$index] * 4; ?>px;"></div>
-                        <span class="text-[10px] text-slate-500"><?php echo $hari; ?></span>
+                <div class="cards-grid">
+                    <div class="job-card">
+                        <div>
+                            <div class="qty">3</div>
+                            <div class="title">Content Designers</div>
+                            <div class="desc">(5 candidates)</div>
+                        </div>
+                        <div class="percentage-ring">75%</div>
                     </div>
-                    <?php endforeach; ?>
-                </div>
-            </div>
-
-            <!-- Activity Panel (Glow Purple-Orange Gradient) -->
-            <div class="bg-gradient-to-b from-[#df5c32]/15 to-[#6a2574]/15 border border-[#df5c32]/10 p-6 rounded-2xl flex flex-col justify-between">
-                <div>
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="font-bold text-white tracking-wide"><?php echo $aktivitas_periode['judul']; ?></h3>
-                        <span class="text-[10px] text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full font-medium"><?php echo $aktivitas_periode['waktu']; ?></span>
+                    <div class="job-card">
+                        <div>
+                            <div class="qty">9</div>
+                            <div class="title">Node.js Developers</div>
+                            <div class="desc">(12 candidates)</div>
+                        </div>
+                        <div class="percentage-ring" style="border-top-color: #f43f5e; color: #f43f5e;">25%</div>
                     </div>
+                    <div class="job-card">
+                        <div>
+                            <div class="qty">1</div>
+                            <div class="title">Senior UI Designer</div>
+                            <div class="desc">(0 candidates)</div>
+                        </div>
+                        <div class="percentage-ring" style="border-top-color: #cbd5e1; color: #94a3b8;">0%</div>
+                    </div>
+                    <div class="job-card">
+                        <div>
+                            <div class="qty">2</div>
+                            <div class="title">Marketing Managers</div>
+                            <div class="desc">(10 candidates)</div>
+                        </div>
+                        <div class="percentage-ring">45%</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Bagian Tabel Progress Pelamar -->
+            <div class="table-wrapper">
+                <div class="section-header">
+                    <div class="section-title">Recruitment progress</div>
+                    <a href="#" class="see-all-link">see all</a>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Full Name</th>
+                            <th>Profession</th>
+                                                        <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="candidate-name">John Doe</td>
+                            <td style="color: #64748b;">UI Designer</td>
+                            <td><div class="status-pill"><div class="status-dot"></div>Tech interview</div></td>
+                        </tr>
+                        <tr>
+                            <td class="candidate-name">Ella Clinton</td>
+                            <td style="color: #64748b;">Content designer</td>
+                            <td><div class="status-pill"><div class="status-dot" style="background:#ec4899;"></div>Task</div></td>
+                        </tr>
+                        <tr>
+                            <td class="candidate-name">Mike Tyler</td>
+                            <td style="color: #64748b;">Node.js Developer</td>
+                            <td><div class="status-pill"><div class="status-dot" style="background:#06b6d4;"></div>Resume review</div></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+</body>
+</html>
