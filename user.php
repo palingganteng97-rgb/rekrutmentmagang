@@ -133,6 +133,7 @@ if ($hasil && mysqli_num_rows($hasil) > 0) {
                     <a href="dashboard.php" class="menu-item" style="text-decoration:none;">Dashboard</a>
                     <a href="master_user.php" class="menu-item" style="display: block; padding: 14px 18px; color: #94a3b8; text-decoration: none; border-radius: 16px; font-size: 14px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master User</a>
                     <a href="master_unit.php" class="menu-item" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master Unit</a>
+                    <a href="master_jabatan.php" class="menu-item" style="text-decoration: none;" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master Jabatan</a>
                     <a href="user.php" class="menu-item active" style="text-decoration:none;">Profil Pengguna</a>
                 </nav>
             </div>
