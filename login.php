@@ -1,26 +1,45 @@
 <?php
-session_start();
-
-// Inisialisasi pesan error kosong
-$error = "";
+// login.php (Bagian proses validasi akun login)
 
 if (isset($_POST['login'])) {
-    $user = $_POST['username_email'];
-    $pass = $_POST['password'];
-
-    // ATURAN BYPASS INSTAN: Langsung masuk tanpa cek database jika password adalah "password"
-    if ($pass === "password") {
-        $_SESSION['login'] = true;
+    $username_input = mysqli_real_escape_string($koneksi, $_POST['username']);
+    $password_input = mysqli_real_escape_string($koneksi, $_POST['password']);
+    
+    // 1. Cek ketersediaan username di database magang_rekrutmen_rs
+    $query_login = "SELECT * FROM users WHERE username = '$username_input'";
+    $hasil_login = mysqli_query($koneksi, $query_login);
+    
+    if ($hasil_login && mysqli_num_rows($hasil_login) > 0) {
+        $data_user = mysqli_fetch_assoc($hasil_login);
         
-        // Menyimpan nama yang diketik ke dalam session agar bisa dipanggil di dashboard
-        $_SESSION['admin_user'] = !empty($user) ? $user : "Guest User";
-        
-        // Pindah otomatis ke halaman tampilkan data
-        header("Location: dashboard.php");
-        exit();
+        // 2. Cek kecocokan password (Sesuaikan jika Anda menggunakan password_hash)
+        if ($data_user['password'] == $password_input) {
+            
+            // ================== LOGIKA UTAMA BLOKIR USER ==================
+            // 3. Cek apakah status akun saat ini 'Nonaktif' atau tidak
+            if ($data_user['status'] == 'Nonaktif') {
+                echo "<script>
+                        alert('Gagal Masuk! Akun Anda telah ditangguhkan atau berstatus NONAKTIF. Silakan hubungi Administrator Utama.');
+                        window.location='login.php';
+                      </script>";
+                exit();
+            }
+            // ==============================================================
+            
+            // 4. Jika status 'Aktif', izinkan membuat session dan masuk ke dashboard
+            $_SESSION['username'] = $data_user['username'];
+            
+            // Update last_login agar tercatat real-time ke database
+            mysqli_query($koneksi, "UPDATE users SET last_login = NOW() WHERE id = '".$data_user['id']."'");
+            
+            echo "<script>alert('Login Berhasil!'); window.location='dashboard.php';</script>";
+            exit();
+            
+        } else {
+            echo "<script>alert('Password yang Anda masukkan salah!'); window.location='login.php';</script>";
+        }
     } else {
-        // Muncul pesan jika password yang dimasukkan bukan kata "password"
-        $error = "Password salah! (Gunakan kata 'password')";
+        echo "<script>alert('Username tidak terdaftar!'); window.location='login.php';</script>";
     }
 }
 ?>
