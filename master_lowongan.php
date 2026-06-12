@@ -13,7 +13,7 @@ if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
-// 2. FITUR PENCARIAN DATA LOWONGAN (SEDERHANA & AMAN DARI ERROR BENTROK KOLOM)
+// 2. FITUR PENCARIAN DATA LOWONGAN MAGANG
 $keyword = "";
 if (isset($_POST['cari'])) {
     $keyword = mysqli_real_escape_string($koneksi, $_POST['keyword']);
@@ -25,16 +25,16 @@ if (isset($_POST['cari'])) {
 }
 $hasil = mysqli_query($koneksi, $query);
 
-// 3. FITUR HAPUS LOWONGAN
+// 3. FITUR HAPUS LOWONGAN MAGANG
 if (isset($_GET['hapus'])) {
     $id_hapus = mysqli_real_escape_string($koneksi, $_GET['hapus']);
     $query_hapus = "DELETE FROM lowongan_tahapan WHERE id = '$id_hapus'";
     if (mysqli_query($koneksi, $query_hapus)) {
-        echo "<script>alert('Data lowongan berhasil dihapus!'); window.location='master_lowongan.php';</script>";
+        echo "<script>alert('Data lowongan magang berhasil dihapus!'); window.location='master_lowongan.php';</script>";
     }
 }
 
-// 4. FITUR TAMBAH DATA LOWONGAN BARU (16 KOLOM DATABASE)
+// 4. FITUR TAMBAH DATA LOWONGAN MAGANG BARU
 if (isset($_POST['simpan_lowongan'])) {
     $kode_lowongan   = mysqli_real_escape_string($koneksi, $_POST['kode_lowongan']);
     $jabatan_id      = mysqli_real_escape_string($koneksi, $_POST['jabatan_id']);
@@ -55,11 +55,11 @@ if (isset($_POST['simpan_lowongan'])) {
                      VALUES ('$kode_lowongan', '$jabatan_id', '$unit_id', '$judul_lowongan', '$jumlah_kebutuhan', '$deskripsi', '$kualifikasi', '$persyaratan', '$tanggal_mulai', '$tanggal_selesai', '$status', '$gambar', '$created_by', NOW())";
     
     if (mysqli_query($koneksi, $query_tambah)) {
-        echo "<script>alert('Lowongan kerja baru berhasil diterbitkan!'); window.location='master_lowongan.php';</script>";
+        echo "<script>alert('Lowongan magang baru berhasil diterbitkan!'); window.location='master_lowongan.php';</script>";
     }
 }
 
-// 5. FITUR UPDATE / EDIT LOWONGAN
+// 5. FITUR UPDATE / EDIT LOWONGAN MAGANG
 if (isset($_POST['update_lowongan'])) {
     $id_edit         = mysqli_real_escape_string($koneksi, $_POST['id_lowongan']);
     $kode_lowongan   = mysqli_real_escape_string($koneksi, $_POST['kode_lowongan']);
@@ -77,11 +77,10 @@ if (isset($_POST['update_lowongan'])) {
     $query_update = "UPDATE lowongan_tahapan SET kode_lowongan='$kode_lowongan', jabatan_id='$jabatan_id', unit_id='$unit_id', judul_lowongan='$judul_lowongan', jumlah_kebutuhan='$jumlah_kebutuhan', deskripsi='$deskripsi', kualifikasi='$kualifikasi', persyaratan='$persyaratan', tanggal_mulai='$tanggal_mulai', tanggal_selesai='$tanggal_selesai', status='$status', updated_at=NOW() WHERE id='$id_edit'";
     
     if (mysqli_query($koneksi, $query_update)) {
-        echo "<script>alert('Data lowongan berhasil diperbarui!'); window.location='master_lowongan.php';</script>";
+        echo "<script>alert('Data lowongan magang berhasil diperbarui!'); window.location='master_lowongan.php';</script>";
     }
 }
 
-// Mengambil opsi daftar dinamis dari tabel master unit dan jabatan
 $opt_unit = mysqli_query($koneksi, "SELECT id, nama_unit FROM mst_unit ORDER BY nama_unit ASC");
 $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORDER BY nama_jabatan ASC");
 ?>
@@ -90,7 +89,7 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Lowongan - Magang ID</title>
+    <title>Master Lowongan Magang - Magang ID</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #475569; }
@@ -137,7 +136,7 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
             <div>
                 <div class="brand-logo"><span></span>impozitions</div>
                 <nav class="menu-list">
-                    <a href="dashboard.php" class="menu-item">Dashboard</a>
+                    <a href="dashboard.php" class="menu-item" style="text-decoration: none;">Dashboard</a>
                     <a href="master_user.php" class="menu-item" style="text-decoration: none;">Master User</a>
                     <a href="master_unit.php" class="menu-item" style="text-decoration: none;">Master Unit</a>
                     <a href="master_jabatan.php" class="menu-item" style="text-decoration: none;">Master Jabatan</a>
@@ -154,12 +153,12 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
         <!-- AREA KONTEN UTAMA -->
         <main class="main-content">
             <div class="content-header">
-                <h1>DATA LOWONGAN KERJA</h1>
+                <h1>DATA LOWONGAN MAGANG</h1>
             </div>
 
             <div class="control-bar">
                 <form action="" method="POST" class="search-box">
-                    <input type="text" name="keyword" class="input-search" placeholder="Cari kode atau judul lowongan kerja..." value="<?php echo htmlspecialchars($keyword); ?>">
+                    <input type="text" name="keyword" class="input-search" placeholder="Cari kode atau judul lowongan magang..." value="<?php echo htmlspecialchars($keyword); ?>">
                     <button type="submit" name="cari" class="btn-search">Cari</button>
                 </form>
                 <button type="button" class="btn-add" onclick="bukaModalTambah()">+ Terbitkan Lowongan</button>
@@ -171,7 +170,7 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
                         <tr>
                             <th style="width: 50px;">No</th>
                             <th>Kode</th>
-                            <th>Judul Lowongan Kerja</th>
+                            <th>Judul Lowongan Magang</th>
                             <th>ID Unit</th>
                             <th>ID Jabatan</th>
                             <th>Kebutuhan</th>
@@ -198,13 +197,13 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
                                 echo "<td>
                                         <div class='action-container'>
                                             <button type='button' class='btn-action btn-edit' onclick=\"bukaModalEdit('".$row['id']."', '".$row['kode_lowongan']."', '".$row['jabatan_id']."', '".$row['unit_id']."', '".addslashes($row['judul_lowongan'])."', '".$row['jumlah_kebutuhan']."', '".addslashes($row['deskripsi'])."', '".addslashes($row['kualifikasi'])."', '".addslashes($row['persyaratan'])."', '".$row['tanggal_mulai']."', '".$row['tanggal_selesai']."', '".$row['status']."')\">✏️</button>
-                                            <a href='master_lowongan.php?hapus=".$row['id']."' class='btn-action btn-delete' onclick=\"return confirm('Hapus lowongan ".$row['judul_lowongan']."?')\" style='text-decoration:none;'>🗑️</a>
+                                            <a href='master_lowongan.php?hapus=".$row['id']."' class='btn-action btn-delete' onclick=\"return confirm('Hapus lowongan magang ".$row['judul_lowongan']."?')\" style='text-decoration:none;'>🗑️</a>
                                         </div>
                                       </td>";
                                 echo "</tr>";
                             }
                         } else {
-                            echo "<tr><td colspan='9' style='padding: 30px; color: #94a3b8;'>Belum ada data lowongan kerja aktif.</td></tr>";
+                            echo "<tr><td colspan='9' style='padding: 30px; color: #94a3b8;'>Belum ada data lowongan magang aktif.</td></tr>";
                         }
                         ?>
                     </tbody>
@@ -216,18 +215,18 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
     <!-- MODAL BOX: FORM TAMBAH -->
     <div id="modalTambah" class="modal">
         <div class="modal-content">
-            <h3 style="color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-weight:700;">Form Terbitkan Lowongan Kerja</h3>
+            <h3 style="color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-weight:700;">Form Terbitkan Lowongan Magang</h3>
             <form action="" method="POST">
                 <div class="form-grid">
                     <div class="form-group-half"><label>Kode Lowongan</label><input type="text" name="kode_lowongan" class="table-input" placeholder="Contoh: LWG-001" required></div>
-                    <div class="form-group-half"><label>Judul Lowongan Kerja</label><input type="text" name="judul_lowongan" class="table-input" placeholder="Contoh: Magang Perawat" required></div>
+                    <div class="form-group-half"><label>Judul Lowongan Magang</label><input type="text" name="judul_lowongan" class="table-input" placeholder="Contoh: Magang Perawat" required></div>
                     <div class="form-group-half"><label>Unit Kerja</label><select name="unit_id" class="table-input" required><option value="">-- Pilih Unit --</option><?php if($opt_unit){ mysqli_data_seek($opt_unit,0); while($u=mysqli_fetch_assoc($opt_unit)){ echo "<option value='".$u['id']."'>".$u['nama_unit']."</option>"; } } ?></select></div>
                     <div class="form-group-half"><label>Formasi Jabatan</label><select name="jabatan_id" class="table-input" required><option value="">-- Pilih Jabatan --</option><?php if($opt_jbt){ mysqli_data_seek($opt_jbt,0); while($j=mysqli_fetch_assoc($opt_jbt)){ echo "<option value='".$j['id']."'>".$j['nama_jabatan']."</option>"; } } ?></select></div>
                     <div class="form-group-half"><label>Jumlah Kebutuhan (Orang)</label><input type="number" name="jumlah_kebutuhan" class="table-input" value="1" min="1" required></div>
                     <div class="form-group-half"><label>Status Publikasi</label><select name="status" class="table-input"><option value="Draft">Draft</option><option value="Aktif">Aktif</option></select></div>
                     <div class="form-group-half"><label>Tanggal Mulai</label><input type="date" name="tanggal_mulai" class="table-input" required></div>
                     <div class="form-group-half"><label>Tanggal Selesai / Batas</label><input type="date" name="tanggal_selesai" class="table-input" required></div>
-                    <div class="form-group-full"><label>Deskripsi Lowongan</label><textarea name="deskripsi" class="table-input" style="height:80px; resize:vertical;"></textarea></div>
+                    <div class="form-group-full"><label>Deskripsi Lowongan Magang</label><textarea name="deskripsi" class="table-input" style="height:80px; resize:vertical;"></textarea></div>
                     <div class="form-group-full"><label>Kualifikasi Utama</label><textarea name="kualifikasi" class="table-input" style="height:80px; resize:vertical;"></textarea></div>
                     <div class="form-group-full"><label>Berkas Persyaratan</label><textarea name="persyaratan" class="table-input" style="height:80px; resize:vertical;"></textarea></div>
                 </div>
@@ -242,14 +241,16 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
     <!-- MODAL BOX: FORM EDIT -->
     <div id="modalEdit" class="modal">
         <div class="modal-content">
-            <h3 style="color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-weight:700;">Ubah Detail Lowongan Kerja</h3>
+            <h3 style="color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-weight:700;">Ubah Detail Lowongan Magang</h3>
             <form action="" method="POST">
                 <input type="hidden" id="edit_id" name="id_lowongan">
                 <div class="form-grid">
                     <div class="form-group-half"><label>Kode Lowongan</label><input type="text" id="edit_kode" name="kode_lowongan" class="table-input" required></div>
-                    <div class="form-group-half"><label>Judul Lowongan Kerja</label><input type="text" id="edit_judul" name="judul_lowongan" class="table-input" required></div>
+                    <div class="form-group-half"><label>Judul Lowongan Magang</label><input type="text" id="edit_judul" name="judul_lowongan" class="table-input" required></div>
                     <div class="form-group-half"><label>Unit Kerja</label><select id="edit_unit" name="unit_id" class="table-input" required><option value="">-- Pilih Unit --</option><?php if($opt_unit){ mysqli_data_seek($opt_unit,0); while($u=mysqli_fetch_assoc($opt_unit)){ echo "<option value='".$u['id']."'>".$u['nama_unit']."</option>"; } } ?></select></div>
-                    <div class="form-group-half"><label>Formasi Jabatan</label><select id="edit_jbt" name="jabatan_id" class="table-input" required><option value="">-- Pilih Jabatan --</option><?php if($opt_jbt){ mysqli_data_seek($opt_jbt,0); while($j=mysqli_fetch_assoc($opt_jbt)){ echo "<option value='".$j['id']."'>".$j['nama_jabatan']."</option>"; } } ?></select></div>
+                        <div class="form-group-half">
+                            <label>Formasi Jabatan</label>
+                            <select id="edit_jbt" name="jabatan_id" class="table-input" required>
                                 <option value="">-- Pilih Jabatan --</option>
                                 <?php if($opt_jbt){ mysqli_data_seek($opt_jbt,0); while($j=mysqli_fetch_assoc($opt_jbt)){ echo "<option value='".$j['id']."'>".$j['nama_jabatan']."</option>"; } } ?>
                             </select>
@@ -274,7 +275,7 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
                             <input type="date" id="edit_tgl_s" name="tanggal_selesai" class="table-input" required>
                         </div>
                         <div class="form-group-full">
-                            <label>Deskripsi Lowongan</label>
+                            <label>Deskripsi Lowongan Magang</label>
                             <textarea id="edit_desk" name="deskripsi" class="table-input" style="height:80px; resize:vertical;"></textarea>
                         </div>
                         <div class="form-group-full">
