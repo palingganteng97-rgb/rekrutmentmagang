@@ -142,17 +142,17 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
             </div>
 
             <!-- BARIS PENCARIAN & TOMBOL UTAMA -->
-            <div class="control-bar">
+                        <div class="control-bar">
                 <form action="" method="POST" class="search-box">
                     <input type="text" name="keyword" class="input-search" placeholder="Cari nama, email, atau instansi..." value="<?php echo htmlspecialchars($keyword); ?>">
                     <button type="submit" name="cari" class="btn-search">Cari</button>
                 </form>
                 
                 <div class="action-right">
-                    <button type="button" class="btn-add" onclick="bukaModalTambah()">+ Tambah User Baru</button>
-                    <a href="master_user.php?export=excel" class="btn-excel">📊 Ekspor ke Excel</a>
+                    <button type="button" class="btn-add" style="background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer;" onclick="bukaModalTambah()">+ Tambah User Baru</button>
                 </div>
             </div>
+
 
             <!-- TABEL DATA -->
             <div class="table-wrapper" id="printArea">
@@ -184,10 +184,10 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
                                 echo "<td>
                                         <div class='action-container'>
                                             <button type='button' class='btn-action btn-edit' onclick=\"bukaModalEdit('".$row['id']."', '".htmlspecialchars($row['nama'])."', '".htmlspecialchars($row['email'])."', '".$row['username']."', '".$row['status']."')\" title='Edit Data'>✏️</button>
-                                            <button type='button' class='btn-action btn-print' onclick='printData()' title='Cetak Riwayat'>🖨️</button>
                                             <a href='master_user.php?hapus=".$row['id']."' class='btn-action btn-delete' onclick=\"return confirm('Apakah Anda yakin ingin menghapus pengguna ".$row['nama']."?')\" title='Hapus User'>🗑️</a>
                                         </div>
                                       </td>";
+
                                 echo "</tr>";
                             }
                         } else {
@@ -218,20 +218,42 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
     </div>
 
     <!-- MODAL BOX: EDIT USER -->
+        <!-- MODAL BOX: EDIT USER (YANG SUDAH DIPERBAIKI WARNA TEKSNYA) -->
+        <!-- MODAL BOX: EDIT USER DENGAN PLACEHOLDER JELAS -->
     <div id="modalEdit" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 999;">
         <div style="background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px;">
-            <h3 style="color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">Ubah Data Pengguna</h3>
+            <h3 style="color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-weight:700;">Ubah Data Pengguna</h3>
             <form action="" method="POST" style="display: flex; flex-direction: column; gap: 12px;">
                 <input type="hidden" id="edit_id" name="id_user">
-                <input type="text" id="edit_nama" name="nama_user" class="table-input" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px;" required>
-                <input type="email" id="edit_email" name="email_user" class="table-input" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px;" required>
-                <input type="text" id="edit_username" name="username_user" class="table-input" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px;" required>
-                <select id="edit_status" name="status_user" class="table-input" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px;">
-                    <option value="Aktif">Aktif</option>
-                    <option value="Nonaktif">Nonaktif</option>
-                </select>
+                
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #94a3b8;">NAMA LENGKAP</label>
+                    <!-- Ditambahkan placeholder -->
+                    <input type="text" id="edit_nama" name="nama_user" placeholder="Nama Lengkap" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; color: #1e293b; background: #ffffff;" required>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #94a3b8;">ALAMAT EMAIL</label>
+                    <!-- Ditambahkan placeholder -->
+                    <input type="email" id="edit_email" name="email_user" placeholder="Alamat Email" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; color: #1e293b; background: #ffffff;" required>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #94a3b8;">USERNAME SISTEM</label>
+                    <!-- Ditambahkan placeholder -->
+                    <input type="text" id="edit_username" name="username_user" placeholder="Username Sistem" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; color: #1e293b; background: #ffffff;" required>
+                </div>
+
+                <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #94a3b8;">STATUS AKUN</label>
+                    <select id="edit_status" name="status_user" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; color: #1e293b; background: #ffffff;">
+                        <option value="Aktif">Aktif</option>
+                        <option value="Nonaktif">Nonaktif</option>
+                    </select>
+                </div>
+
                 <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                    <button type="button" onclick="tutupModalEdit()" style="background:#cbd5e1; color:#475569; padding:8px 16px; border:none; border-radius:6px; cursor:pointer;">Batal</button>
+                    <button type="button" onclick="tutupModalEdit()" style="background:#cbd5e1; color:#475569; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Batal</button>
                     <button type="submit" name="update_user" style="background:#3182ce; color:white; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:700;">Simpan</button>
                 </div>
             </form>
