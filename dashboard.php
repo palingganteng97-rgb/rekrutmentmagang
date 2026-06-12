@@ -206,21 +206,6 @@ if (isset($_SESSION['username'])) {
                         </tr>
                     </thead>
                     <tbody>
-                        <tr>
-                            <td class="candidate-name">John Doe</td>
-                            <td style="color: #64748b;">UI Designer</td>
-                            <td><div class="status-pill"><div class="status-dot"></div>Tech interview</div></td>
-                        </tr>
-                        <tr>
-                            <td class="candidate-name">Ella Clinton</td>
-                            <td style="color: #64748b;">Content designer</td>
-                            <td><div class="status-pill"><div class="status-dot" style="background:#ec4899;"></div>Task</div></td>
-                        </tr>
-                        <tr>
-                            <td class="candidate-name">Mike Tyler</td>
-                            <td style="color: #64748b;">Node.js Developer</td>
-                            <td><div class="status-pill"><div class="status-dot" style="background:#06b6d4;"></div>Resume review</div></td>
-                        </tr>
                     </tbody>
                 </table>
             </div>
