@@ -7,7 +7,7 @@ $database = "magang_rekrutmen_rs";
 
 $koneksi = mysqli_connect($host, $username, $password, $database);
 
-// Periksa apakah koneksi berhasil
+// Periksa apakah koneksi berhasil atau tidak
 if (!$koneksi) {
     die("Koneksi ke database gagal: " . mysqli_connect_error());
 }
