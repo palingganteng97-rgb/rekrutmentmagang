@@ -117,7 +117,8 @@ if (isset($_POST['simpan_user_baru'])) {
                 <div class="brand-logo"><span></span>impozitions</div>
                 <nav class="menu-list">
                     <a href="dashboard.php" class="menu-item">Dashboard</a>
-                                        <a href="master_user.php" class="menu-item active">Master User</a>
+                    <a href="master_user.php" class="menu-item active">Master User</a>
+                    <a href="master_unit.php" class="menu-item" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master Unit</a>
                     <a href="user.php" class="menu-item">Profil Pengguna</a>
                 </nav>
             </div>
