@@ -34,15 +34,23 @@ if (isset($_GET['hapus'])) {
     }
 }
 
-// 4. FITUR UPDATE / EDIT DATA USER (MODAL SIMPAN)
+// 4. FITUR UPDATE / EDIT DATA USER (DENGAN OPSI UBAH PASSWORD)
 if (isset($_POST['update_user'])) {
     $id_edit   = mysqli_real_escape_string($koneksi, $_POST['id_user']);
     $nama_edit = mysqli_real_escape_string($koneksi, $_POST['nama_user']);
     $email_edit= mysqli_real_escape_string($koneksi, $_POST['email_user']);
     $user_edit = mysqli_real_escape_string($koneksi, $_POST['username_user']);
     $stat_edit = mysqli_real_escape_string($koneksi, $_POST['status_user']);
+    $pass_edit = mysqli_real_escape_string($koneksi, $_POST['password_user']);
     
-    $query_update = "UPDATE users SET nama='$nama_edit', email='$email_edit', username='$user_edit', status='$stat_edit' WHERE id='$id_edit'";
+    // Jika kolom password baru diisi, ganti juga password-nya
+    if (!empty($pass_edit)) {
+        $query_update = "UPDATE users SET nama='$nama_edit', email='$email_edit', username='$user_edit', status='$stat_edit', password='$pass_edit' WHERE id='$id_edit'";
+    } else {
+        // Jika kosong, abaikan penggantian password lama
+        $query_update = "UPDATE users SET nama='$nama_edit', email='$email_edit', username='$user_edit', status='$stat_edit' WHERE id='$id_edit'";
+    }
+    
     if (mysqli_query($koneksi, $query_update)) {
         echo "<script>alert('Data user berhasil diperbarui!'); window.location='master_user.php';</script>";
     }
@@ -59,20 +67,6 @@ if (isset($_POST['simpan_user_baru'])) {
     if (mysqli_query($koneksi, $query_tambah)) {
         echo "<script>alert('User baru berhasil ditambahkan!'); window.location='master_user.php';</script>";
     }
-}
-
-// 6. FITUR EXPORT EXCEL
-if (isset($_GET['export']) && $_GET['export'] == 'excel') {
-    header("Content-type: application/vnd-ms-excel");
-    header("Content-Disposition: attachment; filename=Data_Master_User.xls");
-    echo "<table border='1'><tr><th>ID</th><th>Nama Pengguna</th><th>Email</th><th>Username</th><th>Status</th><th>Waktu Pembuatan</th></tr>";
-    $q_ex = "SELECT id, nama, email, username, status, created_at FROM users ORDER BY id DESC";
-    $h_ex = mysqli_query($koneksi, $q_ex);
-    while($r_ex = mysqli_fetch_assoc($h_ex)) {
-        echo "<tr><td>".$r_ex['id']."</td><td>".$r_ex['nama']."</td><td>".$r_ex['email']."</td><td>@".$r_ex['username']."</td><td>".$r_ex['status']."</td><td>".$r_ex['created_at']."</td></tr>";
-    }
-    echo "</table>";
-    exit();
 }
 ?>
 <!DOCTYPE html>
@@ -103,7 +97,6 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
         .btn-search { background: #3182ce; color: white; border: none; padding: 0 24px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
         .action-right { display: flex; gap: 10px; }
         .btn-add { background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
-        .btn-excel { background: #27ae60; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; text-decoration: none; display: flex; align-items: center; gap: 8px; }
         .table-wrapper { background: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.01); }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
         th { background: #f8fafc; color: #212529; padding: 16px 12px; font-weight: 700; border-bottom: 2px solid #dee2e6; text-align: center; }
@@ -111,9 +104,8 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
         .action-container { display: flex; gap: 6px; justify-content: center; }
         .btn-action { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; color: white; text-decoration: none; font-size: 14px; }
         .btn-edit { background: #00a896; }   
-        .btn-print { background: #e67e22; }  
         .btn-delete { background: #e74c3c; } 
-        .table-input { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; }
+        .table-input { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; color: #1e293b; background: #ffffff; outline: none; }
     </style>
 </head>
 <body>
@@ -142,20 +134,19 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
             </div>
 
             <!-- BARIS PENCARIAN & TOMBOL UTAMA -->
-                        <div class="control-bar">
+            <div class="control-bar">
                 <form action="" method="POST" class="search-box">
                     <input type="text" name="keyword" class="input-search" placeholder="Cari nama, email, atau instansi..." value="<?php echo htmlspecialchars($keyword); ?>">
                     <button type="submit" name="cari" class="btn-search">Cari</button>
                 </form>
                 
                 <div class="action-right">
-                    <button type="button" class="btn-add" style="background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer;" onclick="bukaModalTambah()">+ Tambah User Baru</button>
+                    <button type="button" class="btn-add" onclick="bukaModalTambah()">+ Tambah User Baru</button>
                 </div>
             </div>
 
-
             <!-- TABEL DATA -->
-            <div class="table-wrapper" id="printArea">
+            <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
@@ -183,11 +174,10 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
                                 echo "<td style='color: #64748b; font-size: 13px;'>".$waktu_kunjungan."</td>";
                                 echo "<td>
                                         <div class='action-container'>
-                                            <button type='button' class='btn-action btn-edit' onclick=\"bukaModalEdit('".$row['id']."', '".htmlspecialchars($row['nama'])."', '".htmlspecialchars($row['email'])."', '".$row['username']."', '".$row['status']."')\" title='Edit Data'>✏️</button>
+                                            <button type='button' class='btn-action btn-edit' onclick=\"bukaModalEdit('".$row['id']."', '".addslashes($row['nama'])."', '".addslashes($row['email'])."', '".addslashes($row['username'])."', '".$row['status']."')\" title='Edit Data'>✏️</button>
                                             <a href='master_user.php?hapus=".$row['id']."' class='btn-action btn-delete' onclick=\"return confirm('Apakah Anda yakin ingin menghapus pengguna ".$row['nama']."?')\" title='Hapus User'>🗑️</a>
                                         </div>
                                       </td>";
-
                                 echo "</tr>";
                             }
                         } else {
@@ -202,15 +192,15 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
 
     <!-- MODAL BOX: TAMBAH USER -->
     <div id="modalTambah" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 999;">
-        <div style="background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px;">
-            <h3 style="color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px;">Tambah Pengguna Baru</h3>
+        <div style="background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
+            <h3 style="color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-weight:700;">Tambah Pengguna Baru</h3>
             <form action="" method="POST" style="display: flex; flex-direction: column; gap: 12px;">
-                <input type="text" name="nama_baru" placeholder="Nama Lengkap" class="table-input" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px;" required>
-                <input type="email" name="email_baru" placeholder="Alamat Email" class="table-input" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px;" required>
-                <input type="text" name="username_baru" placeholder="Username Sistem" class="table-input" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px;" required>
-                <input type="password" name="password_baru" placeholder="Buat Password" class="table-input" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px;" required>
+                <input type="text" name="nama_baru" placeholder="Nama Lengkap" class="table-input" required>
+                <input type="email" name="email_baru" placeholder="Alamat Email" class="table-input" required>
+                <input type="text" name="username_baru" placeholder="Username Sistem" class="table-input" required>
+                <input type="password" name="password_baru" placeholder="Buat Password" class="table-input" required>
                 <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
-                    <button type="button" onclick="tutupModalTambah()" style="background:#cbd5e1; color:#475569; padding:8px 16px; border:none; border-radius:6px; cursor:pointer;">Batal</button>
+                    <button type="button" onclick="tutupModalTambah()" style="background:#cbd5e1; color:#475569; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Batal</button>
                     <button type="submit" name="simpan_user_baru" style="background:#2ecc71; color:white; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:700;">Simpan</button>
                 </div>
             </form>
@@ -218,40 +208,40 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
     </div>
 
     <!-- MODAL BOX: EDIT USER -->
-        <!-- MODAL BOX: EDIT USER (YANG SUDAH DIPERBAIKI WARNA TEKSNYA) -->
-        <!-- MODAL BOX: EDIT USER DENGAN PLACEHOLDER JELAS -->
     <div id="modalEdit" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 999;">
-        <div style="background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px;">
+        <div style="background: white; padding: 30px; border-radius: 16px; width: 100%; max-width: 450px; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1);">
             <h3 style="color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-weight:700;">Ubah Data Pengguna</h3>
             <form action="" method="POST" style="display: flex; flex-direction: column; gap: 12px;">
                 <input type="hidden" id="edit_id" name="id_user">
                 
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                     <label style="font-size: 11px; font-weight: 700; color: #94a3b8;">NAMA LENGKAP</label>
-                    <!-- Ditambahkan placeholder -->
-                    <input type="text" id="edit_nama" name="nama_user" placeholder="Nama Lengkap" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; color: #1e293b; background: #ffffff;" required>
+                    <input type="text" id="edit_nama" name="nama_user" placeholder="Nama Lengkap" class="table-input" required>
                 </div>
-
+                
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                     <label style="font-size: 11px; font-weight: 700; color: #94a3b8;">ALAMAT EMAIL</label>
-                    <!-- Ditambahkan placeholder -->
-                    <input type="email" id="edit_email" name="email_user" placeholder="Alamat Email" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; color: #1e293b; background: #ffffff;" required>
+                    <input type="email" id="edit_email" name="email_user" placeholder="Alamat Email" class="table-input" required>
                 </div>
-
+                
                 <div style="display: flex; flex-direction: column; gap: 4px;">
                     <label style="font-size: 11px; font-weight: 700; color: #94a3b8;">USERNAME SISTEM</label>
-                    <!-- Ditambahkan placeholder -->
-                    <input type="text" id="edit_username" name="username_user" placeholder="Username Sistem" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; color: #1e293b; background: #ffffff;" required>
+                    <input type="text" id="edit_username" name="username_user" placeholder="Username Sistem" class="table-input" required>
                 </div>
 
                 <div style="display: flex; flex-direction: column; gap: 4px;">
+                    <label style="font-size: 11px; font-weight: 700; color: #94a3b8;">PASSWORD BARU (KOSONGKAN JIKA TIDAK DIGANTI)</label>
+                    <input type="password" name="password_user" placeholder="Ketik password baru jika ingin diganti..." class="table-input">
+                </div>
+                
+                <div style="display: flex; flex-direction: column; gap: 4px;">
                     <label style="font-size: 11px; font-weight: 700; color: #94a3b8;">STATUS AKUN</label>
-                    <select id="edit_status" name="status_user" style="width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; color: #1e293b; background: #ffffff;">
+                    <select id="edit_status" name="status_user" class="table-input">
                         <option value="Aktif">Aktif</option>
                         <option value="Nonaktif">Nonaktif</option>
                     </select>
                 </div>
-
+                
                 <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 10px;">
                     <button type="button" onclick="tutupModalEdit()" style="background:#cbd5e1; color:#475569; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:600;">Batal</button>
                     <button type="submit" name="update_user" style="background:#3182ce; color:white; padding:8px 16px; border:none; border-radius:6px; cursor:pointer; font-weight:700;">Simpan</button>
@@ -260,9 +250,11 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
         </div>
     </div>
 
+    <!-- SCRIPT POP-UP CONTROL -->
     <script>
         function bukaModalTambah() { document.getElementById('modalTambah').style.display = 'flex'; }
         function tutupModalTambah() { document.getElementById('modalTambah').style.display = 'none'; }
+        
         function bukaModalEdit(id, nama, email, username, status) {
             document.getElementById('edit_id').value = id;
             document.getElementById('edit_nama').value = nama;
@@ -272,19 +264,6 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
             document.getElementById('modalEdit').style.display = 'flex';
         }
         function tutupModalEdit() { document.getElementById('modalEdit').style.display = 'none'; }
-        function printData() {
-            var divToPrint = document.getElementById("printArea");
-            var newWin = window.open("");
-            newWin.document.write('<html><head><title>Cetak Data Pengguna</title>');
-            newWin.document.write('<style>table { width: 100%; border-collapse: collapse; font-family: sans-serif; } th, td { border: 1px solid #ced4da; padding: 12px; text-align: center; } th { background: #f8fafc; }</style>');
-            newWin.document.write('</head><body><h2 style="text-align:center; font-family:sans-serif; margin-bottom:20px;">LAPORAN DATA MASTER USER</h2>');
-            newWin.document.write(divToPrint.outerHTML);
-            var thAksi = newWin.document.querySelectorAll("th:last-child, td:last-child");
-            thAksi.forEach(el => el.style.display = 'none');
-            newWin.document.write('</body></html>');
-            newWin.print();
-            newWin.close();
-        }
     </script>
 </body>
 </html>
