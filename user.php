@@ -157,31 +157,38 @@ if ($hasil && mysqli_num_rows($hasil) > 0) {
             </div>
 
             <!-- FITUR: FORM TABEL INTERAKTIF UNTUK EDIT PROFIL -->
-            <div class="details-wrapper">
+                        <!-- TABEL FORM PROFIL DENGAN FITUR LOCK / UNLOCK TOMBOL EDIT -->
+            <div class="details-wrapper" style="background: #ffffff; border: 1px solid #f1f5f9; border-radius: 24px; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.01);">
                 <form action="" method="POST">
-                    <table>
+                    <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
                         <thead>
-                            <tr>
-                                <th style="width: 30%;">Kategori Kredensial</th>
-                                <th style="width: 50%;">Data Informasi Akun (Dapat Diubah)</th>
-                                <th style="width: 20%; text-align: right; padding-right: 10px;">Aksi</th>
+                            <tr style="color: #94a3b8; font-weight: 700; font-size: 11px; text-transform: uppercase; border-bottom: 2px solid #f1f5f9;">
+                                <th style="width: 30%; padding-bottom: 16px;">Kategori Kredensial</th>
+                                <th style="width: 50%; padding-bottom: 16px;">Data Informasi Akun</th>
+                                <th style="width: 20%; text-align: right; padding-right: 10px; padding-bottom: 16px;">Aksi</th>
                             </tr>
                         </thead>
                         <tbody>
                             <tr>
                                 <td style="font-weight: 600; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 10px;">Nama Lengkap</td>
-                                <td><input type="text" name="nama_lengkap" class="table-input" value="<?php echo $nama_tampilan; ?>" required></td>
+                                <!-- Ditambahkan properti id dan readonly agar kolom terkunci otomatis di awal -->
+                                <td><input type="text" id="input_nama" name="nama_lengkap" class="table-input" value="<?php echo $nama_tampilan; ?>" readonly style="background: #f8fafc; color: #64748b; cursor: not-allowed;"></td>
                                 <td rowspan="3" style="text-align: right; vertical-align: middle; padding-right: 10px;">
-                                    <button type="submit" name="update_profile" class="btn-primary">Simpan</button>
+                                    <div style="display: flex; flex-direction: column; gap: 10px; align-items: flex-end;">
+                                        <!-- TOMBOL EDIT BARU UNTUK MEMBUKA KUNCI INPUT -->
+                                        <button type="button" id="btn_edit" class="btn-primary" style="background: #f5f3ff; color: #4f46e5; border: 1px solid #c7d2fe; box-shadow: none;" onclick="aktifkanEdit()">Edit</button>
+                                        <!-- TOMBOL SIMPAN (TERKUNCI DI AWAL, NYALA SETELAH KLIK EDIT) -->
+                                        <button type="submit" id="btn_simpan" name="update_profile" class="btn-primary" style="display: none;">Simpan</button>
+                                    </div>
                                 </td>
                             </tr>
                             <tr>
                                 <td style="font-weight: 600; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 10px;">Username Sistem</td>
-                                <td><input type="text" name="username_sistem" class="table-input" value="<?php echo $username_tampilan; ?>" required></td>
+                                <td><input type="text" id="input_user" name="username_sistem" class="table-input" value="<?php echo $username_tampilan; ?>" readonly style="background: #f8fafc; color: #64748b; cursor: not-allowed;"></td>
                             </tr>
                             <tr>
                                 <td style="font-weight: 600; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 10px;">Alamat Email</td>
-                                <td><input type="email" name="alamat_email" class="table-input" value="<?php echo $email_tampilan; ?>" required></td>
+                                <td><input type="email" id="input_email" name="alamat_email" class="table-input" value="<?php echo $email_tampilan; ?>" readonly style="background: #f8fafc; color: #64748b; cursor: not-allowed;"></td>
                             </tr>
                             <tr>
                                 <td style="font-weight: 600; color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; padding-left: 10px;">Login Terakhir</td>
@@ -222,6 +229,38 @@ if ($hasil && mysqli_num_rows($hasil) > 0) {
             </form>
         </div>
     </div>
+        <!-- KODE SAKELAR JAVASCRIPT AKTIF - TARUH DI BAWAH DI wrapper TABEL -->
+    <script>
+        function aktifkanEdit() {
+            // 1. Ambil elemen input kolom berdasarkan ID masing-masing
+            var nama  = document.getElementById('input_nama');
+            var user  = document.getElementById('input_user');
+            var email = document.getElementById('input_email');
+            
+            // 2. Ambil elemen tombol aksi
+            var btnEdit   = document.getElementById('btn_edit');
+            var btnSimpan = document.getElementById('btn_simpan');
+
+            if (nama && user && email) {
+                // 3. Matikan status readonly (kolom sekarang resmi bisa diketik)
+                nama.removeAttribute('readonly');
+                user.removeAttribute('readonly');
+                email.removeAttribute('readonly');
+
+                // 4. Ubah visual latar belakang menjadi putih bersih aktif
+                nama.style.background = '#ffffff'; nama.style.color = '#1e293b'; nama.style.cursor = 'text';
+                user.style.background = '#ffffff'; user.style.color = '#1e293b'; user.style.cursor = 'text';
+                email.style.background = '#ffffff'; email.style.color = '#1e293b'; email.style.cursor = 'text';
+
+                // 5. Sembunyikan tombol Edit dan memunculkan tombol Simpan biru secara instan
+                if (btnEdit) btnEdit.style.display = 'none';
+                if (btnSimpan) btnSimpan.style.display = 'block';
+            } else {
+                console.error("Elemen input tidak ditemukan! Pastikan atribut id='input_nama', id='input_user', dan id='input_email' sudah terpasang di tag <input> Anda.");
+            }
+        }
+    </script>
+
 
     <!-- SCRIPT POP-UP CONTROL -->
     <script>
