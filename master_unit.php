@@ -156,7 +156,7 @@ if (isset($_POST['simpan_unit_baru'])) {
                                 echo "<tr>";
                                 echo "<td style='font-weight: 600; color: #64748b;'>".$no++."</td>";
                                 echo "<td style='font-weight: 700; color: #4f46e5;'>".$row['kode_unit']."</td>";
-                                echo "<td style='text-align: left; font-weight: 600; color: #1e293b;'>".$row['nama_unit']."</td>";
+                                echo "<td style='text-align: center; font-weight: 600; color: #1e293b;'>".$row['nama_unit']."</td>";
                                 echo "<td><span style='color: " . ($row['status'] == 'Aktif' ? '#059669' : '#dc2626') . "; font-weight: 700; font-size: 12px; text-transform: uppercase;'>".$row['status']."</span></td>";
                                 echo "<td>
                                         <div class='action-container'>
