@@ -131,8 +131,6 @@ if (isset($_SESSION['username'])) {
             
             <!-- TOMBOL LOGOUT MERAH -->
             <div class="support-card" style="background: #fff5f5; border: 1px solid #fee2e2; padding: 20px; border-radius: 20px; text-align: center; margin-top: 20px;">
-                <h4 style="font-size: 14px; color: #991b1b; font-weight: 700;">Sesi Akun</h4>
-                <p style="font-size: 11px; color: #b91c1c; margin-top: 4px;">Keluar dari dashboard</p>
                 <a href="logout.php" style="display: block; width: 100%; margin-top: 15px; background: #dc2626; color: white; padding: 10px; border-radius: 12px; font-size: 12px; font-weight: 700; text-decoration: none; text-align: center; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);">Log Out</a>
             </div>
         </aside>
