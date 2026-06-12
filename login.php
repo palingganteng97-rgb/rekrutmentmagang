@@ -1,39 +1,26 @@
 <?php
 session_start();
-$host = "10.10.6.59";
-$username = "root_host"; // Sesuaikan dengan kredensial database magang Anda
-$password = "password";     // Masukkan password database Anda jika ada
-$database = "magang_rekrutmen_rs";
 
-mysqli_report(MYSQLI_REPORT_OFF);
-$koneksi = @mysqli_connect($host, $username, $password, $database);
+// Inisialisasi pesan error kosong
 $error = "";
 
 if (isset($_POST['login'])) {
-    if (!$koneksi) {
-        $error = "Gagal terhubung ke database!";
+    $user = $_POST['username_email'];
+    $pass = $_POST['password'];
+
+    // ATURAN BYPASS INSTAN: Langsung masuk tanpa cek database jika password adalah "password"
+    if ($pass === "password") {
+        $_SESSION['login'] = true;
+        
+        // Menyimpan nama yang diketik ke dalam session agar bisa dipanggil di dashboard
+        $_SESSION['admin_user'] = !empty($user) ? $user : "Guest User";
+        
+        // Pindah otomatis ke halaman tampilkan data
+        header("Location: tampilkan.php");
+        exit();
     } else {
-        $user_email = mysqli_real_escape_string($koneksi, $_POST['username_email']);
-        $pass = $_POST['password'];
-
-        // Mengecek berdasarkan username ATAU email sesuai kolom di HeidiSQL Anda
-        $query = "SELECT * FROM users WHERE username = '$user_email' OR email = '$user_email'";
-        $result = mysqli_query($koneksi, $query);
-
-        if (mysqli_num_rows($result) === 1) {
-            $row = mysqli_fetch_assoc($result);
-            // Menggunakan password_verify jika password di database Anda di-hash
-            if (password_verify($pass, $row['password']) || $pass === $row['password']) {
-                $_SESSION['login'] = true;
-                $_SESSION['admin_user'] = $row['username'];
-                header("Location: tampilkan.php");
-                exit();
-            } else {
-                $error = "Password salah!";
-            }
-        } else {
-            $error = "Akun tidak ditemukan!";
-        }
+        // Muncul pesan jika password yang dimasukkan bukan kata "password"
+        $error = "Password salah! (Gunakan kata 'password')";
     }
 }
 ?>
@@ -174,6 +161,7 @@ if (isset($_POST['login'])) {
             border-radius: 10px;
             font-size: 12px;
             margin-bottom: 20px;
+            text-align: center;
         }
     </style>
 </head>
@@ -187,17 +175,17 @@ if (isset($_POST['login'])) {
             <div class="avatar-icon"></div>
         </div>
 
-        <!-- PESAN EROR JIKA KONEKSI/LOGIN GAGAL -->
+        <!-- PESAN ERROR JIKA PASSWORD SALAH -->
         <?php if(!empty($error)): ?>
             <div class="error-msg"><?= $error; ?></div>
         <?php endif; ?>
 
         <!-- FORMULIR INPUT -->
         <form method="POST" action="">
-            <!-- Input Email ID / Username -->
+            <!-- Input Username / Guest Name -->
             <div class="form-group">
                 <span>✉</span>
-                <input type="text" name="username_email" placeholder="Email ID" required autocomplete="off">
+                <input type="text" name="username_email" placeholder="Username / Guest Name" required autocomplete="off">
             </div>
 
             <!-- Input Password -->
@@ -211,7 +199,7 @@ if (isset($_POST['login'])) {
                 <label class="remember-me">
                     <input type="checkbox" name="remember"> Remember me
                 </label>
-                <a href="lupa_password.php" class="forgot-link">Forgot Password?</a>
+                <a href="#" class="forgot-link" onclick="alert('Silakan gunakan kata sandi: password')">Forgot Password?</a>
             </div>
 
             <!-- Tombol Submit -->
