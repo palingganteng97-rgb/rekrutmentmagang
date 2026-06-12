@@ -102,36 +102,6 @@ if (isset($_POST['login'])) {
         .form-group input::placeholder {
             color: rgba(255, 255, 255, 0.5);
         }
-
-        /* OPTIONS (REMEMBER ME & FORGOT) */
-        .options-container {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 12px;
-            color: rgba(255, 255, 255, 0.6);
-            margin-bottom: 35px;
-            padding: 0 2px;
-        }
-        .remember-me {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            cursor: pointer;
-        }
-        .remember-me input {
-            accent-color: #5c6bc0;
-            cursor: pointer;
-        }
-        .forgot-link {
-            color: rgba(255, 255, 255, 0.5);
-            text-decoration: none;
-            transition: color 0.2s;
-        }
-        .forgot-link:hover {
-            color: #ffffff;
-        }
-
         /* BUTTON LOGIN BLUE GLOW GRADIENT */
         .btn-login {
             width: 100%;
@@ -196,10 +166,7 @@ if (isset($_POST['login'])) {
 
             <!-- Opsi Tambahan -->
             <div class="options-container">
-                <label class="remember-me">
-                    <input type="checkbox" name="remember"> Remember me
                 </label>
-                <a href="#" class="forgot-link" onclick="alert('Silakan gunakan kata sandi: password')">Forgot Password?</a>
             </div>
 
             <!-- Tombol Submit -->
