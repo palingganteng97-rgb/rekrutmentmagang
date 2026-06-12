@@ -21,13 +21,6 @@ $lowongan_kerja = [
     ['qty' => '2', 'nama' => 'Manajer Pemasaran', 'pendaftar' => '10 pendaftar', 'pct' => '45%', 'color' => 'indigo']
 ];
 
-$progres_pelamar = [
-    ['nama' => 'Budi Santoso', 'posisi' => 'UI Designer', 'status' => 'Wawancara Teknis', 'color' => 'indigo'],
-    ['nama' => 'Siti Rahma', 'posisi' => 'Content Designer', 'status' => 'Pengerjaan Tugas', 'color' => 'pink'],
-    ['nama' => 'Andi Wijaya', 'posisi' => 'Node.js Developer', 'status' => 'Seleksi Berkas', 'color' => 'cyan'],
-    ['nama' => 'Rina Amelia', 'posisi' => 'Node.js Developer', 'status' => 'Pengerjaan Tugas', 'color' => 'pink']
-];
-
 // 3. AMBIL DATA USER SECARA DINAMIS BERDASARKAN SESSION LOGIN
 $nama_tampilan = "Administrator";
 
@@ -148,34 +141,9 @@ if (isset($_SESSION['username'])) {
                     <?php endforeach; ?>
                 </div>
             </section>
-
-            <!-- Bagian Tabel Progress Pelamar -->
-            <div class="table-wrapper">
-                <div class="section-header">
-                    <div class="section-title">Recruitment progress</div>
-                    <a href="#" class="see-all-link">see all</a>
-                </div>
-                <table style="width: 100%; border-collapse: collapse; text-align: left; font-size: 14px;">
-                    <thead>
-                        <tr style="color: #94a3b8; font-weight: 700; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #f1f5f9;">
-                            <th style="padding-bottom: 16px;">Nama Lengkap</th>
-                            <th style="padding-bottom: 16px;">Posisi Dilamar</th>
-                            <th style="padding-bottom: 16px;">Status Tahapan</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach($progres_pelamar as $p): ?>
-                        <tr>
-                            <td style="padding: 16px 0; font-weight: 700; color: #1e293b;"><?= $p['nama'] ?></td>
-                            <td style="padding: 16px 0; color: #64748b;"><?= $p['posisi'] ?></td>
-                            <td style="padding: 16px 0;">
-                                <div class="status-pill" style="display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: #334155;">
-                                    <div class="status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: #4f46e5;"></div>
-                                    <?= $p['status'] ?>
-                                </div>
                             </td>
                         </tr>
-                        <?php endforeach; ?>
+                    
                     </tbody>
                 </table>
             </div>
