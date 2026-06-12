@@ -12,7 +12,8 @@ $koneksi = mysqli_connect($host, $user_db, $pass_db, $nama_db);
 if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
-// 2. FITUR PENCARIAN DATA LOWONGAN (NAMA TABEL DISESUAIKAN: rekrutmen_lowongan)
+
+// 2. FITUR PENCARIAN DATA LOWONGAN MAGANG
 $keyword = "";
 if (isset($_POST['cari'])) {
     $keyword = mysqli_real_escape_string($koneksi, $_POST['keyword']);
@@ -24,7 +25,7 @@ if (isset($_POST['cari'])) {
 }
 $hasil = mysqli_query($koneksi, $query);
 
-// 3. FITUR HAPUS LOWONGAN
+// 3. FITUR HAPUS LOWONGAN MAGANG
 if (isset($_GET['hapus'])) {
     $id_hapus = mysqli_real_escape_string($koneksi, $_GET['hapus']);
     $query_hapus = "DELETE FROM rekrutmen_lowongan WHERE id = '$id_hapus'";
@@ -33,7 +34,7 @@ if (isset($_GET['hapus'])) {
     }
 }
 
-// 4. FITUR TAMBAH DATA LOWONGAN BARU (16 KOLOM DATABASE)
+// 4. FITUR TAMBAH DATA LOWONGAN MAGANG BARU + UPLOAD FISIK GAMBAR
 if (isset($_POST['simpan_lowongan'])) {
     $kode_lowongan   = mysqli_real_escape_string($koneksi, $_POST['kode_lowongan']);
     $jabatan_id      = mysqli_real_escape_string($koneksi, $_POST['jabatan_id']);
@@ -47,18 +48,31 @@ if (isset($_POST['simpan_lowongan'])) {
     $tanggal_selesai = mysqli_real_escape_string($koneksi, $_POST['tanggal_selesai']);
     $status          = mysqli_real_escape_string($koneksi, $_POST['status']);
     
-    $gambar = "default.png"; 
+    $nama_gambar_db = "default.png"; 
+    if (isset($_FILES['gambar_file']) && $_FILES['gambar_file']['error'] === 0) {
+        $file_name = $_FILES['gambar_file']['name'];
+        $file_tmp  = $_FILES['gambar_file']['tmp_name'];
+        $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+        
+        $nama_gambar_db = "brosur_" . time() . "." . $file_ext;
+        
+        if (!is_dir('uploads')) {
+            mkdir('uploads', 0777, true);
+        }
+        move_uploaded_file($file_tmp, "uploads/" . $nama_gambar_db);
+    }
+    
     $created_by = "1";
 
     $query_tambah = "INSERT INTO rekrutmen_lowongan (kode_lowongan, jabatan_id, unit_id, judul_lowongan, jumlah_kebutuhan, deskripsi, kualifikasi, persyaratan, tanggal_mulai, tanggal_selesai, status, gambar, created_by, created_at) 
-                     VALUES ('$kode_lowongan', '$jabatan_id', '$unit_id', '$judul_lowongan', '$jumlah_kebutuhan', '$deskripsi', '$kualifikasi', '$persyaratan', '$tanggal_mulai', '$tanggal_selesai', '$status', '$gambar', '$created_by', NOW())";
+                     VALUES ('$kode_lowongan', '$jabatan_id', '$unit_id', '$judul_lowongan', '$jumlah_kebutuhan', '$deskripsi', '$kualifikasi', '$persyaratan', '$tanggal_mulai', '$tanggal_selesai', '$status', '$nama_gambar_db', '$created_by', NOW())";
     
     if (mysqli_query($koneksi, $query_tambah)) {
-        echo "<script>alert('Lowongan magang baru berhasil diterbitkan!'); window.location='master_lowongan.php';</script>";
+        echo "<script>alert('Lowongan magang baru beserta gambar berhasil diterbitkan!'); window.location='master_lowongan.php';</script>";
     }
 }
 
-// 5. FITUR UPDATE / EDIT LOWONGAN
+// 5. FITUR UPDATE / EDIT LOWONGAN MAGANG + UPLOAD GAMBAR BARU
 if (isset($_POST['update_lowongan'])) {
     $id_edit         = mysqli_real_escape_string($koneksi, $_POST['id_lowongan']);
     $kode_lowongan   = mysqli_real_escape_string($koneksi, $_POST['kode_lowongan']);
@@ -73,10 +87,21 @@ if (isset($_POST['update_lowongan'])) {
     $tanggal_selesai = mysqli_real_escape_string($koneksi, $_POST['tanggal_selesai']);
     $status          = mysqli_real_escape_string($koneksi, $_POST['status']);
 
-    $query_update = "UPDATE rekrutmen_lowongan SET kode_lowongan='$kode_lowongan', jabatan_id='$jabatan_id', unit_id='$unit_id', judul_lowongan='$judul_lowongan', jumlah_kebutuhan='$jumlah_kebutuhan', deskripsi='$deskripsi', kualifikasi='$kualifikasi', persyaratan='$persyaratan', tanggal_mulai='$tanggal_mulai', tanggal_selesai='$tanggal_selesai', status='$status', updated_at=NOW() WHERE id='$id_edit'";
+    if (isset($_FILES['gambar_file']) && $_FILES['gambar_file']['error'] === 0) {
+        $file_name = $_FILES['gambar_file']['name'];
+        $file_tmp  = $_FILES['gambar_file']['tmp_name'];
+        $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+        $nama_gambar_db = "brosur_" . time() . "." . $file_ext;
+        
+        move_uploaded_file($file_tmp, "uploads/" . $nama_gambar_db);
+        
+        $query_update = "UPDATE rekrutmen_lowongan SET kode_lowongan='$kode_lowongan', jabatan_id='$jabatan_id', unit_id='$unit_id', judul_lowongan='$judul_lowongan', jumlah_kebutuhan='$jumlah_kebutuhan', deskripsi='$deskripsi', kualifikasi='$kualifikasi', persyaratan='$persyaratan', tanggal_mulai='$tanggal_mulai', tanggal_selesai='$tanggal_selesai', status='$status', gambar='$nama_gambar_db', updated_at=NOW() WHERE id='$id_edit'";
+    } else {
+        $query_update = "UPDATE rekrutmen_lowongan SET kode_lowongan='$kode_lowongan', jabatan_id='$jabatan_id', unit_id='$unit_id', judul_lowongan='$judul_lowongan', jumlah_kebutuhan='$jumlah_kebutuhan', deskripsi='$deskripsi', kualifikasi='$kualifikasi', persyaratan='$persyaratan', tanggal_mulai='$tanggal_mulai', tanggal_selesai='$tanggal_selesai', status='$status', updated_at=NOW() WHERE id='$id_edit'";
+    }
     
     if (mysqli_query($koneksi, $query_update)) {
-        echo "<script>alert('Data lowongan berhasil diperbarui!'); window.location='master_lowongan.php';</script>";
+        echo "<script>alert('Data lowongan magang berhasil diperbarui!'); window.location='master_lowongan.php';</script>";
     }
 }
 
@@ -88,44 +113,54 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Master Lowongan Magang - Magang ID</title>
-    <style>
+    <title>Master Lowongan - Magang ID</title>
+        <style>
+        /* STYLE UTUH UNTUK MENGUNCI LAYOUT MODAL AGAR TIDAK PECAH */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
         body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #475569; }
+        
         .dashboard-container { width: 100%; max-width: 1440px; background: #ffffff; border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.04); display: flex; min-height: 850px; overflow: hidden; }
         .sidebar-left { width: 280px; background: #ffffff; border-right: 1px solid #f1f5f9; padding: 35px; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
         .brand-logo { font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 45px; display: flex; align-items: center; gap: 10px; }
         .brand-logo span { width: 10px; height: 20px; background: #4f46e5; border-radius: 4px; display: inline-block; }
+        
         .menu-list { display: flex; flex-direction: column; gap: 6px; }
         .menu-item { display: block; padding: 14px 18px; color: #94a3b8; text-decoration: none; border-radius: 16px; font-size: 14px; font-weight: 600; transition: all 0.2s; }
         .menu-item.active { background: #f5f3ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
         .menu-item:hover:not(.active) { background: #f8fafc; color: #1e293b; }
+        
         .support-card { background: #fff5f5; border: 1px solid #fee2e2; padding: 16px; border-radius: 20px; text-align: center; margin-top: 20px; }
         .support-card a { display: block; width: 100%; background: #dc2626; color: white; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); }
+        
         .main-content { flex: 1; background: #fbfbfd; padding: 40px 50px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; }
         .content-header h1 { font-size: 26px; font-weight: 800; color: #212529; }
+        
         .control-bar { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-top: 10px; }
         .search-box { display: flex; gap: 8px; flex: 1; max-width: 450px; }
         .input-search { width: 100%; padding: 10px 16px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; outline: none; }
         .btn-search { background: #3182ce; color: white; border: none; padding: 0 24px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
         .btn-add { background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
+        
         .table-wrapper { background: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.01); }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
         th { background: #f8fafc; color: #212529; padding: 16px 12px; font-weight: 700; border-bottom: 2px solid #dee2e6; text-align: center; }
         td { padding: 16px 12px; color: #495057; border-bottom: 1px solid #dee2e6; text-align: center; vertical-align: middle; }
+        
         .action-container { display: flex; gap: 6px; justify-content: center; }
         .btn-action { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; color: white; }
         .btn-edit { background: #00a896; }   
         .btn-delete { background: #e74c3c; } 
         .table-input { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; color: #1e293b; background: #ffffff; outline: none; }
         
-        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 999; }
-        .modal-content { background: white; padding: 30px; border-radius: 20px; width: 100%; max-width: 800px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); }
+        /* 📌 LOGIKA PENYELAMAT MODAL (WAJIB ADA AGAR FORM TERSEMBUNYI DI AWAL) */
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.4); backdrop-filter: blur(4px); justify-content: center; align-items: center; z-index: 9999; padding: 20px; }
+        .modal-content { background: #ffffff; padding: 30px; border-radius: 24px; width: 100%; max-width: 750px; max-height: 90vh; overflow-y: auto; display: flex; flex-direction: column; gap: 16px; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); }
         .form-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; text-align: left; }
         .form-group-full { grid-column: span 2; display: flex; flex-direction: column; gap: 4px; }
         .form-group-half { display: flex; flex-direction: column; gap: 4px; }
         label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
     </style>
+
 </head>
 <body>
 
@@ -144,8 +179,8 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
                     <a href="user.php" class="menu-item" style="text-decoration: none;">Profil Pengguna</a>
                 </nav>
             </div>
-            <div class="support-card" style="background: #fff5f5; border: 1px solid #fee2e2; padding: 16px; border-radius: 20px; text-align: center; margin-top: 20px;">
-                <a href="logout.php" style="display: block; width: 100%; background: #dc2626; color: white; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);">Log Out</a>
+            <div class="support-card">
+                <a href="logout.php" style="text-decoration: none;">Log Out</a>
             </div>
         </aside>
 
@@ -215,7 +250,7 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
     <div id="modalTambah" class="modal">
         <div class="modal-content">
             <h3 style="color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-weight:700;">Form Terbitkan Lowongan Magang</h3>
-            <form action="" method="POST">
+            <form action="" method="POST" enctype="multipart/form-data">
                 <div class="form-grid">
                     <div class="form-group-half"><label>Kode Lowongan</label><input type="text" name="kode_lowongan" class="table-input" placeholder="Contoh: LWG-001" required></div>
                     <div class="form-group-half"><label>Judul Lowongan Magang</label><input type="text" name="judul_lowongan" class="table-input" placeholder="Contoh: Magang Perawat" required></div>
@@ -225,6 +260,12 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
                     <div class="form-group-half"><label>Status Publikasi</label><select name="status" class="table-input"><option value="Draft">Draft</option><option value="Aktif">Aktif</option></select></div>
                     <div class="form-group-half"><label>Tanggal Mulai</label><input type="date" name="tanggal_mulai" class="table-input" required></div>
                     <div class="form-group-half"><label>Tanggal Selesai / Batas</label><input type="date" name="tanggal_selesai" class="table-input" required></div>
+                    
+                    <div class="form-group-full">
+                        <label>Unggah Gambar Brosur Lowongan Magang</label>
+                        <input type="file" name="gambar_file" class="table-input" accept="image/*" style="padding: 8px;">
+                    </div>
+                    
                     <div class="form-group-full"><label>Deskripsi Lowongan Magang</label><textarea name="deskripsi" class="table-input" style="height:80px; resize:vertical;"></textarea></div>
                     <div class="form-group-full"><label>Kualifikasi Utama</label><textarea name="kualifikasi" class="table-input" style="height:80px; resize:vertical;"></textarea></div>
                     <div class="form-group-full"><label>Berkas Persyaratan</label><textarea name="persyaratan" class="table-input" style="height:80px; resize:vertical;"></textarea></div>
@@ -241,12 +282,18 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
     <div id="modalEdit" class="modal">
         <div class="modal-content">
             <h3 style="color:#1e293b; border-bottom:2px solid #f1f5f9; padding-bottom:10px; font-weight:700;">Ubah Detail Lowongan Magang</h3>
-            <form action="" method="POST">
+            <form action="" method="POST" enctype="multipart/form-data">
                 <input type="hidden" id="edit_id" name="id_lowongan">
                 <div class="form-grid">
                     <div class="form-group-half"><label>Kode Lowongan</label><input type="text" id="edit_kode" name="kode_lowongan" class="table-input" required></div>
                     <div class="form-group-half"><label>Judul Lowongan Magang</label><input type="text" id="edit_judul" name="judul_lowongan" class="table-input" required></div>
-                    <div class="form-group-half"><label>Unit Kerja</label><select id="edit_unit" name="unit_id" class="table-input" required><option value="">-- Pilih Unit --</option><?php if($opt_unit){ mysqli_data_seek($opt_unit,0); while($u=mysqli_fetch_assoc($opt_unit)){ echo "<option value='".$u['id']."'>".$u['nama_unit']."</option>"; } } ?></select></div>
+                        <div class="form-group-half">
+                            <label>Unit Kerja</label>
+                            <select id="edit_unit" name="unit_id" class="table-input" required>
+                                <option value="">-- Pilih Unit --</option>
+                                <?php if($opt_unit){ mysqli_data_seek($opt_unit,0); while($u=mysqli_fetch_assoc($opt_unit)){ echo "<option value='".$u['id']."'>".$u['nama_unit']."</option>"; } } ?>
+                            </select>
+                        </div>
                         <div class="form-group-half">
                             <label>Formasi Jabatan</label>
                             <select id="edit_jbt" name="jabatan_id" class="table-input" required>
@@ -272,6 +319,10 @@ $opt_jbt  = mysqli_query($koneksi, "SELECT id, nama_jabatan FROM mst_jabatan ORD
                         <div class="form-group-half">
                             <label>Tanggal Selesai</label>
                             <input type="date" id="edit_tgl_s" name="tanggal_selesai" class="table-input" required>
+                        </div>
+                        <div class="form-group-full">
+                            <label>Ganti Gambar Brosur Baru (Biarkan Kosong Jika Tidak Diubah)</label>
+                            <input type="file" name="gambar_file" class="table-input" accept="image/*" style="padding: 8px;">
                         </div>
                         <div class="form-group-full">
                             <label>Deskripsi Lowongan Magang</label>
