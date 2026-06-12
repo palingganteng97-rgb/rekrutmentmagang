@@ -125,8 +125,8 @@ if (isset($_GET['export']) && $_GET['export'] == 'excel') {
                 <div class="brand-logo"><span></span>impozitions</div>
                 <nav class="menu-list">
                     <a href="dashboard.php" class="menu-item">Dashboard</a>
+                                        <a href="master_user.php" class="menu-item active">Master User</a>
                     <a href="user.php" class="menu-item">Profil Pengguna</a>
-                    <a href="master_user.php" class="menu-item active">Master User</a>
                 </nav>
             </div>
             <div class="support-card">
