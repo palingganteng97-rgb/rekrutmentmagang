@@ -1,36 +1,41 @@
 <?php 
 session_start(); 
 
-// 1. PENGATURAN KONEKSI DATABASE (Sesuaikan dengan XAMPP Anda)
-$host     = "10.10.6.59"; // Jika database di server, ganti dengan IP '10.10.6.59' seperti di gambar
+// 1. PENGATURAN KONEKSI DATABASE SERVER
+$host     = "10.10.6.59"; 
 $user_db  = "root_host";      
 $pass_db  = "password";          
 $nama_db  = "magang_rekrutmen_rs"; 
 
 $koneksi = mysqli_connect($host, $user_db, $pass_db, $nama_db);
 
-// Jika database gagal terhubung
 if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
-// 2. AMBIL DATA USER SECARA DINAMIS BERDASARKAN SESSION LOGIN
-// Kita siapkan nama cadangan 'Administrator' jika Anda membuka halaman tanpa login terlebih dahulu
+// 2. INISIALISASI NILAI DEFAULT CADANGAN (Jika Session Belum Terisi)
 $nama_tampilan = "Administrator";
+$email_tampilan = "admin@magang.id";
+$inisial_tampilan = "A";
 
+// 3. LOGIKA AKTIF PENARIKAN DATA USER DARI DATABASE HEIDISQL
 if (isset($_SESSION['username'])) {
     $username_aktif = $_SESSION['username'];
     
-    // Query untuk mengambil kolom 'nama' berdasarkan 'username' dari tabel 'users'
-    $query = "SELECT nama FROM users WHERE username = '$username_aktif'";
+    // Mengambil kolom nama dan email sekaligus berdasarkan username pelamar/admin
+    $query = "SELECT nama, email FROM users WHERE username = '$username_aktif'";
     $hasil = mysqli_query($koneksi, $query);
     
     if ($hasil && mysqli_num_rows($hasil) > 0) {
         $data_user = mysqli_fetch_assoc($hasil);
-        $nama_tampilan = $data_user['nama']; // Menyimpan nama asli user (Varchar 200)
+        $nama_tampilan = $data_user['nama'];
+        $email_tampilan = $data_user['email'];
+        // Mengambil huruf pertama dari kolom nama sebagai avatar profile bulat
+        $inisial_tampilan = strtoupper(substr($nama_tampilan, 0, 1));
     }
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -59,27 +64,11 @@ if (isset($_SESSION['username'])) {
         .support-card button { width: 100%; margin-top: 15px; background: #4f46e5; color: white; padding: 10px; border-radius: 12px; font-size: 12px; font-weight: 700; cursor: pointer; border: none; box-shadow: 0 4px 12px rgba(79, 70, 229, 0.2); }
 
         /* Area Konten Utama */
-        .main-content { 
-    flex: 1; 
-    background: #fbfbfd; 
-    padding: 40px 50px; /* Menambah ruang di sisi kiri dan kanan halaman agar luas */
-    display: flex; 
-    flex-direction: column; 
-    gap: 32px; 
-    overflow-y: auto; 
-}
-.content-header h1 { font-size: 26px; font-weight: 800; color: #1e293b; letter-spacing: -0.5px; }
+        .main-content { flex: 1; background: #fbfbfd; padding: 40px; display: flex; flex-direction: column; gap: 30px; overflow-y: auto; }
+        .content-header h1 { font-size: 26px; font-weight: 800; color: #1e293b; letter-spacing: -0.5px; }
         
         /* Banner Sambutan Ungu */
-.welcome-banner { 
-    background: #4f46e5; 
-    border-radius: 24px; 
-    padding: 35px 40px; /* Jarak teks ke tepi boks diganti menjadi lebih luas */
-    color: #ffffff; 
-    position: relative; 
-    box-shadow: 0 10px 25px rgba(79, 70, 229, 0.15);
-    margin-top: 10px; /* Jarak dari teks judul Dashboard */
-}
+        .welcome-banner { background: #4f46e5; border-radius: 24px; padding: 30px; color: #ffffff; position: relative; box-shadow: 0 10px 25px rgba(79, 70, 229, 0.15); }
         .welcome-banner h2 { font-size: 24px; font-weight: 700; margin-bottom: 8px; }
         .welcome-banner p { font-size: 14px; opacity: 0.9; line-height: 1.6; max-width: 500px; }
         .welcome-banner a { color: white; font-weight: bold; font-size: 13px; margin-top: 12px; display: inline-block; }
@@ -103,46 +92,58 @@ if (isset($_SESSION['username'])) {
         .candidate-name { font-weight: 700; color: #1e293b; font-size: 14px; }
         .status-pill { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; color: #334155; }
         .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #4f46e5; }
-
-        /* Panel Samping Kanan (Kalender & New Applicants) */
-        .sidebar-right { width: 300px; background: #ffffff; border-left: 1px solid #f1f5f9; padding: 35px; flex-shrink: 0; display: flex; flex-direction: column; gap: 30px; }
-        .calendar-header { display: flex; justify-content: space-between; align-items: center; font-size: 13px; font-weight: 700; color: #1e293b; margin-bottom: 15px; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px 5px; text-align: center; font-size: 11px; font-weight: 700; }
-        .day-name { color: #94a3b8; padding-bottom: 5px; }
-        .day-num { color: #1e293b; padding: 4px 0; }
-        .day-num.muted { color: #cbd5e1; }
-        .applicant-item { display: flex; align-items: center; gap: 12px; padding: 8px 0; }
-        .applicant-avatar { width: 36px; height: 36px; background: #f5f3ff; color: #4f46e5; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 12px; }
-        .applicant-info h5 { font-size: 13px; font-weight: 700; color: #1e293b; }
-        .applicant-info p { font-size: 10px; color: #94a3b8; margin-top: 1px; }
     </style>
 </head>
 <body>
 
     <div class="dashboard-container">
-        
-        <!-- SIDEBAR MENU KIRI -->
-        <aside class="sidebar-left">
+                <!-- SIDEBAR MENU KIRI DENGAN FITUR USER AKTIF -->
+        <aside class="sidebar-left" style="width: 280px; background: #ffffff; border-right: 1px solid #f1f5f9; padding: 35px; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0;">
             <div>
-                <div class="brand-logo"><span></span>impozitions</div>
+                <!-- Logo Aplikasi -->
+                <div class="brand-logo" style="font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 45px; display: flex; align-items: center; gap: 10px;">
+                    <span style="width: 10px; height: 20px; background: #4f46e5; border-radius: 4px; display: inline-block;"></span>impozitions
+                </div>
+                
+                <!-- KOTAK PROFIL USER OTOMATIS TERHUBUNG DATABASE -->
+                                <!-- BOKS PROFIL USER SEKARANG BISA DIKLIK (LINK KE USER.PHP) -->
+                <a href="user.php" style="display: flex; align-items: center; gap: 12px; background: #f8fafc; padding: 14px; border-radius: 20px; margin-bottom: 25px; border: 1px solid #f1f5f9; width: 100%; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.background='#f0fdf4'; this.style.borderColor='#bbf7d0';" onmouseout="this.style.background='#f8fafc'; this.style.borderColor='#f1f5f9';">
+                    <!-- Foto Inisial Bulat -->
+                    <div style="width: 44px; height: 44px; background: #4f46e5; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 16px; flex-shrink: 0; box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);">
+                        <?php echo isset($inisial_tampilan) ? $inisial_tampilan : 'A'; ?>
+                    </div>
+                    <!-- Detail Nama & Status -->
+                    <div style="overflow: hidden; flex: 1; text-align: left;">
+                        <h4 style="font-size: 13px; font-weight: 700; color: #1e293b; margin: 0; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: 145px; text-transform: capitalize;">
+                            <?php echo isset($nama_tampilan) ? $nama_tampilan : 'Admin'; ?>
+                        </h4>
+                        <p style="font-size: 11px; color: #94a3b8; margin-top: 2px; white-space: nowrap; text-overflow: ellipsis; overflow: hidden; max-width: 145px;">
+                            <?php echo isset($email_tampilan) ? $email_tampilan : 'admin@magang.id'; ?>
+                        </p>
+                    </div>
+                </a>
+
+                <!-- Navigasi Menu -->
                 <nav class="menu-list">
                     <a href="#" class="menu-item active">Dashboard</a>
-                    <a href="#" class="iser active">
                 </nav>
             </div>
-            <!-- KOTAK OPSI LOGOUT -->
-<div class="support-card" style="background: #fff5f5; border: 1px solid #fee2e2; padding: 20px; border-radius: 20px; text-align: center; margin-top: 20px;">
-    <a href="logout.php" style="display: block; width: 100%; margin-top: 15px; background: #dc2626; color: white; padding: 10px; border-radius: 12px; font-size: 12px; font-weight: 700; text-decoration: none; text-align: center; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.2);">Log Out</a>
-</div>
+            
+            <!-- TOMBOL LOGOUT MERAH -->
+            <div class="support-card" style="background: #fff5f5; border: 1px solid #fee2e2; padding: 20px; border-radius: 20px; text-align: center; margin-top: 20px;">
+                <h4 style="font-size: 14px; color: #991b1b; font-weight: 700;">Sesi Akun</h4>
+                <p style="font-size: 11px; color: #b91c1c; margin-top: 4px;">Keluar dari dashboard</p>
+                <a href="logout.php" style="display: block; width: 100%; margin-top: 15px; background: #dc2626; color: white; padding: 10px; border-radius: 12px; font-size: 12px; font-weight: 700; text-decoration: none; text-align: center; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);">Log Out</a>
+            </div>
         </aside>
-
         <!-- AREA KONTEN UTAMA TENGAH -->
         <main class="main-content">
             <div class="content-header">
                 <h1>Dashboard</h1>
             </div>
 
-           <div class="welcome-banner">
+            <!-- Banner Sambutan -->
+            <div class="welcome-banner">
     <h2>Selamat Datang Kembali, <?php echo $nama_tampilan; ?>!</h2>
     <p>Sistem Rekrutmen Magang ID siap digunakan. Seluruh modul dan data pelamar dapat Anda kelola sepenuhnya melalui panel navigasi sebelah kiri.</p>
 </div>
@@ -202,14 +203,40 @@ if (isset($_SESSION['username'])) {
                         <tr>
                             <th>Full Name</th>
                             <th>Profession</th>
-                                                        <th>Status</th>
+                            <th>Status</th>
                         </tr>
                     </thead>
                     <tbody>
+                        <tr>
+                            <td class="candidate-name">John Doe</td>
+                            <td style="color: #64748b;">UI Designer</td>
+                            <td><div class="status-pill"><div class="status-dot"></div>Tech interview</div></td>
+                        </tr>
+                        <tr>
+                            <td class="candidate-name">Ella Clinton</td>
+                            <td style="color: #64748b;">Content designer</td>
+                            <td><div class="status-pill"><div class="status-dot" style="background:#ec4899;"></div>Task</div></td>
+                        </tr>
+                        <tr>
+                            <td class="candidate-name">Mike Tyler</td>
+                            <td style="color: #64748b;">Node.js Developer</td>
+                            <td><div class="status-pill"><div class="status-dot" style="background:#06b6d4;"></div>Resume review</div></td>
+                        </tr>
                     </tbody>
                 </table>
             </div>
         </main>
+
+        <!-- PANEL INFORMASI SISI KANAN -->
+        <aside class="sidebar-right">
+            <div>
+                
+            </div>
+
+            <div>
+            </div>
+        </aside>
+
     </div>
 
 </body>
