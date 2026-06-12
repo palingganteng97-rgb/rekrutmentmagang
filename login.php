@@ -16,7 +16,7 @@ if (isset($_POST['login'])) {
         $_SESSION['admin_user'] = !empty($user) ? $user : "Guest User";
         
         // Pindah otomatis ke halaman tampilkan data
-        header("Location: tampilkan.php");
+        header("Location: dashboard.php");
         exit();
     } else {
         // Muncul pesan jika password yang dimasukkan bukan kata "password"
