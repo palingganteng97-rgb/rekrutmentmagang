@@ -16,7 +16,6 @@ if (!$koneksi) {
 // --- FITUR: PROSES FORM (TAMBAH & UBAH DATA) ---
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $nama_tahapan  = mysqli_real_escape_string($koneksi, $_POST['nama_tahapan']);
-    $jenis_tahapan = mysqli_real_escape_string($koneksi, $_POST['jenis_tahapan']);
     $deskripsi     = mysqli_real_escape_string($koneksi, $_POST['deskripsi']);
     $status        = mysqli_real_escape_string($koneksi, $_POST['status']);
     $waktu_sekarang = date('Y-m-d H:i:s');
@@ -27,7 +26,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         
         $query_update = "UPDATE mst_tahapan_seleksi 
                          SET nama_tahapan = '$nama_tahapan', 
-                             jenis_tahapan = '$jenis_tahapan', 
                              deskripsi = '$deskripsi', 
                              status = '$status', 
                              updated_at = '$waktu_sekarang' 
@@ -40,8 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         // PROSES TAMBAH DATA (CREATE)
         $kode_tahapan = "THP-" . rand(100, 999); 
 
-        $query_insert = "INSERT INTO mst_tahapan_seleksi (kode_tahapan, nama_tahapan, jenis_tahapan, deskripsi, status, created_at) 
-                         VALUES ('$kode_tahapan', '$nama_tahapan', '$jenis_tahapan', '$deskripsi', '$status', '$waktu_sekarang')";
+        $query_insert = "INSERT INTO mst_tahapan_seleksi (kode_tahapan, nama_tahapan, deskripsi, status, created_at) 
+                         VALUES ('$kode_tahapan', '$nama_tahapan', '$deskripsi', '$status', '$waktu_sekarang')";
         
         if (!mysqli_query($koneksi, $query_insert)) {
             die("Gagal menambah data: " . mysqli_error($koneksi));
@@ -158,7 +156,6 @@ $data_tahapan_edit = mysqli_fetch_assoc($query_edit);
                         <th>NO</th>
                         <th>KODE TAHAPAN</th>
                         <th>NAMA TAHAPAN</th>
-                        <th>JENIS TAHAPAN</th>
                         <th>DESKRIPSI</th>
                         <th>STATUS</th>
                         <th>TIMESTAMPS</th>
@@ -174,11 +171,6 @@ $data_tahapan_edit = mysqli_fetch_assoc($query_edit);
                         <td><?= $no++; ?></td>
                         <td><span class="row-title"><?= $row['kode_tahapan']; ?></span></td>
                         <td><?= $row['nama_tahapan']; ?></td>
-                        <td>
-                            <span style="background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-weight: 600;">
-                                <?= $row['jenis_tahapan']; ?>
-                            </span>
-                        </td>
                         <td style="max-width: 250px; overflow: hidden; text-overflow: ellipsis;"><small><?= !empty($row['deskripsi']) ? $row['deskripsi'] : '-'; ?></small></td>
                         <td>
                             <span style="color: <?= $row['status'] == 'Aktif' ? '#10b981' : '#ef4444'; ?>; font-weight:700;">
@@ -214,11 +206,6 @@ $data_tahapan_edit = mysqli_fetch_assoc($query_edit);
                     <div class="form-group">
                         <label>NAMA TAHAPAN</label>
                         <input type="text" name="nama_tahapan" class="form-control" value="<?= $data_tahapan_edit['nama_tahapan'] ?? ''; ?>" required>
-                    </div>
-
-                    <div class="form-group">
-                        <label>JENIS TAHAPAN</label>
-                        <input type="text" name="jens_tahapan" class="form-control" value="<?= $data_tahapan_edit['jenis_tahapan'] ?? ''; ?>" required>
                     </div>
 
                     <div class="form-group">
