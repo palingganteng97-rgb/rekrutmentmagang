@@ -13,26 +13,35 @@ if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
+// Target folder penyimpanan gambar
+$target_dir = "uploads/";
+
+// OMOTATIS MEMBUAT FOLDER JIKA BELUM ADA
+if (!file_exists($target_dir)) {
+    mkdir($target_dir, 0777, true);
+}
+
 // 2. PROSES TAMBAH DATA (CREATE)
 if (isset($_POST['action']) && $_POST['action'] == 'tambah') {
-    $judul_lowongan   = mysqli_real_escape_string($koneksi, $_POST['judul_lowongan']);
+    $judul_lowongan = mysqli_real_escape_string($koneksi, $_POST['judul_lowongan']);
     $jumlah_kebutuhan = intval($_POST['jumlah_kebutuhan']);
-    $status           = mysqli_real_escape_string($koneksi, $_POST['status']);
-    $kode_lowongan    = "LWN-" . rand(100, 999); 
+    $status = mysqli_real_escape_string($koneksi, $_POST['status']);
+    $kode_lowongan = "LWN-" . rand(100, 999); 
 
-    // Logika Upload Gambar
     $nama_gambar = "";
     if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0) {
-        $nama_file   = $_FILES['gambar']['name'];
-        $tmp_file    = $_FILES['gambar']['tmp_name'];
-        $ekstensi    = pathinfo($nama_file, PATHINFO_EXTENSION);
-        $nama_gambar = "lwn_" . time() . "." . $ekstensi;
+        $nama_file = $_FILES['gambar']['name'];
+        $tmp_file  = $_FILES['gambar']['tmp_name'];
+        $ekstensi  = strtolower(pathinfo($nama_file, PATHINFO_EXTENSION));
         
-        // Pastikan folder uploads sudah ada
-        if (!is_dir('uploads')) {
-            mkdir('uploads', 0777, true);
+        // Buat nama acak unik agar file tidak tabrakan
+        $nama_gambar = "lwn_" . time() . "_" . rand(10, 99) . "." . $ekstensi;
+        
+        // Pindahkan file ke folder uploads
+        if (!move_uploaded_file($tmp_file, $target_dir . $nama_gambar)) {
+            echo "<script>alert('Gagal memindahkan file gambar ke folder uploads! Periksa izin folder Anda.');</script>";
+            $nama_gambar = ""; // Reset jika gagal
         }
-        move_uploaded_file($tmp_file, "uploads/" . $nama_gambar);
     }
 
     $query_insert = "INSERT INTO rekrutmen_lowongan (kode_lowongan, judul_lowongan, jumlah_kebutuhan, status, gambar) 
@@ -46,30 +55,33 @@ if (isset($_POST['action']) && $_POST['action'] == 'tambah') {
 
 // 3. PROSES UBAH DATA (UPDATE)
 if (isset($_POST['action']) && $_POST['action'] == 'ubah') {
-    $id               = intval($_POST['id']);
-    $judul_lowongan   = mysqli_real_escape_string($koneksi, $_POST['judul_lowongan']);
+    $id = intval($_POST['id']);
+    $judul_lowongan = mysqli_real_escape_string($koneksi, $_POST['judul_lowongan']);
     $jumlah_kebutuhan = intval($_POST['jumlah_kebutuhan']);
-    $status           = mysqli_real_escape_string($koneksi, $_POST['status']);
+    $status = mysqli_real_escape_string($koneksi, $_POST['status']);
 
-    // Cek apakah ada upload gambar baru
+    // Ambil nama gambar lama
+    $query_lama = mysqli_query($koneksi, "SELECT gambar FROM rekrutmen_lowongan WHERE id = $id");
+    $data_lama  = mysqli_fetch_assoc($query_lama);
+    $nama_gambar = $data_lama['gambar'];
+
     if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0) {
-        $nama_file   = $_FILES['gambar']['name'];
-        $tmp_file    = $_FILES['gambar']['tmp_name'];
-        $ekstensi    = pathinfo($nama_file, PATHINFO_EXTENSION);
-        $nama_gambar = "lwn_" . time() . "." . $ekstensi;
+        // Hapus file gambar lama jika ada
+        if (!empty($nama_gambar) && file_exists($target_dir . $nama_gambar)) {
+            unlink($target_dir . $nama_gambar);
+        }
+
+        $nama_file = $_FILES['gambar']['name'];
+        $tmp_file  = $_FILES['gambar']['tmp_name'];
+        $ekstensi  = strtolower(pathinfo($nama_file, PATHINFO_EXTENSION));
+        $nama_gambar = "lwn_" . time() . "_" . rand(10, 99) . "." . $ekstensi;
         
-        move_uploaded_file($tmp_file, "uploads/" . $nama_gambar);
-        
-        // Update dengan gambar baru
-        $query_update = "UPDATE rekrutmen_lowongan 
-                         SET judul_lowongan = '$judul_lowongan', jumlah_kebutuhan = '$jumlah_kebutuhan', status = '$status', gambar = '$nama_gambar' 
-                         WHERE id = $id";
-    } else {
-        // Update tanpa mengubah gambar
-        $query_update = "UPDATE rekrutmen_lowongan 
-                         SET judul_lowongan = '$judul_lowongan', jumlah_kebutuhan = '$jumlah_kebutuhan', status = '$status' 
-                         WHERE id = $id";
+        move_uploaded_file($tmp_file, $target_dir . $nama_gambar);
     }
+
+    $query_update = "UPDATE rekrutmen_lowongan 
+                     SET judul_lowongan = '$judul_lowongan', jumlah_kebutuhan = '$jumlah_kebutuhan', status = '$status', gambar = '$nama_gambar' 
+                     WHERE id = $id";
     
     if (mysqli_query($koneksi, $query_update)) {
         header("Location: master_lowongan.php");
@@ -81,13 +93,10 @@ if (isset($_POST['action']) && $_POST['action'] == 'ubah') {
 if (isset($_GET['delete'])) {
     $id = intval($_GET['delete']);
     
-    // Ambil nama gambar lama untuk dihapus dari folder fisik
-    $query_gambar = "SELECT gambar FROM rekrutmen_lowongan WHERE id = $id";
-    $res_gambar   = mysqli_query($koneksi, $query_gambar);
-    if ($res_gambar && $data_gbr = mysqli_fetch_assoc($res_gambar)) {
-        if (!empty($data_gbr['gambar']) && file_exists("uploads/" . $data_gbr['gambar'])) {
-            unlink("uploads/" . $data_gbr['gambar']);
-        }
+    $query_gambar = mysqli_query($koneksi, "SELECT gambar FROM rekrutmen_lowongan WHERE id = $id");
+    $data_gambar  = mysqli_fetch_assoc($query_gambar);
+    if (!empty($data_gambar['gambar']) && file_exists($target_dir . $data_gambar['gambar'])) {
+        unlink($target_dir . $data_gambar['gambar']);
     }
 
     $query_delete = "DELETE FROM rekrutmen_lowongan WHERE id = $id";
@@ -97,10 +106,11 @@ if (isset($_GET['delete'])) {
     }
 }
 
-// 5. AMBIL DATA UNTUK DITAMPILKAN (READ)
+// 5. AMBIL DATA UNTUK TABEL
 $query_tampil = "SELECT id, kode_lowongan, judul_lowongan, jumlah_kebutuhan, status, gambar FROM rekrutmen_lowongan ORDER BY id DESC";
-$ambil_data   = mysqli_query($koneksi, $query_tampil);
+$ambil_data = mysqli_query($koneksi, $query_tampil);
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -218,12 +228,15 @@ $ambil_data   = mysqli_query($koneksi, $query_tampil);
                                 <span class="badge-count <?= $statusClass; ?>"><?= htmlspecialchars($row['status']); ?></span>
                             </td>
                             <td>
-                                <?php if (!empty($row['gambar']) && file_exists("uploads/" . $row['gambar'])): ?>
-                                    <img src="uploads/<?= $row['gambar']; ?>" alt="Gambar" style="width: 50px; height: 35px; object-fit: cover; border-radius: 6px;">
-                                <?php else: ?>
-                                    <span style="color: #94a3b8; font-size: 12px;">No Image</span>
-                                <?php endif; ?>
-                            </td>
+    <?php if (!empty($row['gambar']) && file_exists("uploads/" . $row['gambar'])): ?>
+        <img src="uploads/<?= htmlspecialchars($row['gambar']); ?>" alt="Banner" style="width: 50px; height: 35px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; display: block;">
+    <?php else: ?>
+        <span style="color: #94a3b8; font-size: 13px; font-weight: 600;">No Image</span>
+    <?php endif; ?>
+</td>
+
+
+
                             <td style="text-align: right;">
                                 <a href="#" class="action-link edit-lnk" onclick="openEditModal(<?= $row['id']; ?>, '<?= htmlspecialchars($row['judul_lowongan'], ENT_QUOTES); ?>', <?= $row['jumlah_kebutuhan']; ?>, '<?= $row['status']; ?>')">Edit</a>
                                 <a href="master_lowongan.php?delete=<?= $row['id']; ?>" class="action-link del-lnk" onclick="return confirm('Apakah Anda yakin ingin menghapus data lowongan ini?')">Hapus</a>
