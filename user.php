@@ -136,7 +136,7 @@ if ($hasil && mysqli_num_rows($hasil) > 0) {
                     <a href="master_jabatan.php" class="menu-item" style="text-decoration: none;" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master Jabatan</a>
                     <a href="master_pendidikan.php" class="menu-item" style="text-decoration: none;" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master Pendidikan</a>
                     <a href="master_lowongan.php" class="menu-item" style="text-decoration: none;" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master Lowongan</a>
-
+                    <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
                     <a href="user.php" class="menu-item active" style="text-decoration:none;">Profil Pengguna</a>
                 </nav>
             </div>
