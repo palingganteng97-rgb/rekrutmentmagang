@@ -15,16 +15,28 @@ if (!$koneksi) {
 
 // 2. PROSES TAMBAH DATA (CREATE)
 if (isset($_POST['action']) && $_POST['action'] == 'tambah') {
-    $judul_lowongan   = mysqli_real_escape_string($koneksi, $_POST['judul_lowongan']);
+    $judul_lowongan = mysqli_real_escape_string($koneksi, $_POST['judul_lowongan']);
     $jumlah_kebutuhan = intval($_POST['jumlah_kebutuhan']);
-    $status           = mysqli_real_escape_string($koneksi, $_POST['status']);
-    
-    // Generate kode_lowongan otomatis (VARCHAR 50)
-    $kode_lowongan    = "LWN-" . date("Ymd") . "-" . rand(100, 999); 
+    $status = mysqli_real_escape_string($koneksi, $_POST['status']);
+    $kode_lowongan = "LWN-" . rand(100, 999); 
 
-    // Insert sesuai nama kolom di HeidiSQL: kode_lowongan, judul_lowongan, jumlah_kebutuhan, status
-    $query_insert = "INSERT INTO rekrutmen_lowongan (kode_lowongan, judul_lowongan, jumlah_kebutuhan, status) 
-                     VALUES ('$kode_lowongan', '$judul_lowongan', '$jumlah_kebutuhan', '$status')";
+    // --- LOGIKA UPLOAD GAMBAR TAMBAHAN ANDA ---
+    $nama_gambar = "";
+    if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0) {
+        $nama_file = $_FILES['gambar']['name'];
+        $tmp_file  = $_FILES['gambar']['tmp_name'];
+        
+        $ekstensi    = pathinfo($nama_file, PATHINFO_EXTENSION);
+        $nama_gambar = "lwn_" . time() . "." . $ekstensi;
+        
+        // Memindahkan file gambar fisik ke dalam folder uploads
+        move_uploaded_file($tmp_file, "uploads/" . $nama_gambar);
+    }
+    // ------------------------------------------
+
+    // Masukkan variabel $nama_gambar ke kolom gambar di Query INSERT
+    $query_insert = "INSERT INTO rekrutmen_lowongan (kode_lowongan, judul_lowongan, jumlah_kebutuhan, status, gambar) 
+                     VALUES ('$kode_lowongan', '$judul_lowongan', '$jumlah_kebutuhan', '$status', '$nama_gambar')";
     
     if (mysqli_query($koneksi, $query_insert)) {
         header("Location: master_lowongan.php");
@@ -197,14 +209,15 @@ $ambil_data = mysqli_query($koneksi, $query_tampil);
         <div class="modal-body" style="background: #ffffff; padding: 35px; border-radius: 24px; width: 100%; max-width: 450px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);">
             <h3 id="modalTitle" style="font-weight: 800; font-size: 20px; margin-bottom: 22px; color: #1e293b;">Buat Lowongan Baru</h3>
             
-            <form action="" method="POST" id="mainForm">
+            <form action="" method="POST" id="mainForm" enctype="multipart/form-data">
                 <input type="hidden" name="action" id="formAction" value="tambah">
                 <input type="hidden" name="id" id="jobId" value="">
 
                 <div class="form-input-group" style="margin-bottom: 18px;">
-                    <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">NAMA LOWONGAN</label>
-                    <input type="text" class="input-style" id="formJudul" name="judul_lowongan" placeholder="misal: Manajer Pemasaran" required style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #1e293b; outline: none;">
-                </div>
+    <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">UNGGAH GAMBAR LOWONGAN</label>
+    <input type="file" class="input-style" name="gambar" accept="image/*" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #1e293b; outline: none;">
+</div>
+
                 
                 <div class="form-input-group" style="margin-bottom: 18px;">
                     <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">KUOTA KEBUTUHAN</label>
