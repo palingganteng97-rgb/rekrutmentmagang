@@ -217,6 +217,7 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
                 <a href="master_lowongan.php" class="menu-item active">Master Lowongan</a>
                 <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
                 <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>
+                <a href="data_pelamar.php" class="menu-item">Data Pelamar</a>
                 <a href="user.php" class="menu-item">Profil Pengguna</a>
             </div>
         </div>
