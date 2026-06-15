@@ -15,26 +15,26 @@ if (!$koneksi) {
 
 // 2. PROSES TAMBAH DATA (CREATE)
 if (isset($_POST['action']) && $_POST['action'] == 'tambah') {
-    $judul_lowongan = mysqli_real_escape_string($koneksi, $_POST['judul_lowongan']);
+    $judul_lowongan   = mysqli_real_escape_string($koneksi, $_POST['judul_lowongan']);
     $jumlah_kebutuhan = intval($_POST['jumlah_kebutuhan']);
-    $status = mysqli_real_escape_string($koneksi, $_POST['status']);
-    $kode_lowongan = "LWN-" . rand(100, 999); 
+    $status           = mysqli_real_escape_string($koneksi, $_POST['status']);
+    $kode_lowongan    = "LWN-" . rand(100, 999); 
 
-    // --- LOGIKA UPLOAD GAMBAR TAMBAHAN ANDA ---
+    // Logika Upload Gambar
     $nama_gambar = "";
     if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0) {
-        $nama_file = $_FILES['gambar']['name'];
-        $tmp_file  = $_FILES['gambar']['tmp_name'];
-        
+        $nama_file   = $_FILES['gambar']['name'];
+        $tmp_file    = $_FILES['gambar']['tmp_name'];
         $ekstensi    = pathinfo($nama_file, PATHINFO_EXTENSION);
         $nama_gambar = "lwn_" . time() . "." . $ekstensi;
         
-        // Memindahkan file gambar fisik ke dalam folder uploads
+        // Pastikan folder uploads sudah ada
+        if (!is_dir('uploads')) {
+            mkdir('uploads', 0777, true);
+        }
         move_uploaded_file($tmp_file, "uploads/" . $nama_gambar);
     }
-    // ------------------------------------------
 
-    // Masukkan variabel $nama_gambar ke kolom gambar di Query INSERT
     $query_insert = "INSERT INTO rekrutmen_lowongan (kode_lowongan, judul_lowongan, jumlah_kebutuhan, status, gambar) 
                      VALUES ('$kode_lowongan', '$judul_lowongan', '$jumlah_kebutuhan', '$status', '$nama_gambar')";
     
@@ -51,9 +51,25 @@ if (isset($_POST['action']) && $_POST['action'] == 'ubah') {
     $jumlah_kebutuhan = intval($_POST['jumlah_kebutuhan']);
     $status           = mysqli_real_escape_string($koneksi, $_POST['status']);
 
-    $query_update = "UPDATE rekrutmen_lowongan 
-                     SET judul_lowongan = '$judul_lowongan', jumlah_kebutuhan = '$jumlah_kebutuhan', status = '$status' 
-                     WHERE id = $id";
+    // Cek apakah ada upload gambar baru
+    if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0) {
+        $nama_file   = $_FILES['gambar']['name'];
+        $tmp_file    = $_FILES['gambar']['tmp_name'];
+        $ekstensi    = pathinfo($nama_file, PATHINFO_EXTENSION);
+        $nama_gambar = "lwn_" . time() . "." . $ekstensi;
+        
+        move_uploaded_file($tmp_file, "uploads/" . $nama_gambar);
+        
+        // Update dengan gambar baru
+        $query_update = "UPDATE rekrutmen_lowongan 
+                         SET judul_lowongan = '$judul_lowongan', jumlah_kebutuhan = '$jumlah_kebutuhan', status = '$status', gambar = '$nama_gambar' 
+                         WHERE id = $id";
+    } else {
+        // Update tanpa mengubah gambar
+        $query_update = "UPDATE rekrutmen_lowongan 
+                         SET judul_lowongan = '$judul_lowongan', jumlah_kebutuhan = '$jumlah_kebutuhan', status = '$status' 
+                         WHERE id = $id";
+    }
     
     if (mysqli_query($koneksi, $query_update)) {
         header("Location: master_lowongan.php");
@@ -64,17 +80,26 @@ if (isset($_POST['action']) && $_POST['action'] == 'ubah') {
 // 4. PROSES HAPUS DATA (DELETE)
 if (isset($_GET['delete'])) {
     $id = intval($_GET['delete']);
-    $query_delete = "DELETE FROM rekrutmen_lowongan WHERE id = $id";
     
+    // Ambil nama gambar lama untuk dihapus dari folder fisik
+    $query_gambar = "SELECT gambar FROM rekrutmen_lowongan WHERE id = $id";
+    $res_gambar   = mysqli_query($koneksi, $query_gambar);
+    if ($res_gambar && $data_gbr = mysqli_fetch_assoc($res_gambar)) {
+        if (!empty($data_gbr['gambar']) && file_exists("uploads/" . $data_gbr['gambar'])) {
+            unlink("uploads/" . $data_gbr['gambar']);
+        }
+    }
+
+    $query_delete = "DELETE FROM rekrutmen_lowongan WHERE id = $id";
     if (mysqli_query($koneksi, $query_delete)) {
         header("Location: master_lowongan.php");
         exit;
     }
 }
 
-// 5. AMBIL DATA DARI TABEL REKRUTMEN LOWONGAN (READ)
-$query_tampil = "SELECT id, kode_lowongan, judul_lowongan, jumlah_kebutuhan, status FROM rekrutmen_lowongan ORDER BY id DESC";
-$ambil_data = mysqli_query($koneksi, $query_tampil);
+// 5. AMBIL DATA UNTUK DITAMPILKAN (READ)
+$query_tampil = "SELECT id, kode_lowongan, judul_lowongan, jumlah_kebutuhan, status, gambar FROM rekrutmen_lowongan ORDER BY id DESC";
+$ambil_data   = mysqli_query($koneksi, $query_tampil);
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -88,7 +113,7 @@ $ambil_data = mysqli_query($koneksi, $query_tampil);
         
         .dashboard-container { width: 100%; max-width: 1440px; background: #ffffff; border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.04); display: flex; min-height: 850px; overflow: hidden; }
         
-        /* Navigasi Sidebar Kiri */
+        /* Sidebar Menu */
         .sidebar-left { width: 280px; background: #ffffff; border-right: 1px solid #f1f5f9; padding: 35px; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
         .brand-logo { font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 45px; display: flex; align-items: center; gap: 10px; }
         .brand-logo span { width: 10px; height: 20px; background: #4f46e5; border-radius: 4px; display: inline-block; }
@@ -105,33 +130,35 @@ $ambil_data = mysqli_query($koneksi, $query_tampil);
         .btn-purple { background: #4f46e5; color: white; border-radius: 14px; font-weight: 700; padding: 14px 28px; border: none; cursor: pointer; font-size: 14px; transition: background 0.2s; }
         .btn-purple:hover { background: #3b33c7; }
 
-        /* Tabel */
+        /* Panel Tabel */
         .table-wrapper { background: #ffffff; border: 1px solid #f1f5f9; border-radius: 24px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.01); }
         table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
         th { color: #94a3b8; padding-bottom: 16px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; }
         td { padding: 20px 0; color: #475569; border-bottom: 1px solid #f8fafc; }
         .row-title { font-weight: 700; color: #1e293b; font-size: 14px; }
-        .badge-status { border-radius: 20px; padding: 4px 12px; font-size: 12px; font-weight: 600; display: inline-block; }
-        .status-aktif { background-color: #e0f2fe; color: #0369a1; }
-        .status-draft { background-color: #f1f5f9; color: #475569; }
+        
+        /* Status Badges */
+        .badge-status { border-radius: 20px; padding: 6px 14px; font-size: 12px; font-weight: 700; display: inline-block; text-transform: capitalize; }
+        .status-aktif { background-color: #ecfdf5; color: #059669; }
+        .status-draft { background-color: #f1f5f9; color: #64748b; }
         
         .action-link { text-decoration: none; font-size: 13px; font-weight: 700; margin-left: 15px; }
         .edit-lnk { color: #4f46e5; }
         .del-lnk { color: #ef4444; }
 
-        /* Modal */
+        /* Modal Mask Pop-Up */
         .modal-mask { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.4); display: none; align-items: center; justify-content: center; z-index: 9999; }
         .modal-body { background: #ffffff; padding: 35px; border-radius: 24px; width: 100%; max-width: 450px; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1); }
         .form-input-group { margin-bottom: 18px; }
         .form-input-group label { display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .input-style, .select-style { width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #1e293b; outline: none; background: #fff; }
+        .input-style { width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #1e293b; outline: none; }
+        .input-style:focus { border-color: #4f46e5; }
     </style>
 </head>
 <body>
 
     <div class="dashboard-container">
-        
-        <!-- SIDEBAR LEFT -->
+        <!-- SIDEBAR MENU KIRI -->
         <aside class="sidebar-left">
             <div>
                 <div class="brand-logo"><span></span>impozitions</div>
@@ -145,13 +172,12 @@ $ambil_data = mysqli_query($koneksi, $query_tampil);
                     <a href="user.php" class="menu-item">Profil Pengguna</a>
                 </nav>
             </div>
-            
             <div style="background: #fff5f5; border: 1px solid #fee2e2; padding: 16px; border-radius: 20px; text-align: center;">
                 <a href="logout.php" style="color: #ef4444; text-decoration: none; font-size: 13px; font-weight: 700;">Keluar Sistem</a>
             </div>
         </aside>
 
-        <!-- MAIN CONTENT -->
+        <!-- KONTEN UTAMA -->
         <main class="main-content">
             <div class="content-header">
                 <div>
@@ -160,40 +186,55 @@ $ambil_data = mysqli_query($koneksi, $query_tampil);
                 <button class="btn-purple" onclick="openModal()">Tambah Lowongan</button>
             </div>
 
+            <!-- TABEL DATA -->
             <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 60px;">ID</th>
-                            <th>KODE LOWONGAN</th>
-                            <th>JUDUL LOWONGAN</th>
-                            <th>KUOTA KEBUTUHAN</th>
+                            <th>NO</th>
+                            <th>KODE</th>
+                            <th>NAMA LOWONGAN</th>
+                            <th>KUOTA NEEDED</th>
                             <th>STATUS</th>
+                            <th>GAMBAR</th>
                             <th style="text-align: right; padding-right: 15px;">AKSI</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php 
+                        $no = 1;
                         if (mysqli_num_rows($ambil_data) > 0) {
                             while ($row = mysqli_fetch_assoc($ambil_data)) {
-                                $statusClass = ($row['status'] == 'Aktif') ? 'status-aktif' : 'status-draft';
                         ?>
                         <tr>
-                            <td><?= $row['id']; ?></td>
+                            <td><?= $no++; ?></td>
                             <td><code><?= htmlspecialchars($row['kode_lowongan']); ?></code></td>
                             <td class="row-title"><?= htmlspecialchars($row['judul_lowongan']); ?></td>
                             <td><?= htmlspecialchars($row['jumlah_kebutuhan']); ?> Orang</td>
-                            <td><span class="badge-status <?= $statusClass; ?>"><?= htmlspecialchars($row['status']); ?></span></td>
+                            <td>
+                                <?php 
+                                $statusClass = ($row['status'] == 'Aktif') ? 'status-aktif' : 'status-draft';
+                                ?>
+                                <span class="badge-count <?= $statusClass; ?>"><?= htmlspecialchars($row['status']); ?></span>
+                            </td>
+                            <td>
+                                <?php if (!empty($row['gambar']) && file_exists("uploads/" . $row['gambar'])): ?>
+                                    <img src="uploads/<?= $row['gambar']; ?>" alt="Gambar" style="width: 50px; height: 35px; object-fit: cover; border-radius: 6px;">
+                                <?php else: ?>
+                                    <span style="color: #94a3b8; font-size: 12px;">No Image</span>
+                                <?php endif; ?>
+                            </td>
                             <td style="text-align: right;">
-                                <a href="#" class="action-link edit-lnk" onclick="openEditModal(<?= $row['id']; ?>, '<?= htmlspecialchars($row['judul_lowongan']); ?>', <?= $row['jumlah_kebutuhan']; ?>, '<?= $row['status']; ?>')">Edit</a>
-                                <a href="master_lowongan.php?delete=<?= $row['id']; ?>" class="action-link del-lnk" onclick="return confirm('Apakah Anda yakin ingin menghapus data?')">Hapus</a>
+                                <a href="#" class="action-link edit-lnk" onclick="openEditModal(<?= $row['id']; ?>, '<?= htmlspecialchars($row['judul_lowongan'], ENT_QUOTES); ?>', <?= $row['jumlah_kebutuhan']; ?>, '<?= $row['status']; ?>')">Edit</a>
+                                <a href="master_lowongan.php?delete=<?= $row['id']; ?>" class="action-link del-lnk" onclick="return confirm('Apakah Anda yakin ingin menghapus data lowongan ini?')">Hapus</a>
+                            </td>
                         </tr>
                         <?php 
                             }
                         } else {
                         ?>
                             <tr>
-                                <td colspan="6" style="text-align: center; color: #94a3b8; padding: 40px 0;">Belum ada data lowongan pekerjaan.</td>
+                                <td colspan="7" style="text-align: center; color: #94a3b8; padding: 40px 0;">Belum ada data lowongan pekerjaan.</td>
                             </tr>
                         <?php 
                         }
@@ -214,22 +255,26 @@ $ambil_data = mysqli_query($koneksi, $query_tampil);
                 <input type="hidden" name="id" id="jobId" value="">
 
                 <div class="form-input-group" style="margin-bottom: 18px;">
-    <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">UNGGAH GAMBAR LOWONGAN</label>
-    <input type="file" class="input-style" name="gambar" accept="image/*" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #1e293b; outline: none;">
-</div>
-
+                    <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">NAMA LOWONGAN</label>
+                    <input type="text" class="input-style" id="formJudul" name="judul_lowongan" placeholder="misal: Manajer Pemasaran" required style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #1e293b; outline: none;">
+                </div>
                 
                 <div class="form-input-group" style="margin-bottom: 18px;">
                     <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">KUOTA KEBUTUHAN</label>
                     <input type="number" class="input-style" id="formKuota" name="jumlah_kebutuhan" placeholder="misal: 2" required style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #1e293b; outline: none;">
                 </div>
 
-                <div class="form-input-group" style="margin-bottom: 25px;">
+                <div class="form-input-group" style="margin-bottom: 18px;">
                     <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">STATUS</label>
                     <select class="input-style" id="formStatus" name="status" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #1e293b; outline: none;">
                         <option value="Aktif">Aktif</option>
                         <option value="Draft">Draft</option>
                     </select>
+                </div>
+
+                <div class="form-input-group" style="margin-bottom: 25px;">
+                    <label style="display: block; font-size: 11px; font-weight: 700; color: #94a3b8; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px;">GAMBAR LOWONGAN</label>
+                    <input type="file" class="input-style" name="gambar" accept="image/*" style="width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #1e293b; outline: none;">
                 </div>
 
                 <div style="display: flex; justify-content: flex-end; gap: 12px;">
