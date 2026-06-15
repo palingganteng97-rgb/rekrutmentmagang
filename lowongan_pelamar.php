@@ -96,7 +96,7 @@ foreach ($lowongan_list as $l) {
     <header>
         <div class="nav-container">
             <div style="display: flex; align-items: center; gap: 30px;">
-                <a href="#" class="nav-brand logo">glints<span>TapLoker</span></a>
+<a href="#" class="nav-brand logo" style="color: #0f172a;">PORTAL KARIR</a>
                 <div class="nav-menu">
                     <a href="#" style="color: #0f172a; border-bottom: 2px solid #0f172a; padding-bottom: 20px; margin-top: 20px;">LOWONGAN KERJA</a>
                 </div>
