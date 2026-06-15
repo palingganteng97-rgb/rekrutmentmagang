@@ -278,11 +278,18 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
                             <?php endif; ?>
                         </td>
                         <td>
-                            <div style="font-size:11px; color:#94a3b8; line-height: 1.4;">
-                                Buat: <?= !empty($row['created_at']) ? date('d/m/y H:i', strtotime($row['created_at'])) : '-'; ?><br>
-                                Ubah: <?= !empty($row['updated_at']) ? date('d/m/y H:i', strtotime($row['updated_at'])) : '-'; ?>
-                            </div>
-                        </td>
+    <div style="font-size:11px; color:#94a3b8; line-height: 1.5;">
+        <!-- Menampilkan ID User Pembuat -->
+        By ID: <?= !empty($row['created_by']) ? $row['created_by'] : '<span style="color:#cbd5e1;">System</span>'; ?><br>
+        
+        <!-- Menampilkan Tanggal Dibuat -->
+        Buat: <?= !empty($row['created_at']) ? date('d/m/y H:i', strtotime($row['created_at'])) : '-'; ?><br>
+        
+        <!-- Menampilkan Tanggal Diubah -->
+        Ubah: <?= !empty($row['updated_at']) ? date('d/m/y H:i', strtotime($row['updated_at'])) : '-'; ?>
+    </div>
+</td>
+
                         <td style="text-align: right;">
                             <a href="master_lowongan.php?id_edit=<?= $row['id']; ?>" style="color: #4f46e5; text-decoration: none; font-weight: 700; margin-right: 12px;">Edit</a>
                             <a href="master_lowongan.php?delete=<?= $row['id']; ?>" onclick="return confirm('Hapus data ini?')" style="color: #ef4444; text-decoration: none; font-weight: 700;">Hapus</a>
