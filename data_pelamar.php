@@ -50,6 +50,10 @@ $result = mysqli_query($koneksi, $query);
         .menu-item.active { background: #f5f3ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
         .menu-item:hover:not(.active) { background: #f8fafc; color: #1e293b; }
 
+        /* Tombol Log Out Merah Sesuai Gambar Anda */
+        .btn-logout { display: block; width: 100%; background: #dc2626; color: white; text-decoration: none; text-align: center; font-weight: 700; font-size: 14px; padding: 14px 0; border-radius: 16px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); transition: background 0.2s; margin-top: auto; }
+        .btn-logout:hover { background: #b91c1c; }
+
         /* Area Konten Utama */
         .main-content { flex: 1; background: #fbfbfd; padding: 40px 50px; display: flex; flex-direction: column; gap: 32px; overflow-y: auto; }
         .content-header h1 { font-size: 26px; font-weight: 800; color: #1e293b; letter-spacing: -0.5px; }
@@ -70,7 +74,7 @@ $result = mysqli_query($koneksi, $query);
 
     <div class="dashboard-container">
         
-        <!-- SIDEBAR MENU KIRI (SAMA DENGAN DASHBOARD) -->
+        <!-- SIDEBAR MENU KIRI (LENGKAP DENGAN LOGOUT MERAH) -->
         <aside class="sidebar-left">
             <div>
                 <div class="brand-logo"><span></span>impozitions</div>
@@ -88,9 +92,10 @@ $result = mysqli_query($koneksi, $query);
                     <a href="user.php" class="menu-item">Profil Pengguna</a>
                 </nav>
             </div>
-            <div class="support-card">
-                <a href="logout.php">Log Out</a>
-            <div></div>
+            
+            <div>
+                <a href="logout.php" class="btn-logout">Log Out</a>
+            </div>
         </aside>
 
         <!-- KONTEN UTAMA TABLE DATA PELAMAR MASUK -->
