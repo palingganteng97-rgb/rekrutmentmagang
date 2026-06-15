@@ -218,10 +218,7 @@ $data_tahapan_edit = mysqli_fetch_assoc($query_edit);
 
                     <div class="form-group">
                         <label>JENIS TAHAPAN</label>
-                        <select name="jenis_tahapan" class="form-control" required>
-                            <option value="Verifikasi" <?= (isset($data_tahapan_edit) && $data_tahapan_edit['jenis_tahapan'] == 'Verifikasi') ? 'selected' : ''; ?>>Verifikasi</option>
-                            <option value="Penilaian" <?= (isset($data_tahapan_edit) && $data_tahapan_edit['jenis_tahapan'] == 'Penilaian') ? 'selected' : ''; ?>>Penilaian</option>
-                        </select>
+                        <input type="text" name="jens_tahapan" class="form-control" value="<?= $data_tahapan_edit['jenis_tahapan'] ?? ''; ?>" required>
                     </div>
 
                     <div class="form-group">
