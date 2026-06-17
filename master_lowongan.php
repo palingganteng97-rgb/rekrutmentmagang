@@ -205,26 +205,33 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
 
 <div class="dashboard-container">
     <!-- Sidebar -->
-    <div class="sidebar-left">
-        <div>
-            <div class="brand-logo"><span></span>impozitions</div>
-            <div class="menu-list">
-                <a href="dashboard.php" class="menu-item">Dashboard</a>
-                <a href="master_user.php" class="menu-item">Master User</a>
-                <a href="master_unit.php" class="menu-item">Master Unit</a>
-                <a href="master_jabatan.php" class="menu-item">Master Jabatan</a>
-                <a href="master_pendidikan.php" class="menu-item">Master Pendidikan</a>
-                <a href="master_lowongan.php" class="menu-item active">Master Lowongan</a>
-                <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
-                <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>
-                <a href="data_pelamar.php" class="menu-item">Data Pelamar</a>
-                <a href="user.php" class="menu-item">Profil Pengguna</a>
+            <!-- SIDEBAR MENU KIRI DENGAN JAMINAN TOMBOL LOGOUT DIPOSISI BAWAH -->
+        <aside class="sidebar-left">
+            <!-- Wadah Atas: Untuk Logo dan Menu Navigasi Utama -->
+            <div>
+                <div class="brand-logo"><span></span>impozitions</div>
+                <nav class="menu-list">
+                    <a href="dashboard.php" class="menu-item">Dashboard</a>
+                    <a href="master_user.php" class="menu-item">Master User</a>
+                    <a href="master_unit.php" class="menu-item">Master Unit</a>
+                    <a href="master_jabatan.php" class="menu-item">Master Jabatan</a>
+                    <a href="master_pendidikan.php" class="menu-item">Master Pendidikan</a>
+                    <a href="master_lowongan.php" class="menu-item active">Master Lowongan</a>
+                    <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
+                    <a href="data_pelamar.php" class="menu-item">Data Pelamar</a>
+                    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>
+                    <a href="user.php" class="menu-item" style="margin-bottom: 8px;">Profil Pengguna</a>
+
+                </nav>
             </div>
-        </div>
-        <div>
-            <a href="logout.php" class="btn-logout" onclick="return confirm('Apakah Anda yakin ingin keluar?')">Log Out</a>
-        </div>
-    </div>
+
+            <!-- Wadah Bawah: Otomatis Terdorong ke Bawah Mengikuti Aturan justify-content: space-between -->
+            <div>
+                <nav class="menu-list">
+                    <a href="logout.php" class="menu-item btn-sidebar-logout" style="background: #ef4444; color: white !important; text-align: center; border-radius: 12px; padding: 12px; font-weight: bold;" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem Admin?')">Log Out</a>
+                </nav>
+            </div>
+        </aside>
 
     <!-- Main Content -->
     <div class="main-content">
