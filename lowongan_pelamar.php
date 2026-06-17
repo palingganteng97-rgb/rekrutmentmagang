@@ -16,6 +16,21 @@ if (mysqli_connect_errno()) {
 
 $pesan_notifikasi = "";
 
+// Cek kelengkapan profil pelamar yang sedang login
+$biodata_lengkap = false;
+if (isset($_SESSION['user_pelamar_id'])) {
+    $pelamar_id = intval($_SESSION['user_pelamar_id']);
+    $cek_biodata = mysqli_query($koneksi, "SELECT nik, telepon FROM pelamar WHERE id = $pelamar_id");
+    
+    if (mysqli_num_rows($cek_biodata) > 0) {
+        $data_p = mysqli_fetch_assoc($cek_biodata);
+        // Jika NIK dan Telepon sudah terisi, maka dianggap sudah melengkapi profil
+        if (!empty($data_p['nik']) && !empty($data_p['telepon'])) {
+            $biodata_lengkap = true;
+        }
+    }
+}
+
 // =========================================================================
 // 2. FITUR A: PROSES REGISTRASI AKUN BARU PELAMAR
 // =========================================================================
@@ -54,7 +69,9 @@ if (isset($_POST['proses_login_pelamar'])) {
             $_SESSION['user_pelamar_nama'] = $user_data['nama_lengkap'];
             $_SESSION['user_pelamar_mail'] = $user_data['email'];
             
-            $pesan_notifikasi = "<div id='alert-auto-close' class='alert-box sukses'>🔓 Login Berhasil! Halo, " . htmlspecialchars($_SESSION['user_pelamar_nama']) . ". Silakan klik tombol lamar di bawah.</div>";
+            // Perbarui status halaman setelah login berhasil agar tombol langsung sinkron
+            header("Location: lowongan_pelamar.php");
+            exit();
         } else {
             $pesan_notifikasi = "<div id='alert-auto-close' class='alert-box error'>❌ Password yang Anda masukkan salah!</div>";
         }
@@ -67,10 +84,15 @@ if (isset($_POST['proses_login_pelamar'])) {
 // 4. FITUR C: PROSES INPUT DATA LENGKAP & KIRIM LAMARAN (FIX DATA MASUK)
 // =========================================================================
 if (isset($_POST['kirim_berkas_lamaran'])) {
+    // Proteksi Sisi Server: Jika jebol lewat inspect element tapi biodata kosong, tendang ke profil
+    if (!$biodata_lengkap) {
+        header("Location: profil_pelamar.php");
+        exit();
+    }
+
     $lowongan_id   = intval($_POST['lowongan_id']);
     $pelamar_id    = intval($_SESSION['user_pelamar_id']); 
     
-    // MENANGKAP INPUT DATA DINAMIS TERBARU YANG DIKETIK USER
     $nama_input    = mysqli_real_escape_string($koneksi, $_POST['nama_pengguna']);
     $email_input   = mysqli_real_escape_string($koneksi, $_POST['email_pengguna']);
     $nik           = mysqli_real_escape_string($koneksi, $_POST['nik']);
@@ -84,7 +106,6 @@ if (isset($_POST['kirim_berkas_lamaran'])) {
     $provinsi      = mysqli_real_escape_string($koneksi, $_POST['provinsi']);
     $telepon       = mysqli_real_escape_string($koneksi, $_POST['telepon']);
 
-    // LOGIKA PROSES UPLOAD FOTO FISIK
     $nama_foto_db = ""; 
     if (isset($_FILES['foto_pelamar']) && $_FILES['foto_pelamar']['error'] === 0) {
         $file_name = $_FILES['foto_pelamar']['name'];
@@ -100,7 +121,6 @@ if (isset($_POST['kirim_berkas_lamaran'])) {
         move_uploaded_file($file_tmp, $target_dir . $nama_foto_db);
     }
 
-    // A. UPDATE DATA LENGKAP YANG DIKETIK USER LANGSUNG KE TABEL PELAMAR DB
     $q_update = "UPDATE pelamar SET 
                     nama_lengkap = '$nama_input',
                     email = '$email_input',
@@ -120,11 +140,9 @@ if (isset($_POST['kirim_berkas_lamaran'])) {
                  
     mysqli_query($koneksi, $q_update);
 
-    // Perbarui session agar header ikut berganti nama baru otomatis
     $_SESSION['user_pelamar_nama'] = $nama_input;
     $_SESSION['user_pelamar_mail'] = $email_input;
 
-    // B. SIMPAN LOG DATA KE REKRUTMEN LAMARAN
     mysqli_query($koneksi, "SET FOREIGN_KEY_CHECKS=0");
 
     $q_lamaran = "INSERT INTO rekrutmen_lamaran (lowongan_id, pelamar_id, created_at, updated_at) VALUES ('$lowongan_id', '$pelamar_id', NOW(), NOW())";
@@ -134,7 +152,6 @@ if (isset($_POST['kirim_berkas_lamaran'])) {
         $tahapan_id = 1; 
         $petugas_id = 1; 
 
-        // C. TEMBAK DATA KE LAMARAN TAHAPAN UNTUK STATUS PENDING DI DASHBOARD ADMIN
         $q_tahapan = "INSERT INTO lamaran_tahapan (lamaran_id, tahapan_id, tanggal_mulai, status, petugas_id, created_at, updated_at) 
                       VALUES ('$lamaran_id', '$tahapan_id', NOW(), 'Pending', '$petugas_id', NOW(), NOW())";
         
