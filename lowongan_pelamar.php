@@ -276,9 +276,12 @@ if (isset($_SESSION['user_pelamar_id'])) {
     <header>
         <div class="nav-container">
             <a href="lowongan_pelamar.php" class="nav-brand">PORTAL KARIR</a>
-            <div class="user-info">
+                        <div class="user-info">
                 <?php if (isset($_SESSION['user_pelamar_id'])): ?>
-                    <span class="user-nav-status">👤 Halo, <?= htmlspecialchars($_SESSION['user_pelamar_nama']); ?></span>
+                    <!-- NAMA USER SEKARANG BISA DIKLIK UNTUK MENUJU KE PROFIL -->
+                    <a href="profil_pelamar.php" class="user-nav-status" style="text-decoration: none; color: #2563eb; font-weight: bold; transition: color 0.2s;" onmouseover="this.style.color='#1d4ed8'" onmouseout="this.style.color='#2563eb'">
+                        👤 <?= htmlspecialchars($_SESSION['user_pelamar_nama']); ?>
+                    </a>
                     <a href="lowongan_pelamar.php?action=logout_user" class="btn-logout-header">Log Out</a>
                 <?php else: ?>
                     <div class="nav-auth-buttons">
@@ -287,6 +290,7 @@ if (isset($_SESSION['user_pelamar_id'])) {
                     </div>
                 <?php endif; ?>
             </div>
+
         </div>
     </header>
 
@@ -310,10 +314,36 @@ if (isset($_SESSION['user_pelamar_id'])) {
                     <div class="spec-item"><span class="spec-label">Batas Akhir:</span> 20 Jun 2026</div>
                 </div>
 
+                               <!-- SEKTOR BUTTON LAMAR INTERAKTIF -->
                 <div style="border-top: 1px solid #e2e8f0; padding-top: 25px; margin-top: 25px;">
-                    <?php if (isset($_SESSION['user_pelamar_id'])): ?>
-                        <button type="button" class="btn" onclick="toggleModal('modal-berkas')">🚀 LAMAR SEKARANG</button>
+                    <?php if (isset($_SESSION['user_pelamar_id'])): 
+                        // Ambil data terbaru pelamar untuk dicek kelengkapannya
+                        $p_id = intval($_SESSION['user_pelamar_id']);
+                        $check_biodata = mysqli_query($koneksi, "SELECT * FROM pelamar WHERE id = $p_id");
+                        $data_p = mysqli_fetch_assoc($check_biodata);
+
+                        // Cek apakah ada kolom biodata yang masih kosong di database
+                        if (
+                            empty($data_p['nik']) || empty($data_p['tempat_lahir']) || 
+                            empty($data_p['tanggal_lahir']) || empty($data_p['jenis_kelamin']) || 
+                            empty($data_p['agama']) || empty($data_p['status_sosial']) || 
+                            empty($data_p['alamat']) || empty($data_p['kota']) || 
+                            empty($data_p['provinsi']) || empty($data_p['telepon']) || 
+                            empty($data_p['foto_pelamar'])
+                        ): ?>
+                            <!-- DATA BELUM LENGKAP: ALIHKAN LANGSUNG KE HALAMAN PROFIL -->
+                            <button type="button" class="btn" onclick="alert('Silakan lengkapi biodata dan pas foto Anda di halaman profil terlebih dahulu sebelum melamar.'); window.location.href='profil_pelamar.php';">🚀 LAMAR SEKARANG</button>
+                            <p style="text-align: center; font-size: 12px; color: #ef4444; margin-top: 8px; font-weight: 600;">*Biodata Anda belum lengkap. Klik tombol untuk melengkapi di halaman profil.</p>
+                        <?php else: ?>
+                            <!-- DATA SUDAH LENGKAP: IZINKAN SUBMIT LAMARAN LANGSUNG -->
+                            <form action="" method="POST">
+                                <input type="hidden" name="lowongan_id" value="<?= $detail['id'] ?? '5'; ?>">
+                                <button type="submit" name="kirim_berkas_lamaran" class="btn">🚀 LAMAR SEKARANG</button>
+                            </form>
+                            <p style="text-align: center; font-size: 12px; color: #10b981; margin-top: 8px; font-weight: 600;">✓ Biodata Anda lengkap. Siap mengajukan lamaran.</p>
+                        <?php endif; ?>
                     <?php else: ?>
+                        <!-- BELUM LOGIN: MEMBUKA MODAL LOGIN SEPERTI BIASA -->
                         <button type="button" class="btn" onclick="toggleModal('modal-login')">🚀 LAMAR SEKARANG</button>
                         <p style="text-align: center; font-size: 12px; color: #64748b; margin-top: 8px;">*Anda wajib masuk / login akun terlebih dahulu untuk melamar pekerjaan ini.</p>
                     <?php endif; ?>
