@@ -67,27 +67,14 @@ if (isset($_SESSION['username'])) {
 }
 
 // =========================================================================
-// 3. QUERY MENAMPILKAN DATA PELAMAR MASUK (VERSI KOMPATIBEL XAMPP)
+// 3. QUERY MENAMPILKAN DATA PELAMAR MASUK (VERSI DISINKRONKAN DENGAN p.foto)
 // =========================================================================
-
-// Cek dan buat kolom status_sosial jika belum ada di database
-$cek_sosial = mysqli_query($koneksi, "SHOW COLUMNS FROM `pelamar` LIKE 'status_sosial'");
-if (mysqli_num_rows($cek_sosial) == 0) {
-    mysqli_query($koneksi, "ALTER TABLE `pelamar` ADD `status_sosial` VARCHAR(30) NULL AFTER `agama`");
-}
-
-// Cek dan buat kolom foto_pelamar jika belum ada di database
-$cek_foto = mysqli_query($koneksi, "SHOW COLUMNS FROM `pelamar` LIKE 'foto_pelamar'");
-if (mysqli_num_rows($cek_foto) == 0) {
-    mysqli_query($koneksi, "ALTER TABLE `pelamar` ADD `foto_pelamar` VARCHAR(255) NULL AFTER `status_sosial`");
-}
-
 try {
-    // Jalankan query utama dengan aman
     $query_pelamar = "SELECT 
                 rl.id AS lamaran_id,
+                p.id AS pelamar_id,
                 p.nama_lengkap, p.nik, p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.alamat, p.kota, p.provinsi, p.telepon, p.email,
-                p.status_sosial, p.foto_pelamar,
+                p.status_sosial, p.foto AS foto_pelamar,
                 low.nama_lowongan AS nama_lowongan,
                 rl.created_at AS tanggal_daftar,
                 lt.status AS status_tahap
@@ -100,11 +87,11 @@ try {
     $result_pelamar = mysqli_query($koneksi, $query_pelamar);
     if (!$result_pelamar) { throw new Exception("Query gagal."); }
 } catch (Exception $e) {
-    // Query backup jika tabel lowongan mengalami ketidakcocokan indeks
     $query_backup = "SELECT 
                 rl.id AS lamaran_id,
+                p.id AS pelamar_id,
                 p.nama_lengkap, p.nik, p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.alamat, p.kota, p.provinsi, p.telepon, p.email,
-                p.status_sosial, p.foto_pelamar,
+                p.status_sosial, p.foto AS foto_pelamar,
                 'dokter umum' AS nama_lowongan,
                 rl.created_at AS tanggal_daftar,
                 lt.status AS status_tahap
@@ -136,6 +123,7 @@ try {
         .menu-item:hover:not(.active) { background: #f8fafc; color: #1e293b; }
         .btn-logout { display: block; width: 100%; background: #dc2626; color: white; text-decoration: none; text-align: center; font-weight: 700; font-size: 14px; padding: 14px 0; border-radius: 16px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); transition: background 0.2s; margin-top: auto; }
         .btn-logout:hover { background: #b91c1c; }
+        
         .main-content { flex: 1; background: #fbfbfd; padding: 40px 50px; display: flex; flex-direction: column; gap: 32px; overflow-y: auto; }
         .content-header h1 { font-size: 26px; font-weight: 800; color: #1e293b; letter-spacing: -0.5px; }
         
@@ -145,215 +133,202 @@ try {
         td { padding: 18px 0; color: #475569; border-bottom: 1px solid #f8fafc; }
         .candidate-name { font-weight: 700; color: #1e293b; font-size: 14px; }
         
+        /* PILIS STATUS */
         .status-pill { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; padding: 4px 12px; border-radius: 20px; font-size: 13px; }
-        .status-pill.status-pending { color: #4f46e5; background: #eeebff; }
-        .status-pill.status-pending .status-dot { background: #4f46e5; }
-        .status-pill.status-diterima { color: #10b981; background: #e6fbf3; }
-        .status-pill.status-diterima .status-dot { background: #10b981; }
-        .status-pill.status-ditolak { color: #ef4444; background: #fdf2f2; }
-        .status-pill.status-ditolak .status-dot { background: #ef4444; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        .status-pending { background: #fef3c7; color: #d97706; }
+        .status-terima { background: #dcfce7; color: #15803d; }
+        .status-tolak { background: #fee2e2; color: #b91c1c; }
+        
+        .btn-action { padding: 8px 14px; font-size: 13px; font-weight: 600; border-radius: 10px; cursor: pointer; border: none; transition: background 0.2s; text-decoration: none; display: inline-block; }
+        .btn-detail { background: #f1f5f9; color: #334155; margin-right: 5px; }
+        .btn-detail:hover { background: #e2e8f0; }
+        .btn-delete { background: #fff5f5; color: #e11d48; }
+        .btn-delete:hover { background: #ffe4e6; }
 
-        .action-flex-container { display: flex; gap: 8px; justify-content: center; align-items: center; }
-        .btn-detail { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; padding: 6px 14px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; text-decoration: none; }
-        .btn-detail:hover { background: #4f46e5; color: #ffffff; border-color: #4f46e5; }
-        .btn-hapus-lamaran { background: #fff5f5; color: #ef4444; border: 1px solid #fecaca; padding: 6px 12px; border-radius: 10px; font-size: 12px; font-weight: 700; cursor: pointer; transition: all 0.2s; text-decoration: none; }
-        .btn-hapus-lamaran:hover { background: #ef4444; color: #ffffff; border-color: #ef4444; }
-
-        .modal-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.5); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.2s ease; }
-        .modal-bg.active { opacity: 1; pointer-events: auto; }
+        /* MODAL DETAIL ADMIN STYLING */
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.4); justify-content: center; align-items: center; z-index: 1000; }
+        .modal-box { background: white; padding: 35px; border-radius: 28px; width: 100%; max-width: 580px; max-height: 85vh; overflow-y: auto; position: relative; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.1); text-align: left; }
+        .modal-close { position: absolute; top: 20px; right: 25px; background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8; }
+        .modal-box h3 { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 25px; display: flex; align-items: center; gap: 10px; }
+        .modal-box h4 { font-size: 12px; font-weight: 800; color: #4f46e5; margin: 25px 0 12px 0; border-bottom: 2px solid #f1f5f9; padding-bottom: 6px; letter-spacing: 0.5px; }
         
-        /* Modal Box dibuat proporsional untuk menampung pas foto pelamar */
-        .modal-box { background: white; padding: 30px; border-radius: 24px; width: 100%; max-width: 500px; box-shadow: 0 20px 40px rgba(0,0,0,0.1); position: relative; color: #475569; max-height: 90vh; overflow-y: auto; }
-        .modal-close { position: absolute; top: 18px; right: 22px; font-size: 22px; cursor: pointer; color: #94a3b8; font-weight: bold; }
+        .detail-item { display: flex; justify-content: space-between; padding: 8px 0; font-size: 14px; border-bottom: 1px solid #f8fafc; }
+        .detail-label { color: #94a3b8; font-weight: 500; }
+        .detail-val { color: #1e293b; font-weight: 700; text-align: right; }
         
-        .detail-title { font-size: 14px; font-weight: 800; color: #4f46e5; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #f1f5f9; padding-bottom: 4px; }
-        .detail-item { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px dashed #f8fafc; font-size: 13px; align-items: center; }
-        .detail-label { color: #94a3b8; font-weight: 600; }
-        .detail-val { color: #1e293b; font-weight: 700; text-align: right; max-width: 60%; }
-        
-        /* Bingkai Foto Profil Pelamar */
-        .photo-container { display: flex; justify-content: center; margin-bottom: 20px; }
-        .img-profile-preview { width: 120px; height: 150px; object-fit: cover; border-radius: 12px; border: 3px solid #e2e8f0; box-shadow: 0 4px 10px rgba(0,0,0,0.05); background: #f8fafc; }
+        .form-select-status { width: 100%; padding: 10px 14px; border-radius: 12px; border: 1px solid #cbd5e1; font-weight: 600; color: #334155; outline: none; margin-top: 15px; background-color: #f8fafc; }
     </style>
 </head>
 <body>
-                <!-- SIDEBAR MENU KIRI DENGAN CELAH & TOMBOL LOG OUT MERAH PRESISI -->
-        <aside class="sidebar-left" style="display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; padding: 35px; background: #ffffff; border-right: 1px solid #f1f5f9; flex-shrink: 0; width: 280px;">
-            
-            <!-- GRUP ATAS: Navigasi Utama sampai Lowongan Tahapan -->
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-                <div class="brand-logo" style="font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 45px; display: flex; align-items: center; gap: 10px;"><span style="width: 10px; height: 20px; background: #4f46e5; border-radius: 4px; display: inline-block;"></span>impozitions</div>
-                <nav class="menu-list">
-                    <a href="dashboard.php" class="menu-item">Dashboard</a>
-                    <a href="master_user.php" class="menu-item">Master User</a>
-                    <a href="master_unit.php" class="menu-item">Master Unit</a>
-                    <a href="master_jabatan.php" class="menu-item">Master Jabatan</a>
-                    <a href="master_pendidikan.php" class="menu-item">Master Pendidikan</a>
-                    <a href="master_lowongan.php" class="menu-item">Master Lowongan</a>
-                    <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
-                    <a href="data_pelamar.php" class="menu-item active">Data Pelamar</a>
-                    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>
-                                        <a href="user.php" class="menu-item">Profil Pengguna</a>
 
-                </nav>
+    <div class="dashboard-container">
+        <!-- SIDEBAR KIRI -->
+        <div class="sidebar-left">
+            <div>
+                <div class="brand-logo"><span></span>REKRUTMEN RS</div>
+                <div class="menu-list">
+    <a href="master_user.php" class="menu-item">Master User</a>
+    <a href="master_unit.php" class="menu-item">Master Unit</a>
+    <a href="master_jabatan.php" class="menu-item">Master Jabatan</a>
+    <a href="master_pendidikan.php" class="menu-item">Master Pendidikan</a>
+    <a href="master_lowongan.php" class="menu-item">Master Lowongan</a>
+    <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
+    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>
+    <a href="data_pelamar.php" class="menu-item active">Data Pelamar</a>
+    <a href="user.php" class="menu-item">Profil Pengguna</a>
+</div>
+
             </div>
+            <a href="logout_admin.php" class="btn-logout"> Log Out</a>
+        </div>
 
-            <!-- GRUP BAWAH: Menyisakan Celah Kosong di Tengah, Memuat Profil & Tombol Log Out Merah -->
-            <div style="margin-top: auto; display: flex; flex-direction: column; gap: 20px; padding-top: 40px;">
-                <nav class="menu-list">
-                </nav>
-                
-                <!-- TOMBOL LOG OUT DENGAN STYLE KOTAK MERAH ABSOLUT -->
-                <a href="logout.php" style="display: block; width: 100%; padding: 14px; background: #ef4444; color: #ffffff !important; text-align: center; border-radius: 16px; font-weight: 700; font-size: 14px; text-decoration: none; border: none; transition: background 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem Admin?')">Log Out</a>
-            </div>
-            
-        </aside>
-
-
-        <!-- AREA UTAMA HALAMAN KANAN -->
-        <main class="main-content">
+        <!-- KONTEN UTAMA -->
+        <div class="main-content">
             <div class="content-header">
                 <h1>Daftar Pelamar Masuk</h1>
-                <p style="font-size: 13px; color: #94a3b8; margin-top: 4px;">Log aktif: <?= htmlspecialchars($nama_tampilan); ?> (Admin)</p>
+                <p style="font-size: 14px; color: #94a3b8; margin-top: 4px;">Halo, <?= htmlspecialchars($nama_tampilan); ?> • Kelola berkas pelamar baru</p>
             </div>
 
+            <!-- TABEL DATA PELAMAR -->
             <div class="table-wrapper">
                 <table>
                     <thead>
                         <tr>
-                            <th style="width: 60px;">No</th>
                             <th>Nama Pelamar</th>
-                            <th>Posisi Lowongan Kerja</th>
-                            <th>Tanggal Pendaftaran</th>
-                            <th>Status Tahap Awal</th>
-                            <th style="text-align: center; width: 220px;">Aksi</th>
+                            <th>Formasi Lowongan</th>
+                            <th>Tanggal Masuk</th>
+                            <th>Tahap Seleksi</th>
+                            <th style="text-align: center;">Aksi Kontrol</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <?php 
-                        $no = 1;
-                        if($result_pelamar && mysqli_num_rows($result_pelamar) > 0):
-                            while($row = mysqli_fetch_assoc($result_pelamar)): 
-                                $st_class = 'status-pending';
-                                $curr_status = $row['status_tahap'] ?? 'Pending';
-                                
-                                if(in_array(strtolower($curr_status), ['1', 'approved', 'lulus', 'diterima'])) {
-                                    $display_status = 'Diterima';
-                                    $st_class = 'status-diterima';
-                                } elseif(in_array(strtolower($curr_status), ['0', 'rejected', 'ditolak', 'gagal'])) {
-                                    $display_status = 'Ditolak';
-                                    $st_class = 'status-ditolak';
-                                } else {
-                                    $display_status = 'Pending';
-                                    $st_class = 'status-pending';
-                                }
-                        ?>
-                            <tr>
-                                <td style="font-weight: 700; color: #94a3b8;"><?= $no++; ?></td>
-                                <td><span class="candidate-name"><?= htmlspecialchars($row['nama_lengkap']); ?></span></td>
-                                <td style="font-weight: 600; color: #475569;"><?= htmlspecialchars($row['nama_lowongan']); ?></td>
-                                <td style="color: #94a3b8; font-size: 13px;"><?= date('d M Y (H:i)', strtotime($row['tanggal_daftar'])); ?></td>
-                                <td>
-                                    <div class="status-pill <?= $st_class; ?>">
-                                        <span class="status-dot"></span>
-                                        <?= htmlspecialchars($display_status); ?>
-                                    </div>
-                                </td>
-                                <td>
-                                    <div class="action-flex-container">
-                                        <button type="button" class="btn-detail" onclick="bukaDetail(<?= htmlspecialchars(json_encode($row)); ?>)">Lihat Detail</button>
-                                        <a href="data_pelamar.php?action=hapus_lamaran&lamaran_id=<?= $row['lamaran_id']; ?>" class="btn-hapus-lamaran" onclick="return confirm('Apakah Anda yakin ingin menghapus contoh berkas lamaran ini?')">Hapus</a>
-                                    </div>
-                                </td>
-                            </tr>
-                        <?php 
-                            endwhile; 
-                        else:
-                        ?>
-                            <tr><td colspan="6" style="text-align: center; color: #94a3b8; padding: 40px 0;">Belum ada pelamar kerja yang mendaftar.</td></tr>
+                        <?php if (mysqli_num_rows($result_pelamar) == 0): ?>
+                            <tr><td colspan="5" style="text-align: center; color: #94a3b8; padding: 40px 0;">Belum ada lamaran masuk untuk saat ini.</td></tr>
+                        <?php else: ?>
+                            <?php while ($row = mysqli_fetch_assoc($result_pelamar)): 
+                                $status_seleksi = $row['status_tahap'] ?? 'Pending';
+                                $pill_class = 'status-pending';
+                                if($status_seleksi === 'Lolos') $pill_class = 'status-terima';
+                                if($status_seleksi === 'Gagal' || $status_seleksi === 'Tolak') $pill_class = 'status-tolak';
+                            ?>
+                                <tr>
+                                    <td>
+                                        <div class="candidate-name"><?= htmlspecialchars($row['nama_lengkap']); ?></div>
+                                        <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">NIK: <?= htmlspecialchars($row['nik']); ?></div>
+                                    </td>
+                                    <td style="font-weight: 600; color: #334155; text-transform: uppercase; font-size: 13px;"><?= htmlspecialchars($row['nama_lowongan']); ?></td>
+                                    <td style="color: #64748b;"><?= date('d M Y', strtotime($row['tanggal_daftar'])); ?></td>
+                                    <td>
+                                        <span class="status-pill <?= $pill_class; ?>">
+                                            <span style="width: 6px; height: 6px; background: currentColor; border-radius: 50%;"></span>
+                                            <?= htmlspecialchars($status_seleksi); ?>
+                                        </span>
+                                    </td>
+                                    <td style="text-align: center;">
+                                        <button class="btn-action btn-detail" onclick='bukaDetailPelamar(<?= json_encode($row); ?>)'>Lihat Detail</button>
+                                        <a href="?action=hapus_lamaran&lamaran_id=<?= $row['lamaran_id']; ?>" class="btn-action btn-delete" onclick="return confirm('Apakah Anda yakin ingin menghapus data lamaran ini?')">Hapus</a>
+                                    </td>
+                                </tr>
+                            <?php endwhile; ?>
                         <?php endif; ?>
                     </tbody>
                 </table>
             </div>
-        </main>
+        </div>
     </div>
 
-    <!-- POPUP MODAL DETAIL LENGKAP + INTEGRASI PAS FOTO -->
-    <div id="modal-detail-pelamar" class="modal-bg" onclick="closeModalOnBg(event)">
+    <!-- MODAL POP-UP INFORMASI LENGKAP PELAMAR -->
+    <div class="modal-overlay" id="detailModal">
         <div class="modal-box">
-            <span class="modal-close" onclick="tutupModal()">&times;</span>
-            <h3 style="margin-bottom: 15px; color: #1e293b; font-size: 18px; font-weight: 800;">📋 Informasi Lengkap Pelamar</h3>
+            <button class="modal-close" onclick="tutupDetailPelamar()">&times;</button>
+            <h3>📋 Informasi Lengkap Pelamar</h3>
             
-            <!-- FRAME CONTAINER FOTO PROFIL -->
-            <div class="photo-container">
-                <img id="det-foto" src="" class="img-profile-preview" alt="Foto Pelamar">
+            <div style="text-align: center; margin-bottom: 25px;">
+                <img id="modalFoto" src="" style="width: 120px; height: 155px; object-fit: cover; border-radius: 12px; border: 2px solid #cbd5e1; background-color: #f8fafc; display: inline-block;" alt="Foto Profil">
+                <div id="modalNoFoto" style="width: 120px; height: 155px; background: #f1f5f9; border-radius: 12px; display: none; align-items: center; justify-content: center; font-size: 12px; color: #94a3b8; border: 2px solid #cbd5e1; margin: 0 auto;">Tanpa Foto</div>
             </div>
 
-            <div class="detail-title">Identitas Kependudukan</div>
-            <div class="detail-item"><span class="detail-label">Nomor NIK KTP</span><span class="detail-val" id="det-nik">-</span></div>
-            <div class="detail-item"><span class="detail-label">Nama Lengkap</span><span class="detail-val" id="det-nama">-</span></div>
-            <div class="detail-item"><span class="detail-label">Tempat / Tgl Lahir</span><span class="detail-val" id="det-ttl">-</span></div>
-            <div class="detail-item"><span class="detail-label">Jenis Kelamin</span><span class="detail-val" id="det-jk">-</span></div>
-            <div class="detail-item"><span class="detail-label">Agama</span><span class="detail-val" id="det-agama">-</span></div>
-            <div class="detail-item"><span class="detail-label">Status Hubungan</span><span class="detail-val" id="det-status-sosial">-</span></div>
-            
-            <div class="detail-title" style="margin-top: 15px;">Alamat Domisili & Kontak</div>
-            <div class="detail-item"><span class="detail-label">Alamat Lengkap</span><span class="detail-val" id="det-alamat">-</span></div>
-            <div class="detail-item"><span class="detail-label">Kontak HP / Email</span><span class="detail-val" id="det-kontak">-</span></div>
+            <h4>IDENTITAS KEPENDUDUKAN</h4>
+            <div class="detail-item"><div class="detail-label">Nomor NIK KTP</div><div class="detail-val" id="m_nik">-</div></div>
+            <div class="detail-item"><div class="detail-label">Nama Lengkap</div><div class="detail-val" id="m_nama">-</div></div>
+            <div class="detail-item"><div class="detail-label">Tempat / Tgl Lahir</div><div class="detail-val" id="m_ttl">-</div></div>
+            <div class="detail-item"><div class="detail-label">Jenis Kelamin</div><div class="detail-val" id="m_jk">-</div></div>
+            <div class="detail-item"><div class="detail-label">Agama</div><div class="detail-val" id="m_agama">-</div></div>
+            <div class="detail-item"><div class="detail-label">Status Hubungan</div><div class="detail-val" id="m_status">-</div></div>
 
-            <div class="detail-title" style="margin-top: 20px;">Aksi Keputusan Seleksi</div>
-            <form action="" method="POST" style="margin-top: 10px;">
-                <input type="hidden" name="lamaran_id" id="det-lamaran-id">
-                <input type="hidden" name="status_aksi" id="status-value" value="Pending">
-                
-                <div style="display: flex; flex-direction: column; gap: 10px;">
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                        <button type="submit" name="update_status_seleksi" style="background: #10b981; padding: 12px; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 13px;" onclick="document.getElementById('status-value').value='Diterima'">🟢 Terima Pelamar</button>
-                        <button type="submit" name="update_status_seleksi" style="background: #ef4444; padding: 12px; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 13px;" onclick="document.getElementById('status-value').value='Ditolak'">🔴 Tolak Pelamar</button>
-                    </div>
-                    <button type="submit" name="update_status_seleksi" style="background: #64748b; padding: 10px; color: white; border: none; border-radius: 10px; font-weight: bold; cursor: pointer; font-size: 12px; width: 100%;" onclick="document.getElementById('status-value').value='Pending'">⏳ Kembalikan ke Pending</button>
-                </div>
+            <h4>ALAMAT DOMISILI & KONTAK</h4>
+            <div class="detail-item"><div class="detail-label">Alamat Email</div><div class="detail-val" id="m_email">-</div></div>
+            <div class="detail-item"><div class="detail-label">Nomor Telepon / WA</div><div class="detail-val" id="m_telepon">-</div></div>
+            <div class="detail-item"><div class="detail-label">Kota / Provinsi</div><div class="detail-val" id="m_lokasi">-</div></div>
+            <div class="detail-item" style="flex-direction: column; align-items: flex-start; gap: 4px;"><div class="detail-label">Alamat Rumah Lengkap</div><div class="detail-val" id="m_alamat" style="text-align: left; font-weight: 600; color: #334155; width: 100%; padding-top: 2px;">-</div></div>
+
+            <!-- AREA MULTI-PENDIDIKAN DINAMIS -->
+            <div id="areaPendidikanAdmin"></div>
+
+            <h4>PEMROSESAN STATUS KELULUSAN</h4>
+            <form method="POST" action="">
+                <input type="hidden" name="lamaran_id" id="m_submit_id">
+                <select name="status_aksi" id="m_select_status" class="form-select-status" onchange="this.form.submit()">
+                    <option value="Pending">Pending (Belum Diproses)</option>
+                    <option value="Lolos">Lolos Seleksi Berkas</option>
+                    <option value="Tolak">Tolak Lamaran</option>
+                </select>
             </form>
         </div>
     </div>
 
-    <!-- JAVASCRIPT DINAMIS POPUP KONTROL -->
+    <!-- JAVASCRIPT LOGIKA KONTROL POP-UP DAN FETCH API PENDIDIKAN -->
     <script>
-        const modal = document.getElementById('modal-detail-pelamar');
+        const modal = document.getElementById('detailModal');
 
-        function bukaDetail(data) {
-            document.getElementById('det-lamaran-id').value = data.lamaran_id; 
-            document.getElementById('det-nik').innerText = data.nik || '-';
-            document.getElementById('det-nama').innerText = data.nama_lengkap || '-';
-            document.getElementById('det-ttl').innerText = (data.tempat_lahir || '-') + ', ' + (data.tanggal_lahir || '-');
-            document.getElementById('det-jk').innerText = data.jenis_kelamin || '-';
-            document.getElementById('det-agama').innerText = data.agama || '-';
-            document.getElementById('det-status-sosial').innerText = data.status_sosial || '-';
-            document.getElementById('det-alamat').innerText = (data.alamat || '-') + ', ' + (data.kota || '-') + ', ' + (data.provinsi || '-');
-            document.getElementById('det-kontak').innerText = (data.telepon || '-') + ' / ' + (data.email || '-');
+        function bukaDetailPelamar(data) {
+            document.getElementById('m_nik').innerText = data.nik || '-';
+            document.getElementById('m_nama').innerText = data.nama_lengkap || '-';
+            document.getElementById('m_ttl').innerText = (data.tempat_lahir || '-') + ', ' + (data.tanggal_lahir || '-');
+            document.getElementById('m_jk').innerText = data.jenis_kelamin || '-';
+            document.getElementById('m_agama').innerText = data.agama || '-';
+            document.getElementById('m_status').innerText = data.status_sosial || '-';
+            document.getElementById('m_email').innerText = data.email || '-';
+            document.getElementById('m_telepon').innerText = data.telepon || '-';
+            document.getElementById('m_lokasi').innerText = (data.kota || '-') + ', ' + (data.provinsi || '-');
+            document.getElementById('m_alamat').innerText = data.alamat || '-';
+            
+            document.getElementById('m_submit_id').value = data.lamaran_id;
+            document.getElementById('m_select_status').value = data.status_tahap || 'Pending';
 
-            // Render Gambar Foto Pelamar Dinamis dari Folder uploads
-            const fotoElement = document.getElementById('det-foto');
-            if (data.foto_pelamar) {
-                fotoElement.src = 'uploads/' + data.foto_pelamar;
+            // Logika Validasi Tampilan Foto Profil
+            const imgEl = document.getElementById('modalFoto');
+            const noImgEl = document.getElementById('modalNoFoto');
+            
+            if (data.foto_pelamar && data.foto_pelamar.trim() !== '') {
+                imgEl.src = 'uploads/' + data.foto_pelamar;
+                imgEl.style.display = 'inline-block';
+                noImgEl.style.display = 'none';
             } else {
-                // Siluet SVG fallback jika data foto tidak ada
-                // Siluet SVG fallback jika data foto tidak ada
-                fotoElement.src = 'data:image/svg+xml;utf8,<svg xmlns="http://w3.org" viewBox="0 0 24 24" fill="%23cbd5e1"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5-4-8-4z"/></svg>';
+                imgEl.style.display = 'none';
+                noImgEl.style.display = 'flex';
             }
 
-            modal.classList.add('active');
+            // Ambil data multi-pendidikan via AJAX Fetch API secara instan
+            const areaPend = document.getElementById('areaPendidikanAdmin');
+            areaPend.innerHTML = '<h4>RIWAYAT PENDIDIKAN</h4><p style="font-size: 13px; color: #94a3b8; font-style: italic;">Memuat data pendidikan...</p>';
+
+            fetch('get_pendidikan_admin.php?pelamar_id=' + data.pelamar_id)
+                .then(response => response.text())
+                .then(html => {
+                    areaPend.innerHTML = html;
+                })
+                .catch(err => {
+                    areaPend.innerHTML = '<h4>RIWAYAT PENDIDIKAN</h4><p style="font-size: 13px; color: #e11d48;">Gagal memuat riwayat pendidikan.</p>';
+                });
+
+            modal.style.display = 'flex';
         }
 
-        function tutupModal() {
-            modal.classList.remove('active');
-        }
+        function tutupDetailPelamar() { modal.style.display = 'none'; }
 
-        function closeModalOnBg(e) {
-            if (e.target.id === 'modal-detail-pelamar') {
-                tutupModal();
-            }
+        window.onclick = function(event) {
+            if (event.target == modal) tutupDetailPelamar();
         }
     </script>
 </body>

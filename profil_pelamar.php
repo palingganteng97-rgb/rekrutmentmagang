@@ -31,6 +31,8 @@ if (isset($_POST['update_profil'])) {
     $tanggal_lahir = mysqli_real_escape_string($koneksi, $_POST['tanggal_lahir']);
     $jenis_kelamin = mysqli_real_escape_string($koneksi, $_POST['jenis_kelamin']);
     $agama         = mysqli_real_escape_string($koneksi, $_POST['agama']);
+    // MENANGKAP DATA INPUT STATUS HUBUNGAN DARI FORM
+    $status_sosial = mysqli_real_escape_string($koneksi, $_POST['status_sosial']); 
     $telepon       = mysqli_real_escape_string($koneksi, $_POST['telepon']);
     $alamat        = mysqli_real_escape_string($koneksi, $_POST['alamat']);
     $kota          = mysqli_real_escape_string($koneksi, $_POST['kota']);
@@ -61,11 +63,21 @@ if (isset($_POST['update_profil'])) {
     }
 
     if (empty($error_message)) {
+        // MEMASUKKAN KOLOM status_sosial KE DALAM PERINTAH UPDATE SQL
         $query_update = "UPDATE pelamar SET 
-            nama_lengkap = '$nama_lengkap', nik = '$nik', tempat_lahir = '$tempat_lahir', 
-            tanggal_lahir = '$tanggal_lahir', jenis_kelamin = '$jenis_kelamin', agama = '$agama', 
-            telepon = '$telepon', alamat = '$alamat', kota = '$kota', provinsi = '$provinsi', 
-            foto = '$nama_foto_baru', updated_at = NOW() 
+            nama_lengkap = '$nama_lengkap', 
+            nik = '$nik', 
+            tempat_lahir = '$tempat_lahir', 
+            tanggal_lahir = '$tanggal_lahir', 
+            jenis_kelamin = '$jenis_kelamin', 
+            agama = '$agama', 
+            status_sosial = '$status_sosial', 
+            telepon = '$telepon', 
+            alamat = '$alamat', 
+            kota = '$kota', 
+            provinsi = '$provinsi', 
+            foto = '$nama_foto_baru', 
+            updated_at = NOW() 
             WHERE id = $pelamar_id";
             
         if (mysqli_query($koneksi, $query_update)) {
@@ -204,156 +216,179 @@ while ($row = mysqli_fetch_assoc($query_pend_aktif)) {
                     <input type="date" name="tanggal_lahir" class="form-control" required value="<?= htmlspecialchars($data['tanggal_lahir'] ?? ''); ?>">
                 </div>
 
-                <div class="form-group">
-                    <label>Jenis Kelamin</label>
-                    <select name="jenis_kelamin" class="form-control" required>
-                        <option value="">-- Pilih --</option>
-                        <option value="Laki-Laki" <?= ($data['jenis_kelamin'] ?? '') == 'Laki-Laki' ? 'selected' : ''; ?>>Laki-laki</option>
-                        <option value="Perempuan" <?= ($data['jenis_kelamin'] ?? '') == 'Perempuan' ? 'selected' : ''; ?>>Perempuan</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Agama</label>
-                    <input type="text" name="agama" class="form-control" placeholder="Contoh: Islam" required value="<?= htmlspecialchars($data['agama'] ?? ''); ?>">
-                </div>
+                                    <div class="form-group">
+                        <label>Tempat Lahir</label>
+                        <input type="text" name="tempat_lahir" class="form-control" required value="<?= htmlspecialchars($data['tempat_lahir'] ?? ''); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label>Tanggal Lahir</label>
+                        <input type="date" name="tanggal_lahir" class="form-control" required value="<?= htmlspecialchars($data['tanggal_lahir'] ?? ''); ?>">
+                    </div>
 
-                <div class="form-group">
-                    <label>Nomor Telepon / WA</label>
-                    <input type="text" name="telepon" class="form-control" placeholder="08xxxxxxxxxx" required value="<?= htmlspecialchars($data['telepon'] ?? ''); ?>">
-                </div>
-                <div class="form-group">
-                    <label>Kota / Kabupaten</label>
-                    <input type="text" name="kota" class="form-control" required value="<?= htmlspecialchars($data['kota'] ?? ''); ?>">
-                </div>
+                    <div class="form-group">
+                        <label>Jenis Kelamin</label>
+                        <select name="jenis_kelamin" class="form-control" required>
+                            <option value="">-- Pilih --</option>
+                            <option value="Laki-Laki" <?= ($data['jenis_kelamin'] ?? '') == 'Laki-Laki' ? 'selected' : ''; ?>>Laki-laki</option>
+                            <option value="Perempuan" <?= ($data['jenis_kelamin'] ?? '') == 'Perempuan' ? 'selected' : ''; ?>>Perempuan</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Agama</label>
+                        <input type="text" name="agama" class="form-control" placeholder="Contoh: Islam" required value="<?= htmlspecialchars($data['agama'] ?? ''); ?>">
+                    </div>
 
-                <div class="form-group full-width">
-                    <label>Provinsi</label>
-                    <input type="text" name="provinsi" class="form-control" required value="<?= htmlspecialchars($data['provinsi'] ?? ''); ?>">
-                </div>
+                    <div class="form-group">
+                        <label>Status Hubungan</label>
+                        <select name="status_sosial" class="form-control" required>
+                            <option value="">-- Pilih Status --</option>
+                            <option value="Kawin" <?= ($data['status_sosial'] ?? '') == 'Kawin' ? 'selected' : ''; ?>>Kawin</option>
+                            <option value="Belum Kawin" <?= ($data['status_sosial'] ?? '') == 'Belum Kawin' ? 'selected' : ''; ?>>Belum Kawin</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nomor Telepon / WA</label>
+                        <input type="text" name="telepon" class="form-control" placeholder="08xxxxxxxxxx" required value="<?= htmlspecialchars($data['telepon'] ?? ''); ?>">
+                    </div>
 
-                <div class="form-group full-width">
-                    <label>Alamat Rumah Lengkap</label>
-                    <textarea name="alamat" class="form-control" placeholder="Nama Jalan, RT/RW, Dusun..." required><?= htmlspecialchars($data['alamat'] ?? ''); ?></textarea>
+                                    <div class="form-group">
+                        <label>Kota / Kabupaten</label>
+                        <input type="text" name="kota" class="form-control" required value="<?= htmlspecialchars($data['kota'] ?? ''); ?>">
+                    </div>
+                    <div class="form-group">
+                        <label>Provinsi</label>
+                        <input type="text" name="provinsi" class="form-control" required value="<?= htmlspecialchars($data['provinsi'] ?? ''); ?>">
+                    </div>
+
+                                        <div class="form-group full-width">
+                        <label>Alamat Rumah Lengkap</label>
+                        <textarea name="alamat" class="form-control" placeholder="Nama Jalan, RT/RW, Dusun..." required><?= htmlspecialchars($data['alamat'] ?? ''); ?></textarea>
+                    </div>
+                </div> <!-- PENUTUP FORM-GRID BIODATA (PENTING) -->
+
+                <!-- Tombol Simpan Biru di Posisi Tengah -->
+                <div style="text-align: center; margin-top: 25px;">
+                    <button type="submit" name="update_profil" class="btn-simpan" style="max-width: 300px; display: inline-block; margin: 0 auto;">Simpan Perubahan Profil</button>
                 </div>
+            </form>
+        </div> <!-- PENUTUP KARTU PROFIL UTAMA (PENTING) -->
+
+        <!-- KARTU 2: MULTI FORM RIWAYAT PENDIDIKAN (SEKARANG SUDAH TURUN DI BAWAH DENGAN LEBAR PENUH) -->
+        <div class="card-profil" style="margin-top: 30px;">
+            <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
+                <span>Riwayat Pendidikan</span>
+                <button type="button" onclick="tambahFormPendidikan()" style="background-color: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">+ Tambah Jenjang</button>
             </div>
+            
+            <form method="POST" action="">
+                <div id="pendidikan-container">
+                    <?php 
+                    if (empty($list_pendidikan)) {
+                        $list_pendidikan[] = ['jenjang'=>'', 'institusi'=>'', 'jurusan'=>'', 'tahun_lulus'=>'', 'ipk'=>''];
+                    }
+                    foreach ($list_pendidikan as $index => $pend): 
+                    ?>
+                    <div class="form-pendidikan-item" style="border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin-bottom: 20px; background-color: #fafafa; position: relative;">
+                        
+                        <?php if ($index > 0): ?>
+                            <button type="button" onclick="hapusFormPendidikan(this)" style="position: absolute; top: 15px; right: 15px; background-color: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">Hapus</button>
+                        <?php endif; ?>
 
-            <button type="submit" name="update_profil" class="btn-simpan">Simpan Perubahan Profil</button>
-        </form>
-    </div>
-
-    <!-- KARTU 2: MULTI FORM RIWAYAT PENDIDIKAN -->
-    <div class="card-profil">
-        <div class="card-title" style="display: flex; justify-content: space-between; align-items: center;">
-            <span>Riwayat Pendidikan</span>
-            <button type="button" onclick="tambahFormPendidikan()" style="background-color: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 6px; font-size: 13px; font-weight: 600; cursor: pointer;">+ Tambah Jenjang</button>
-        </div>
-        
-        <form method="POST" action="">
-            <div id="pendidikan-container">
-                <?php 
-                if (empty($list_pendidikan)) {
-                    $list_pendidikan[] = ['jenjang'=>'', 'institusi'=>'', 'jurusan'=>'', 'tahun_lulus'=>'', 'ipk'=>''];
-                }
-                foreach ($list_pendidikan as $index => $pend): 
-                ?>
-                <div class="form-pendidikan-item" style="border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin-bottom: 20px; background-color: #fafafa; position: relative;">
-                    
-                    <?php if ($index > 0): ?>
-                        <button type="button" onclick="hapusFormPendidikan(this)" style="position: absolute; top: 15px; right: 15px; background-color: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">Hapus</button>
-                    <?php endif; ?>
-
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Jenjang Pendidikan</label>
-                            <select name="jenjang[]" class="form-control" required>
-                                <option value="">-- Pilih Jenjang --</option>
-                                <option value="SMA/SMK" <?= $pend['jenjang'] == 'SMA/SMK' ? 'selected' : ''; ?>>SMA / SMK</option>
-                                <option value="D3" <?= $pend['jenjang'] == 'D3' ? 'selected' : ''; ?>>D3</option>
-                                <option value="S1/D4" <?= $pend['jenjang'] == 'S1/D4' ? 'selected' : ''; ?>>S1 / D4</option>
-                                <option value="S2" <?= $pend['jenjang'] == 'S2' ? 'selected' : ''; ?>>S2</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Nama Institusi / Kampus</label>
-                            <input type="text" name="institusi[]" class="form-control" placeholder="Contoh: Universitas Diponegoro" required value="<?= htmlspecialchars($pend['institusi']); ?>">
-                        </div>
-                        <div class="form-group">
-                            <label>Jurusan / Program Studi</label>
-                            <input type="text" name="jurusan[]" class="form-control" placeholder="Contoh: Teknik Informatika" required value="<?= htmlspecialchars($pend['jurusan']); ?>">
-                        </div>
-                        <div class="form-group">
-                            <label>Tahun Lulus</label>
-                            <input type="number" name="tahun_lulus[]" class="form-control" min="1900" max="2100" placeholder="Contoh: 2024" required value="<?= htmlspecialchars($pend['tahun_lulus']); ?>">
-                        </div>
-                        <div class="form-group full-width">
-                            <label>IPK / Nilai Rata-rata</label>
-                            <input type="text" name="ipk[]" class="form-control" placeholder="Contoh: 3.50" required value="<?= htmlspecialchars($pend['ipk']); ?>">
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>Jenjang Pendidikan</label>
+                                <select name="jenjang[]" class="form-control" required>
+                                    <option value="">-- Pilih Jenjang --</option>
+                                    <option value="SMA/SMK" <?= $pend['jenjang'] == 'SMA/SMK' ? 'selected' : ''; ?>>SMA / SMK</option>
+                                    <option value="D3" <?= $pend['jenjang'] == 'D3' ? 'selected' : ''; ?>>D3</option>
+                                    <option value="S1/D4" <?= $pend['jenjang'] == 'S1/D4' ? 'selected' : ''; ?>>S1 / D4</option>
+                                    <option value="S2" <?= $pend['jenjang'] == 'S2' ? 'selected' : ''; ?>>S2</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Nama Institusi / Kampus</label>
+                                <input type="text" name="institusi[]" class="form-control" placeholder="Contoh: Universitas Diponegoro" required value="<?= htmlspecialchars($pend['institusi']); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Jurusan / Program Studi</label>
+                                <input type="text" name="jurusan[]" class="form-control" placeholder="Contoh: Teknik Informatika" required value="<?= htmlspecialchars($pend['jurusan']); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Tahun Lulus</label>
+                                <input type="number" name="tahun_lulus[]" class="form-control" min="1900" max="2100" placeholder="Contoh: 2024" required value="<?= htmlspecialchars($pend['tahun_lulus']); ?>">
+                            </div>
+                            <div class="form-group full-width">
+                                <label>IPK / Nilai Rata-rata</label>
+                                <input type="text" name="ipk[]" class="form-control" placeholder="Contoh: 3.50" required value="<?= htmlspecialchars($pend['ipk']); ?>">
+                            </div>
                         </div>
                     </div>
+                    <?php endforeach; ?>
                 </div>
-                <?php endforeach; ?>
-            </div>
 
-            <button type="submit" name="simpan_pendidikan" class="btn-simpan" style="background-color: #10b981;">Simpan Semua Data Pendidikan</button>
-        </form>
+                <!-- Tombol Simpan Hijau di Posisi Tengah -->
+                <div style="text-align: center; margin-top: 20px;">
+                    <button type="submit" name="simpan_pendidikan" class="btn-simpan" style="background-color: #10b981; max-width: 300px; display: inline-block; margin: 0 auto;">Simpan Semua Data Pendidikan</button>
+                </div>
+            </form>
+        </div>
     </div>
-</div>
 
-<!-- JAVASCRIPT UNTUK ADD/REMOVE MULTI FORM -->
-<script>
-    function tambahFormPendidikan() {
-        const container = document.getElementById('pendidikan-container');
-        const formBaru = document.createElement('div');
-        formBaru.className = 'form-pendidikan-item';
-        formBaru.style = "border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin-bottom: 20px; background-color: #fafafa; position: relative;";
-        
-        formBaru.innerHTML = `
-            <button type="button" onclick="hapusFormPendidikan(this)" style="position: absolute; top: 15px; right: 15px; background-color: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">Hapus</button>
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>Jenjang Pendidikan</label>
-                    <select name="jenjang[]" class="form-control" required>
-                        <option value="">-- Pilih Jenjang --</option>
-                        <option value="SMA/SMK">SMA / SMK</option>
-                        <option value="D3">D3</option>
-                        <option value="S1/D4">S1 / D4</option>
-                        <option value="S2">S2</option>
-                    </select>
+    <!-- JAVASCRIPT UNTUK ADDD/REMOVE MULTI FORM -->
+    <script>
+        function tambahFormPendidikan() {
+            const container = document.getElementById('pendidikan-container');
+            const formBaru = document.createElement('div');
+            formBaru.className = 'form-pendidikan-item';
+            formBaru.style = "border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; margin-bottom: 20px; background-color: #fafafa; position: relative;";
+            
+            formBaru.innerHTML = `
+                <button type="button" onclick="hapusFormPendidikan(this)" style="position: absolute; top: 15px; right: 15px; background-color: #dc2626; color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">Hapus</button>
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Jenjang Pendidikan</label>
+                        <select name="jenjang[]" class="form-control" required>
+                            <option value="">-- Pilih Jenjang --</option>
+                            <option value="SMA/SMK">SMA / SMK</option>
+                            <option value="D3">D3</option>
+                            <option value="S1/D4">S1 / D4</option>
+                            <option value="S2">S2</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Nama Institusi / Kampus</label>
+                        <input type="text" name="institusi[]" class="form-control" placeholder="Contoh: Universitas Diponegoro" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Jurusan / Program Studi</label>
+                        <input type="text" name="jurusan[]" class="form-control" placeholder="Contoh: Teknik Informatika" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Tahun Lulus</label>
+                        <input type="number" name="tahun_lulus[]" class="form-control" min="1900" max="2100" placeholder="Contoh: 2024" required>
+                    </div>
+                    <div class="form-group full-width">
+                        <label>IPK / Nilai Rata-rata</label>
+                        <input type="text" name="ipk[]" class="form-control" placeholder="Contoh: 3.50" required>
+                    </div>
                 </div>
-                <div class="form-group">
-                    <label>Nama Institusi / Kampus</label>
-                    <input type="text" name="institusi[]" class="form-control" placeholder="Contoh: Universitas Diponegoro" required>
-                </div>
-                <div class="form-group">
-                    <label>Jurusan / Program Studi</label>
-                    <input type="text" name="jurusan[]" class="form-control" placeholder="Contoh: Teknik Informatika" required>
-                </div>
-                <div class="form-group">
-                    <label>Tahun Lulus</label>
-                    <input type="number" name="tahun_lulus[]" class="form-control" min="1900" max="2100" placeholder="Contoh: 2024" required>
-                </div>
-                <div class="form-group full-width">
-                    <label>IPK / Nilai Rata-rata</label>
-                    <input type="text" name="ipk[]" class="form-control" placeholder="Contoh: 3.50" required>
-                </div>
-            </div>
-        `;
-        container.appendChild(formBaru);
-    }
+            `;
+            container.appendChild(formBaru);
+        }
 
-    function hapusFormPendidikan(button) {
-        button.parentElement.remove();
-    }
+        function hapusFormPendidikan(button) {
+            button.parentElement.remove();
+        }
 
-    // Efek timer otomatis untuk notifikasi sukses (5 detik)
-    const successAlert = document.getElementById('success-alert');
-    if (successAlert) {
-        setTimeout(function() {
-            successAlert.style.transition = "opacity 0.5s ease";
-            successAlert.style.opacity = "0";
-            setTimeout(function() { successAlert.style.display = "none"; }, 500);
-        }, 5000);
-    }
-</script>
+        // Timer alert notifikasi sukses (5 detik)
+        const successAlert = document.getElementById('success-alert');
+        if (successAlert) {
+            setTimeout(function() {
+                successAlert.style.transition = "opacity 0.5s ease";
+                successAlert.style.opacity = "0";
+                setTimeout(function() { successAlert.style.display = "none"; }, 500);
+            }, 5000);
+        }
+    </script>
 </body>
 </html>

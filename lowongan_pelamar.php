@@ -37,29 +37,74 @@ if (isset($_POST['register'])) {
     }
 }
 
-// 3. LOGIKA PROSES MASUK (LOGIN)
-if (isset($_POST['login'])) {
-    $email = mysqli_real_escape_string($koneksi, $_POST['email']);
-    $password = $_POST['password'];
+// 3. LOGIKA PROSES UPDATE PROFIL BIODATA (TABEL: pelamar)
+if (isset($_POST['update_profil'])) {
+    $nama_lengkap  = mysqli_real_escape_string($koneksi, $_POST['nama_lengkap']);
+    $nik           = mysqli_real_escape_string($koneksi, $_POST['nik']);
+    $tempat_lahir  = mysqli_real_escape_string($koneksi, $_POST['tempat_lahir']);
+    $tanggal_lahir = mysqli_real_escape_string($koneksi, $_POST['tanggal_lahir']);
+    $jenis_kelamin = mysqli_real_escape_string($koneksi, $_POST['jenis_kelamin']);
+    $agama         = mysqli_real_escape_string($koneksi, $_POST['agama']);
+    // MENANGKAP DATA INPUT STATUS HUBUNGAN DARI FORM
+    $status_sosial = mysqli_real_escape_string($koneksi, $_POST['status_sosial']); 
+    $telepon       = mysqli_real_escape_string($koneksi, $_POST['telepon']);
+    $alamat        = mysqli_real_escape_string($koneksi, $_POST['alamat']);
+    $kota          = mysqli_real_escape_string($koneksi, $_POST['kota']);
+    $provinsi      = mysqli_real_escape_string($koneksi, $_POST['provinsi']);
+    
+    // Ambil data profil lama untuk validasi foto
+    $query_lama = mysqli_query($koneksi, "SELECT foto FROM pelamar WHERE id = $pelamar_id");
+    $data_lama = mysqli_fetch_assoc($query_lama);
+    $nama_foto_baru = isset($data_lama['foto']) ? $data_lama['foto'] : ""; 
 
-    $query_login = mysqli_query($koneksi, "SELECT * FROM pelamar WHERE email = '$email'");
-    if (mysqli_num_rows($query_login) === 1) {
-        $row = mysqli_fetch_assoc($query_login);
-        if (password_verify($password, $row['password'])) {
-            $_SESSION['pelamar_logged_in'] = true;
-            $_SESSION['pelamar_id'] = $row['id'];
-            $_SESSION['pelamar_nama'] = $row['nama_lengkap'];
-            $_SESSION['pelamar_email'] = $row['email'];
-            $success_message = "Login berhasil!";
+    // Logika Upload Foto
+    if (isset($_FILES['foto']['name']) && $_FILES['foto']['name'] != '') {
+        $tipe_file = $_FILES['foto']['type'];
+        $ekstensi_diperbolehkan = array('image/jpeg', 'image/jpg', 'image/png');
+        
+        if (in_array($tipe_file, $ekstensi_diperbolehkan)) {
+            $ekstensi = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
+            $nama_foto_baru = "foto_" . $pelamar_id . "_" . time() . "." . $ekstensi;
+            $folder_tujuan = "uploads/" . $nama_foto_baru;
+            
+            if (!is_dir('uploads')) {
+                mkdir('uploads', 0777, true);
+            }
+            move_uploaded_file($_FILES['foto']['tmp_name'], $folder_tujuan);
         } else {
-            $error_message = "Email atau Password salah!";
+            $error_message = "Format foto harus JPG, JPEG, atau PNG!";
         }
-    } else {
-        $error_message = "Email atau Password salah!";
+    }
+
+    if (empty($error_message)) {
+        // MEMASUKKAN KOLOM status_sosial KE DALAM PERINTAH UPDATE SQL
+        $query_update = "UPDATE pelamar SET 
+            nama_lengkap = '$nama_lengkap', 
+            nik = '$nik', 
+            tempat_lahir = '$tempat_lahir', 
+            tanggal_lahir = '$tanggal_lahir', 
+            jenis_kelamin = '$jenis_kelamin', 
+            agama = '$agama', 
+            status_sosial = '$status_sosial', 
+            telepon = '$telepon', 
+            alamat = '$alamat', 
+            kota = '$kota', 
+            provinsi = '$provinsi', 
+            foto = '$nama_foto_baru', 
+            updated_at = NOW() 
+            WHERE id = $pelamar_id";
+            
+        if (mysqli_query($koneksi, $query_update)) {
+            $_SESSION['pelamar_nama'] = $nama_lengkap; 
+            $success_message = "Profil biodata Anda berhasil diperbarui!";
+        } else {
+            $error_message = "Gagal memperbarui data profil: " . mysqli_error($koneksi);
+        }
     }
 }
 
-// 4. LOGIKA PROSES FINAL KIRIM LAMARAN KERJA (VALIDASI KETAT ANTI DATA KOSONG)
+
+// 4. LOGIKA PROSES FINAL KIRIM LAMARAN KERJA (VALIDASI KETAT & PAKSA REDIRECT PROFIL)
 if (isset($_POST['lamar'])) {
     if (!isset($_SESSION['pelamar_logged_in'])) {
         $error_message = "Anda harus masuk terlebih dahulu!";
@@ -68,18 +113,23 @@ if (isset($_POST['lamar'])) {
         $lowongan_id = 5; // ID Contoh Formasi LWN-5
 
         // Ambil data profil dan pendidikan pelamar saat ini untuk dicek ulang nilainya
-        $cek_validasi = mysqli_query($koneksi, "SELECT p.nik, p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.telepon, p.kota, p.provinsi, p.alamat, pd.jenjang, pd.institusi, pd.jurusan, pd.tahun_lulus, pd.ipk FROM pelamar p LEFT JOIN pelamar_pendidikan pd ON p.id = pd.pelamar_id WHERE p.id = $pelamar_id");
+        $cek_validasi = mysqli_query($koneksi, "SELECT p.nik, p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.status_sosial, p.telepon, p.kota, p.provinsi, p.alamat, pd.jenjang, pd.institusi, pd.jurusan, pd.tahun_lulus, pd.ipk FROM pelamar p LEFT JOIN pelamar_pendidikan pd ON p.id = pd.pelamar_id WHERE p.id = $pelamar_id");
         $data_riil = mysqli_fetch_assoc($cek_validasi);
 
-        // Jika salah satu dari seluruh data di atas ternyata kosong (NULL atau string kosong "")
+        // Jika salah satu kolom biodata atau status hubungan atau pendidikan kosong
         if (
             empty($data_riil['nik']) || empty($data_riil['tempat_lahir']) || empty($data_riil['tanggal_lahir']) || 
-            empty($data_riil['jenis_kelamin']) || empty($data_riil['agama']) || empty($data_riil['telepon']) || 
-            empty($data_riil['kota']) || empty($data_riil['provinsi']) || empty($data_riil['alamat']) || 
-            empty($data_riil['jenjang']) || empty($data_riil['institusi']) || empty($data_riil['jurusan']) || 
-            empty($data_riil['tahun_lulus']) || empty($data_riil['ipk'])
+            empty($data_riil['jenis_kelamin']) || empty($data_riil['agama']) || empty($data_riil['status_sosial']) || 
+            empty($data_riil['telepon']) || empty($data_riil['kota']) || empty($data_riil['provinsi']) || 
+            empty($data_riil['alamat']) || empty($data_riil['jenjang']) || empty($data_riil['institusi']) || 
+            empty($data_riil['jurusan']) || empty($data_riil['tahun_lulus']) || empty($data_riil['ipk'])
         ) {
-            $error_message = "Gagal Mengirim! Ditemukan data yang masih kosong. Silakan lengkapi Biodata & Riwayat Pendidikan Anda terlebih dahulu!";
+            // Memunculkan pesan error dan memaksa halaman berpindah ke profil_pelamar.php setelah pelamar klik OK
+            echo "<script>
+                alert('⚠️ Gagal mengirim lamaran! Ditemukan data profil atau pendidikan yang masih kosong. Anda akan diarahkan ke halaman profil untuk melengkapi data.');
+                window.location.href = 'profil_pelamar.php';
+            </script>";
+            exit();
         } else {
             // Cek apakah pelamar sudah pernah mengirimkan lamaran sebelumnya
             $cek_lamaran = mysqli_query($koneksi, "SELECT id FROM rekrutmen_lamaran WHERE pelamar_id = $pelamar_id AND lowongan_id = $lowongan_id");
@@ -97,6 +147,7 @@ if (isset($_POST['lamar'])) {
         }
     }
 }
+
 
 if (isset($_GET['logout'])) {
     session_destroy();
@@ -256,24 +307,40 @@ if (isset($_GET['logout'])) {
             <div class="modal-title" style="color: #1e3a8a; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; font-weight: 700;">Konfirmasi Data Lamaran Anda</div>
             
             <div style="margin-top: 15px; font-size: 14px; color: #475569; line-height: 1.6; max-height: 400px; overflow-y: auto; padding-right: 5px;">
-                <h4 style="color: #2563eb; font-size: 15px; margin-bottom: 10px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 3px;">A. Biodata Pelamar</h4>
+                                <h4 style="color: #2563eb; font-size: 15px; margin-bottom: 10px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 3px;">A. Biodata Pelamar</h4>
                 <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px;">
                     <tr><td style="width: 150px; font-weight: 600; padding: 4px 0;">Nama Lengkap</td><td>: <?= htmlspecialchars($d_preview['nama_lengkap']); ?></td></tr>
                     <tr><td style="font-weight: 600; padding: 4px 0;">NIK</td><td>: <?= htmlspecialchars($d_preview['nik']); ?></td></tr>
                     <tr><td style="font-weight: 600; padding: 4px 0;">Tempat, Tgl Lahir</td><td>: <?= htmlspecialchars($d_preview['tempat_lahir']); ?>, <?= !empty($d_preview['tanggal_lahir']) ? date('d/m/Y', strtotime($d_preview['tanggal_lahir'])) : '-'; ?></td></tr>
                     <tr><td style="font-weight: 600; padding: 4px 0;">Jenis Kelamin</td><td>: <?= htmlspecialchars($d_preview['jenis_kelamin']); ?></td></tr>
                     <tr><td style="font-weight: 600; padding: 4px 0;">Agama</td><td>: <?= htmlspecialchars($d_preview['agama']); ?></td></tr>
+                    <!-- MENAMPILKAN STATUS PERKAWINAN SECARA DINAMIS -->
+                    <tr><td style="font-weight: 600; padding: 4px 0;">Status Hubungan</td><td>: <?= htmlspecialchars($d_preview['status_sosial'] ?? '-'); ?></td></tr>
                     <tr><td style="font-weight: 600; padding: 4px 0;">No. Telepon / WA</td><td>: <?= htmlspecialchars($d_preview['telepon']); ?></td></tr>
                     <tr><td style="font-weight: 600; padding: 4px 0;">Kota & Provinsi</td><td>: <?= htmlspecialchars($d_preview['kota']); ?>, <?= htmlspecialchars($d_preview['provinsi']); ?></td></tr>
                     <tr><td style="font-weight: 600; padding: 4px 0; vertical-align: top;">Alamat Rumah</td><td>: <?= htmlspecialchars($d_preview['alamat']); ?></td></tr>
                 </table>
 
-                <h4 style="color: #2563eb; font-size: 15px; margin-bottom: 10px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 3px;">B. Riwayat Pendidikan</h4>
-                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px;">
-                    <tr><td style="width: 150px; font-weight: 600; padding: 4px 0;">Jenjang / Kampus</td><td>: <?= htmlspecialchars($d_preview['jenjang']); ?> - <?= htmlspecialchars($d_preview['institusi']); ?></td></tr>
-                    <tr><td style="font-weight: 600; padding: 4px 0;">Jurusan / Prodi</td><td>: <?= htmlspecialchars($d_preview['jurusan']); ?></td></tr>
-                    <tr><td style="font-weight: 600; padding: 4px 0;">Tahun Lulus / IPK</td><td>: Lulus Th. <?= htmlspecialchars($d_preview['tahun_lulus']); ?> (IPK: <?= htmlspecialchars($d_preview['ipk']); ?>)</td></tr>
-                </table>
+
+                <!-- POTONGAN KODE BARU YANG ANDA TEMPELKAN -->
+<h4 style="color: #2563eb; font-size: 15px; margin-bottom: 10px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 3px; margin-top: 15px;">B. Riwayat Pendidikan</h4>
+
+<?php 
+$p_id = $_SESSION['pelamar_id'];
+$q_all_pend = mysqli_query($koneksi, "SELECT * FROM pelamar_pendidikan WHERE pelamar_id = $p_id ORDER BY id ASC");
+$no_pend = 1;
+while($d_pend = mysqli_fetch_assoc($q_all_pend)): 
+?>
+    <div style="margin-bottom: 12px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0;">
+        <span style="font-size: 11px; font-weight: 700; color: #475569; background: #cbd5e1; padding: 2px 6px; border-radius: 4px; display: inline-block; margin-bottom: 8px;">Pendidikan #<?= $no_pend++; ?></span>
+        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+            <tr><td style="width: 150px; font-weight: 600; padding: 3px 0;">Jenjang / Kampus</td><td>: <?= htmlspecialchars($d_pend['jenjang']); ?> - <?= htmlspecialchars($d_pend['institusi']); ?></td></tr>
+            <tr><td style="font-weight: 600; padding: 3px 0;">Jurusan / Prodi</td><td>: <?= htmlspecialchars($d_pend['jurusan']); ?></td></tr>
+            <tr><td style="font-weight: 600; padding: 3px 0;">Tahun Lulus / IPK</td><td>: Lulus Th. <?= htmlspecialchars($d_pend['tahun_lulus']); ?> (IPK/Nilai: <?= htmlspecialchars($d_pend['ipk']); ?>)</td></tr>
+        </table>
+    </div>
+<?php endwhile; ?>
+
 
                 <h4 style="color: #2563eb; font-size: 15px; margin-bottom: 10px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 3px;">C. Formasi yang Dilamar</h4>
                 <p style="font-size: 14px; font-weight: 700; color: #1e293b; padding: 4px 0;">LWN-5 (Pusat Rekrutmen Rumah Sakit)</p>
