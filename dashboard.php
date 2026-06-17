@@ -56,7 +56,8 @@ if (isset($_SESSION['username'])) {
         .menu-item { display: block; padding: 14px 18px; color: #94a3b8; text-decoration: none; border-radius: 16px; font-size: 14px; font-weight: 600; transition: all 0.2s; }
         .menu-item.active { background: #f5f3ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
         .menu-item:hover:not(.active) { background: #f8fafc; color: #1e293b; }
-
+        .btn-logout { display: block; width: 100%; background: #dc2626; color: white; text-decoration: none; text-align: center; font-weight: 700; font-size: 14px; padding: 14px 0; border-radius: 16px; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); transition: background 0.2s; margin-top: auto; }
+        .btn-logout:hover { background: #b91c1c; }
         /* Area Konten Utama */
         .main-content { flex: 1; background: #fbfbfd; padding: 40px 50px; display: flex; flex-direction: column; gap: 32px; overflow-y: auto; }
         .content-header h1 { font-size: 26px; font-weight: 800; color: #1e293b; letter-spacing: -0.5px; }
@@ -91,30 +92,38 @@ if (isset($_SESSION['username'])) {
 
     <div class="dashboard-container">
         
-        <!-- SIDEBAR MENU KIRI BERSIH MINIMALIS -->
-        <aside class="sidebar-left">
-            <div>
-                <div class="brand-logo"><span></span>impozitions</div>
-                
-                <!-- NAVIGASI MENU (KOTAK PROFIL KECIL SUDAH DIHAPUS) -->
+                <!-- SIDEBAR MENU KIRI DENGAN CELAH & TOMBOL LOG OUT MERAH PRESISI -->
+        <aside class="sidebar-left" style="display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; padding: 35px; background: #ffffff; border-right: 1px solid #f1f5f9; flex-shrink: 0; width: 280px;">
+            
+            <!-- GRUP ATAS: Navigasi Utama sampai Lowongan Tahapan -->
+            <div style="display: flex; flex-direction: column; gap: 6px;">
+                <div class="brand-logo" style="font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 45px; display: flex; align-items: center; gap: 10px;"><span style="width: 10px; height: 20px; background: #4f46e5; border-radius: 4px; display: inline-block;"></span>impozitions</div>
                 <nav class="menu-list">
                     <a href="dashboard.php" class="menu-item active">Dashboard</a>
-                    <a href="master_user.php" class="menu-item" style="display: block; padding: 14px 18px; color: #94a3b8; text-decoration: none; border-radius: 16px; font-size: 14px; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master User</a>
-                    <a href="master_unit.php" class="menu-item" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master Unit</a>
-                    <a href="master_jabatan.php" class="menu-item" style="text-decoration: none;" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master Jabatan</a>
-                    <a href="master_pendidikan.php" class="menu-item" style="text-decoration: none;" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master Pendidikan</a>
-                    <a href="master_lowongan.php" class="menu-item" style="text-decoration: none;" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Master Lowongan</a>
+                    <a href="master_user.php" class="menu-item">Master User</a>
+                    <a href="master_unit.php" class="menu-item">Master Unit</a>
+                    <a href="master_jabatan.php" class="menu-item">Master Jabatan</a>
+                    <a href="master_pendidikan.php" class="menu-item">Master Pendidikan</a>
+                    <a href="master_lowongan.php" class="menu-item">Master Lowongan</a>
                     <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
                     <a href="data_pelamar.php" class="menu-item">Data Pelamar</a>
-                    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>                    <a href="user.php" class="menu-item" onmouseover="this.style.background='#f8fafc'; this.style.color='#1e293b';" onmouseout="this.style.background='transparent'; this.style.color='#94a3b8';">Profil Pengguna</a>
+                    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>
+                                        <a href="user.php" class="menu-item">Profil Pengguna</a>
+
                 </nav>
             </div>
-            
-            <!-- KOTAK LOGOUT MINIMALIS -->
-            <div class="support-card" style="background: #fff5f5; border: 1px solid #fee2e2; padding: 16px; border-radius: 20px; text-align: center; margin-top: 20px;">
-                <a href="logout.php" style="display: block; width: 100%; background: #dc2626; color: white; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 700; text-decoration: none; text-align: center; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15);">Log Out</a>
+
+            <!-- GRUP BAWAH: Menyisakan Celah Kosong di Tengah, Memuat Profil & Tombol Log Out Merah -->
+            <div style="margin-top: auto; display: flex; flex-direction: column; gap: 20px; padding-top: 40px;">
+                <nav class="menu-list">
+                </nav>
+                
+                <!-- TOMBOL LOG OUT DENGAN STYLE KOTAK MERAH ABSOLUT -->
+                <a href="logout.php" style="display: block; width: 100%; padding: 14px; background: #ef4444; color: #ffffff !important; text-align: center; border-radius: 16px; font-weight: 700; font-size: 14px; text-decoration: none; border: none; transition: background 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem Admin?')">Log Out</a>
             </div>
+            
         </aside>
+
 
         <!-- AREA KONTEN UTAMA TENGAH -->
         <main class="main-content">
