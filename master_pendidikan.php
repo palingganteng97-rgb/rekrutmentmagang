@@ -115,8 +115,7 @@ if (isset($_POST['simpan_pendidikan_baru'])) {
                 </nav>
             </div>
             <div class="support-card">
-                <a href="logout.php" style="text-decoration: none;">Log Out</a>
-            </div>
+                <a href="logout.php" class="menu-item" style="color: #ef4444;" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem Admin?')">Sign Out / Logout</a>            </div>
         </aside>
 
         <!-- AREA KONTEN UTAMA -->
