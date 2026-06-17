@@ -64,39 +64,67 @@ if (isset($_POST['proses_login_pelamar'])) {
 }
 
 // =========================================================================
-// 4. FITUR C: PROSES JIKA USER INPUT DATA LENGKAP & KIRIM LAMARAN
+// 4. FITUR C: PROSES INPUT DATA LENGKAP & KIRIM LAMARAN (FIX DATA MASUK)
 // =========================================================================
 if (isset($_POST['kirim_berkas_lamaran'])) {
     $lowongan_id   = intval($_POST['lowongan_id']);
     $pelamar_id    = intval($_SESSION['user_pelamar_id']); 
     
-    // Ambil input biodata lengkap
+    // MENANGKAP INPUT DATA DINAMIS TERBARU YANG DIKETIK USER
+    $nama_input    = mysqli_real_escape_string($koneksi, $_POST['nama_pengguna']);
+    $email_input   = mysqli_real_escape_string($koneksi, $_POST['email_pengguna']);
     $nik           = mysqli_real_escape_string($koneksi, $_POST['nik']);
     $tempat_lahir  = mysqli_real_escape_string($koneksi, $_POST['tempat_lahir']);
     $tanggal_lahir = mysqli_real_escape_string($koneksi, $_POST['tanggal_lahir']);
     $jenis_kelamin = mysqli_real_escape_string($koneksi, $_POST['jenis_kelamin']);
     $agama         = mysqli_real_escape_string($koneksi, $_POST['agama']);
+    $status_sosial = mysqli_real_escape_string($koneksi, $_POST['status_sosial']);
     $alamat        = mysqli_real_escape_string($koneksi, $_POST['alamat']);
     $kota          = mysqli_real_escape_string($koneksi, $_POST['kota']);
     $provinsi      = mysqli_real_escape_string($koneksi, $_POST['provinsi']);
     $telepon       = mysqli_real_escape_string($koneksi, $_POST['telepon']);
 
-    // A. Update Profil Pelamar di tabel `pelamar` secara lengkap sesuai skema HeidiSQL
+    // LOGIKA PROSES UPLOAD FOTO FISIK
+    $nama_foto_db = ""; 
+    if (isset($_FILES['foto_pelamar']) && $_FILES['foto_pelamar']['error'] === 0) {
+        $file_name = $_FILES['foto_pelamar']['name'];
+        $file_tmp  = $_FILES['foto_pelamar']['tmp_name'];
+        $file_ext  = strtolower(pathinfo($file_name, PATHINFO_EXTENSION));
+        
+        $nama_foto_db = "foto_" . $pelamar_id . "_" . time() . "." . $file_ext;
+        $target_dir = "uploads/";
+        
+        if (!is_dir($target_dir)) {
+            mkdir($target_dir, 0777, true);
+        }
+        move_uploaded_file($file_tmp, $target_dir . $nama_foto_db);
+    }
+
+    // A. UPDATE DATA LENGKAP YANG DIKETIK USER LANGSUNG KE TABEL PELAMAR DB
     $q_update = "UPDATE pelamar SET 
+                    nama_lengkap = '$nama_input',
+                    email = '$email_input',
                     nik = '$nik', 
                     tempat_lahir = '$tempat_lahir', 
                     tanggal_lahir = '$tanggal_lahir', 
                     jenis_kelamin = '$jenis_kelamin', 
                     agama = '$agama', 
+                    status_sosial = '$status_sosial',
                     alamat = '$alamat', 
                     kota = '$kota', 
                     provinsi = '$provinsi', 
                     telepon = '$telepon', 
+                    foto_pelamar = '$nama_foto_db',
                     updated_at = NOW() 
                  WHERE id = $pelamar_id";
+                 
     mysqli_query($koneksi, $q_update);
 
-    // B. Simpan transaksi pengajuan berkas ke tabel `rekrutmen_lamaran`
+    // Perbarui session agar header ikut berganti nama baru otomatis
+    $_SESSION['user_pelamar_nama'] = $nama_input;
+    $_SESSION['user_pelamar_mail'] = $email_input;
+
+    // B. SIMPAN LOG DATA KE REKRUTMEN LAMARAN
     mysqli_query($koneksi, "SET FOREIGN_KEY_CHECKS=0");
 
     $q_lamaran = "INSERT INTO rekrutmen_lamaran (lowongan_id, pelamar_id, created_at, updated_at) VALUES ('$lowongan_id', '$pelamar_id', NOW(), NOW())";
@@ -106,7 +134,7 @@ if (isset($_POST['kirim_berkas_lamaran'])) {
         $tahapan_id = 1; 
         $petugas_id = 1; 
 
-        // C. Input log status seleksi awal ke tabel `lamaran_tahapan`
+        // C. TEMBAK DATA KE LAMARAN TAHAPAN UNTUK STATUS PENDING DI DASHBOARD ADMIN
         $q_tahapan = "INSERT INTO lamaran_tahapan (lamaran_id, tahapan_id, tanggal_mulai, status, petugas_id, created_at, updated_at) 
                       VALUES ('$lamaran_id', '$tahapan_id', NOW(), 'Pending', '$petugas_id', NOW(), NOW())";
         
@@ -115,7 +143,7 @@ if (isset($_POST['kirim_berkas_lamaran'])) {
     
     mysqli_query($koneksi, "SET FOREIGN_KEY_CHECKS=1");
 
-    header("Location: lowongan_pelamar.php?id=" . $lowongan_id . "&status=sukses&nama=" . urlencode($_SESSION['user_pelamar_nama']));
+    header("Location: lowongan_pelamar.php?id=" . $lowongan_id . "&status=sukses&nama=" . urlencode($nama_input));
     exit();
 }
 
@@ -135,7 +163,7 @@ if (isset($_GET['status']) && $_GET['status'] == 'sukses') {
 }
 
 // =========================================================================
-// 5. AMBIL DATA LOWONGAN UNTUK DITAMPILKAN (DENGAN PROTEKSI DATA NULL)
+// 5. AMBIL DATA LOWONGAN UNTUK DITAMPILKAN
 // =========================================================================
 $query = "SELECT * FROM rekrutmen_lowongan WHERE status = 'Aktif' ORDER BY id DESC";
 $result = mysqli_query($koneksi, $query);
@@ -147,7 +175,6 @@ if ($result) {
     }
 }
 
-// PROTEKSI CADANGAN: Jika database Anda kosong atau status tidak sesuai, isi larik manual agar tidak memicu Undefined Index
 if (empty($lowongan_list)) {
     $lowongan_list[] = [
         'id' => 5,
@@ -173,9 +200,18 @@ foreach ($lowongan_list as $l) {
     }
 }
 
-// Pengaman akhir: Mengamankan properti nama_lowongan agar tidak memicu fatal error htmlspecialchars()
-if (!$detail || !isset($detail['nama_lowongan'])) {
+if (!$detail) {
     $detail = $lowongan_list[0];
+}
+
+// Ambil data profil lama pelamar jika dia sudah pernah mengisi biodata sebelumnya
+$old_data = ['nik'=>'','tempat_lahir'=>'','tanggal_lahir'=>'','jenis_kelamin'=>'','agama'=>'','status_sosial'=>'','alamat'=>'','kota'=>'','provinsi'=>'','telepon'=>''];
+if (isset($_SESSION['user_pelamar_id'])) {
+    $p_id = intval($_SESSION['user_pelamar_id']);
+    $res_old = mysqli_query($koneksi, "SELECT * FROM pelamar WHERE id = $p_id");
+    if ($res_old && mysqli_num_rows($res_old) > 0) {
+        $old_data = mysqli_fetch_assoc($res_old);
+    }
 }
 ?>
 <!DOCTYPE html>
@@ -187,11 +223,10 @@ if (!$detail || !isset($detail['nama_lowongan'])) {
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f8fafc; color: #334155; line-height: 1.5; padding-bottom: 100px; }
-        
-        header { background: white; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 50; }
+                header { background: white; border-bottom: 1px solid #e2e8f0; position: sticky; top: 0; z-index: 50; }
         .nav-container { max-width: 800px; margin: 0 auto; padding: 0 20px; height: 64px; display: flex; align-items: center; justify-content: space-between; }
         .nav-brand { font-size: 20px; font-weight: 900; color: #0f172a; text-decoration: none; letter-spacing: -0.5px; }
-        
+
         .user-info { display: flex; align-items: center; gap: 12px; }
         .user-nav-status { font-size: 14px; font-weight: 600; color: #334155; display: flex; align-items: center; }
         .btn-logout-header { font-size: 12px; color: #ef4444; text-decoration: none; font-weight: bold; border: 1px solid #fecaca; padding: 5px 12px; border-radius: 6px; background: #fff5f5; transition: all 0.2s ease; }
@@ -221,16 +256,12 @@ if (!$detail || !isset($detail['nama_lowongan'])) {
         .btn-secondary { background: #10b981; }
         .btn-secondary:hover { background: #059669; }
 
-        /* Pop-up Modal Kontrol */
         .modal-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 100; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
         .modal-bg.active { opacity: 1; pointer-events: auto; }
-        
-        .modal-box { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 420px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative; max-height: 90vh; overflow-y: auto; }
+        .modal-box { background: white; padding: 25px; border-radius: 12px; width: 100%; max-width: 440px; box-shadow: 0 10px 25px rgba(0,0,0,0.1); position: relative; max-height: 90vh; overflow-y: auto; }
         .modal-close { position: absolute; top: 12px; right: 15px; font-size: 18px; cursor: pointer; color: #94a3b8; font-weight: bold; }
 
-        /* Grid Untuk Form Isian Lengkap Berpasangan */
         .form-row-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-
         .form-group { margin-bottom: 12px; }
         .form-group label { display: block; font-size: 12px; font-weight: 600; margin-bottom: 4px; color: #475569; }
         .form-control { width: 100%; padding: 9px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 13px; color: #334155; }
@@ -267,13 +298,14 @@ if (!$detail || !isset($detail['nama_lowongan'])) {
                 <div class="info-header">
                     <div class="avatar-bulat">⚕️</div>
                     <div>
+                        <h1 class="job-title"><?= htmlspecialchars($detail['nama_lowongan'] ?? 'Lowongan Kerja'); ?></h1>
                         <div class="company-name">✓ Instansi Pusat Rekrutmen Rumah Sakit</div>
                     </div>
                 </div>
 
                 <div class="specs-grid">
                     <div class="spec-item"><span class="spec-label">Kompensasi:</span> Menarik</div>
-                    <div class="spec-item"><span class="spec-label">Kode Formasi:</span> LWN-<?= $detail['id']; ?></div>
+                    <div class="spec-item"><span class="spec-label">Kode Formasi:</span> LWN-<?= $detail['id'] ?? '5'; ?></div>
                     <div class="spec-item"><span class="spec-label">Kebutuhan:</span> <?= htmlspecialchars($detail['kuota'] ?? '0'); ?> Orang</div>
                     <div class="spec-item"><span class="spec-label">Batas Akhir:</span> 20 Jun 2026</div>
                 </div>
@@ -290,15 +322,26 @@ if (!$detail || !isset($detail['nama_lowongan'])) {
         </div>
     </main>
 
-    <!-- POPUP MODAL DATA LENGKAP PELAMAR -->
+    <!-- POPUP MODAL DATA BIODATA UTUH (FIX FORM RE-BINDING DATA) -->
     <div id="modal-berkas" class="modal-bg" onclick="closeModalOnBg(event, 'modal-berkas')">
         <div class="modal-box">
             <span class="modal-close" onclick="toggleModal('modal-berkas')">&times;</span>
-            <h3 style="margin-bottom: 18px; color:#0f172a; font-size:18px;">📝 Pengisian Biodata Lengkap</h3>
+            <h3 style="margin-bottom: 18px; color:#0f172a; font-size:18px;">📝 Pengisian Biodata Kerja</h3>
             
-            <form action="" method="POST">
-                <input type="hidden" name="lowongan_id" value="<?= $detail['id']; ?>">
+            <form action="" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="lowongan_id" value="<?= $detail['id'] ?? '5'; ?>">
                 
+                <div class="form-row-grid">
+                    <div class="form-group">
+                        <label>Nama Pengguna (Lengkap)</label>
+                        <input type="text" name="nama_pengguna" class="form-control" placeholder="Nama Sesuai KTP" value="<?= htmlspecialchars($_SESSION['user_pelamar_nama'] ?? ''); ?>" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Alamat Email Aktif</label>
+                        <input type="email" name="email_pengguna" class="form-control" placeholder="nama@email.com" value="<?= htmlspecialchars($_SESSION['user_pelamar_mail'] ?? ''); ?>" required>
+                    </div>
+                </div>
+
                 <div class="form-group">
                     <label>Nomor Induk Kependudukan (NIK)</label>
                     <input type="text" name="nik" class="form-control" placeholder="16 Digit NIK KTP" value="<?= htmlspecialchars($old_data['nik'] ?? ''); ?>" required maxlength="16" minlength="16">
@@ -319,35 +362,58 @@ if (!$detail || !isset($detail['nama_lowongan'])) {
                     <div class="form-group">
                         <label>Jenis Kelamin</label>
                         <select name="jenis_kelamin" class="form-control" required>
-                            <option value="Laki-Laki" <?= ($old_data['jenis_kelamin'] == 'Laki-Laki') ? 'selected' : ''; ?>>Laki-Laki</option>
-                            <option value="Perempuan" <?= ($old_data['jenis_kelamin'] == 'Perempuan') ? 'selected' : ''; ?>>Perempuan</option>
+                            <option value="" disabled <?= !isset($old_data['jenis_kelamin']) ? 'selected' : ''; ?>>-- Pilih Jenis Kelamin --</option>
+                            <option value="Laki-Laki" <?= (isset($old_data['jenis_kelamin']) && $old_data['jenis_kelamin'] == 'Laki-Laki') ? 'selected' : ''; ?>>Laki-Laki</option>
+                            <option value="Perempuan" <?= (isset($old_data['jenis_kelamin']) && $old_data['jenis_kelamin'] == 'Perempuan') ? 'selected' : ''; ?>>Perempuan</option>
                         </select>
                     </div>
                     <div class="form-group">
                         <label>Agama</label>
-                        <input type="text" name="agama" class="form-control" placeholder="Islam / Kristen / dll" value="<?= htmlspecialchars($old_data['agama'] ?? ''); ?>" required>
+                        <select name="agama" class="form-control" required>
+                            <option value="" disabled <?= !isset($old_data['agama']) ? 'selected' : ''; ?>>-- Pilih Agama --</option>
+                            <option value="Islam" <?= (isset($old_data['agama']) && $old_data['agama'] == 'Islam') ? 'selected' : ''; ?>>Islam</option>
+                            <option value="Kristen Protestan" <?= (isset($old_data['agama']) && $old_data['agama'] == 'Kristen Protestan') ? 'selected' : ''; ?>>Kristen Protestan</option>
+                            <option value="Katolik" <?= (isset($old_data['agama']) && $old_data['agama'] == 'Katolik') ? 'selected' : ''; ?>>Katolik</option>
+                            <option value="Hindu" <?= (isset($old_data['agama']) && $old_data['agama'] == 'Hindu') ? 'selected' : ''; ?>>Hindu</option>
+                            <option value="Buddha" <?= (isset($old_data['agama']) && $old_data['agama'] == 'Buddha') ? 'selected' : ''; ?>>Buddha</option>
+                            <option value="Khonghucu" <?= (isset($old_data['agama']) && $old_data['agama'] == 'Khonghucu') ? 'selected' : ''; ?>>Khonghucu</option>
+                        </select>
                     </div>
                 </div>
 
                 <div class="form-group">
-                    <label>Alamat Lengkap</label>
-                    <input type="text" name="alamat" class="form-control" placeholder="Nama Jalan, RT/RW, Dusun" value="<?= htmlspecialchars($old_data['alamat'] ?? ''); ?>" required>
+                    <label>Status Hubungan / Sosial</label>
+                    <select name="status_sosial" class="form-control" required>
+                        <option value="" disabled <?= !isset($old_data['status_sosial']) ? 'selected' : ''; ?>>-- Pilih Status --</option>
+                        <option value="Belum Kawin" <?= (isset($old_data['status_sosial']) && $old_data['status_sosial'] == 'Belum Kawin') ? 'selected' : ''; ?>>Belum Kawin</option>
+                        <option value="Kawin" <?= (isset($old_data['status_sosial']) && $old_data['status_sosial'] == 'Kawin') ? 'selected' : ''; ?>>Kawin</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Alamat Lengkap Mandiri</label>
+                    <input type="text" name="alamat" class="form-control" placeholder="Nama Jalan, No Rumah, RT/RW, Dusun" value="<?= htmlspecialchars($old_data['alamat'] ?? ''); ?>" required>
                 </div>
 
                 <div class="form-row-grid">
                     <div class="form-group">
                         <label>Kabupaten / Kota</label>
-                        <input type="text" name="kota" class="form-control" placeholder="Kota" value="<?= htmlspecialchars($old_data['kota'] ?? ''); ?>" required>
+                        <input type="text" name="kota" class="form-control" placeholder="Contoh: Kendal" value="<?= htmlspecialchars($old_data['kota'] ?? ''); ?>" required>
                     </div>
                     <div class="form-group">
                         <label>Provinsi</label>
-                        <input type="text" name="provinsi" class="form-control" placeholder="Provinsi" value="<?= htmlspecialchars($old_data['provinsi'] ?? ''); ?>" required>
+                        <input type="text" name="provinsi" class="form-control" placeholder="Contoh: Jawa Tengah" value="<?= htmlspecialchars($old_data['provinsi'] ?? ''); ?>" required>
                     </div>
                 </div>
 
                 <div class="form-group">
                     <label>Nomor Telepon / HP</label>
                     <input type="tel" name="telepon" class="form-control" placeholder="Contoh: 08123456789" value="<?= htmlspecialchars($old_data['telepon'] ?? ''); ?>" required>
+                </div>
+
+                <div class="form-group">
+                    <label>Pas Foto Resmi Pelamar (.jpg / .png / maks 2MB)</label>
+                    <input type="file" name="foto_pelamar" class="form-control" accept="image/*" required>
                 </div>
 
                 <button type="submit" name="kirim_berkas_lamaran" class="btn" style="margin-top: 5px;">🚀 Kirim Lamaran Resmi</button>
@@ -403,7 +469,6 @@ if (!$detail || !isset($detail['nama_lowongan'])) {
         </div>
     </div>
 
-    <!-- JAVASCRIPT ANIMATION & LOGIK POPUP -->
     <script>
         function toggleModal(id) {
             const modal = document.getElementById(id);
@@ -433,3 +498,4 @@ if (!$detail || !isset($detail['nama_lowongan'])) {
     </script>
 </body>
 </html>
+
