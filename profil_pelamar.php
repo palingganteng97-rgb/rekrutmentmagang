@@ -167,17 +167,21 @@ $data_pend = mysqli_fetch_assoc($query_pend_aktif);
             <div class="card-title">Lengkapi Profil Pelamar</div>
             
             <form method="POST" action="" enctype="multipart/form-data">
+                                <!-- Sesi Unggah Foto Profil -->
                 <div class="avatar-section full-width">
-                    <?php if(!empty($data['foto']) && file_exists("uploads/".$data['foto'])): ?>
-                        <img src="uploads/<?= $data['foto']; ?>" class="avatar-preview" alt="Foto">
+                    <?php if (!empty($data['foto']) && file_exists("uploads/" . $data['foto'])): ?>
+                        <!-- Diperbaiki cara mencetak nama filenya -->
+                        <img src="uploads/<?= htmlspecialchars($data['foto']); ?>" class="avatar-preview" alt="Foto Profil">
                     <?php else: ?>
-                        <div class="avatar-preview" style="display: flex; align-items: center; justify-content: center; font-size: 12px; color: #64748b;">No Photo</div>
+                        <div class="avatar-preview" style="display: flex; align-items: center; justify-content: center; font-size: 12px; color: #64748b; background: #e2e8f0; border-radius: 50%; width: 80px; height: 80px;">No Photo</div>
                     <?php endif; ?>
+                    
                     <div class="form-group" style="margin: 0; flex: 1;">
                         <label>Foto Profil (JPG / PNG)</label>
                         <input type="file" name="foto" class="form-control">
                     </div>
                 </div>
+
 
                                 <div class="form-grid">
                     <div class="form-group">
