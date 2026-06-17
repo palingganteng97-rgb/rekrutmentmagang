@@ -59,7 +59,7 @@ if (isset($_POST['login'])) {
     }
 }
 
-// 4. LOGIKA PROSES FINAL KIRIM LAMARAN KERJA
+// 4. LOGIKA PROSES FINAL KIRIM LAMARAN KERJA (VALIDASI KETAT ANTI DATA KOSONG)
 if (isset($_POST['lamar'])) {
     if (!isset($_SESSION['pelamar_logged_in'])) {
         $error_message = "Anda harus masuk terlebih dahulu!";
@@ -67,15 +67,32 @@ if (isset($_POST['lamar'])) {
         $pelamar_id = $_SESSION['pelamar_id'];
         $lowongan_id = 5; // ID Contoh Formasi LWN-5
 
-        $cek_lamaran = mysqli_query($koneksi, "SELECT id FROM rekrutmen_lamaran WHERE pelamar_id = $pelamar_id AND lowongan_id = $lowongan_id");
-        if (mysqli_num_rows($cek_lamaran) > 0) {
-            $error_message = "Anda sudah mengirimkan lamaran untuk formasi ini.";
+        // Ambil data profil dan pendidikan pelamar saat ini untuk dicek ulang nilainya
+        $cek_validasi = mysqli_query($koneksi, "SELECT p.nik, p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.telepon, p.kota, p.provinsi, p.alamat, pd.jenjang, pd.institusi, pd.jurusan, pd.tahun_lulus, pd.ipk FROM pelamar p LEFT JOIN pelamar_pendidikan pd ON p.id = pd.pelamar_id WHERE p.id = $pelamar_id");
+        $data_riil = mysqli_fetch_assoc($cek_validasi);
+
+        // Jika salah satu dari seluruh data di atas ternyata kosong (NULL atau string kosong "")
+        if (
+            empty($data_riil['nik']) || empty($data_riil['tempat_lahir']) || empty($data_riil['tanggal_lahir']) || 
+            empty($data_riil['jenis_kelamin']) || empty($data_riil['agama']) || empty($data_riil['telepon']) || 
+            empty($data_riil['kota']) || empty($data_riil['provinsi']) || empty($data_riil['alamat']) || 
+            empty($data_riil['jenjang']) || empty($data_riil['institusi']) || empty($data_riil['jurusan']) || 
+            empty($data_riil['tahun_lulus']) || empty($data_riil['ipk'])
+        ) {
+            $error_message = "Gagal Mengirim! Ditemukan data yang masih kosong. Silakan lengkapi Biodata & Riwayat Pendidikan Anda terlebih dahulu!";
         } else {
-            $query_lamar = "INSERT INTO rekrutmen_lamaran (pelamar_id, lowongan_id, created_at) VALUES ($pelamar_id, $lowongan_id, NOW())";
-            if (mysqli_query($koneksi, $query_lamar)) {
-                $success_message = "Lamaran Anda berhasil dikirim ke sistem!";
+            // Cek apakah pelamar sudah pernah mengirimkan lamaran sebelumnya
+            $cek_lamaran = mysqli_query($koneksi, "SELECT id FROM rekrutmen_lamaran WHERE pelamar_id = $pelamar_id AND lowongan_id = $lowongan_id");
+            if (mysqli_num_rows($cek_lamaran) > 0) {
+                $error_message = "Anda sudah mengirimkan lamaran untuk formasi ini.";
             } else {
-                $error_message = "Gagal mengirim lamaran kerja.";
+                // Jika semua data benar-benar lengkap, baru simpan ke database rekrutmen
+                $query_lamar = "INSERT INTO rekrutmen_lamaran (pelamar_id, lowongan_id, created_at) VALUES ($pelamar_id, $lowongan_id, NOW())";
+                if (mysqli_query($koneksi, $query_lamar)) {
+                    $success_message = "Lamaran Anda berhasil dikirim ke sistem!";
+                } else {
+                    $error_message = "Gagal mengirim lamaran kerja.";
+                }
             }
         }
     }
@@ -194,7 +211,8 @@ if (isset($_GET['logout'])) {
                 if (empty($data_cek['nik']) || empty($data_cek['telepon']) || empty($data_cek['alamat']) || empty($data_cek['jenjang'])): ?>
                     <button onclick="alert('⚠️ Profil Anda belum lengkap! Silakan klik nama Anda di pojok kanan atas untuk melengkapi Biodata & Riwayat Pendidikan terlebih dahulu.')" class="btn-lamar" style="background-color: #eab308;">⚠️ LENGKAPI PROFIL DAHULU</button>
                 <?php else: 
-                    $q_preview = mysqli_query($koneksi, "SELECT p.nama_lengkap, p.nik, p.telepon, pd.jenjang, pd.institusi FROM pelamar p INNER JOIN pelamar_pendidikan pd ON p.id = pd.pelamar_id WHERE p.id = $p_id");
+                    // Ambil rangkuman untuk modal jika profil sudah lengkap
+                    $q_preview = mysqli_query($koneksi, "SELECT p.*, pd.jenjang, pd.institusi, pd.jurusan, pd.tahun_lulus, pd.ipk FROM pelamar p INNER JOIN pelamar_pendidikan pd ON p.id = pd.pelamar_id WHERE p.id = $p_id");
                     $d_preview = mysqli_fetch_assoc($q_preview);
                 ?>
                     <button onclick="openPreviewModal()" class="btn-lamar">📄 PREVIEW & LAMAR SEKARANG</button>
@@ -230,26 +248,43 @@ if (isset($_GET['logout'])) {
         </div>
     </div>
 
-    <!-- MODAL POP-UP PREVIEW RINGKAS -->
+    <!-- MODAL POP-UP PREVIEW LENGKAP SEBELUM KIRIM -->
     <?php if (isset($_SESSION['pelamar_logged_in']) && isset($d_preview)): ?>
     <div class="modal-overlay" id="previewModal">
-        <div class="modal-box" style="max-width: 500px;">
+        <div class="modal-box" style="max-width: 600px; width: 90%;">
             <button class="modal-close" onclick="closePreviewModal()">&times;</button>
-            <div class="modal-title" style="color: #1e3a8a; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Konfirmasi Data Lamaran</div>
+            <div class="modal-title" style="color: #1e3a8a; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; font-weight: 700;">Konfirmasi Data Lamaran Anda</div>
             
-            <div style="margin-top: 15px; font-size: 14px; color: #475569; line-height: 1.6;">
-                <p style="margin-bottom: 8px;"><strong>Nama Lengkap:</strong> <?= htmlspecialchars($d_preview['nama_lengkap']); ?></p>
-                <p style="margin-bottom: 8px;"><strong>NIK Pelamar:</strong> <?= htmlspecialchars($d_preview['nik']); ?></p>
-                <p style="margin-bottom: 8px;"><strong>No Telepon / WA:</strong> <?= htmlspecialchars($d_preview['telepon']); ?></p>
-                <p style="margin-bottom: 8px;"><strong>Pendidikan Terakhir:</strong> <?= htmlspecialchars($d_preview['jenjang']); ?> - <?= htmlspecialchars($d_preview['institusi']); ?></p>
-                <p style="margin-bottom: 15px; color: #2563eb;"><strong>Formasi Dilamar:</strong> LWN-5 (Pusat Rekrutmen Rumah Sakit)</p>
-                <div style="background-color: #f8fafc; padding: 10px; border-radius: 6px; font-size: 12px; color: #64748b; border: 1px solid #e2e8f0; margin-bottom: 20px;">
-                    ⚠️ Pastikan data di atas sudah benar. Setelah lamaran dikirim, data formasi tidak dapat diubah kembali.
+            <div style="margin-top: 15px; font-size: 14px; color: #475569; line-height: 1.6; max-height: 400px; overflow-y: auto; padding-right: 5px;">
+                <h4 style="color: #2563eb; font-size: 15px; margin-bottom: 10px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 3px;">A. Biodata Pelamar</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px;">
+                    <tr><td style="width: 150px; font-weight: 600; padding: 4px 0;">Nama Lengkap</td><td>: <?= htmlspecialchars($d_preview['nama_lengkap']); ?></td></tr>
+                    <tr><td style="font-weight: 600; padding: 4px 0;">NIK</td><td>: <?= htmlspecialchars($d_preview['nik']); ?></td></tr>
+                    <tr><td style="font-weight: 600; padding: 4px 0;">Tempat, Tgl Lahir</td><td>: <?= htmlspecialchars($d_preview['tempat_lahir']); ?>, <?= !empty($d_preview['tanggal_lahir']) ? date('d/m/Y', strtotime($d_preview['tanggal_lahir'])) : '-'; ?></td></tr>
+                    <tr><td style="font-weight: 600; padding: 4px 0;">Jenis Kelamin</td><td>: <?= htmlspecialchars($d_preview['jenis_kelamin']); ?></td></tr>
+                    <tr><td style="font-weight: 600; padding: 4px 0;">Agama</td><td>: <?= htmlspecialchars($d_preview['agama']); ?></td></tr>
+                    <tr><td style="font-weight: 600; padding: 4px 0;">No. Telepon / WA</td><td>: <?= htmlspecialchars($d_preview['telepon']); ?></td></tr>
+                    <tr><td style="font-weight: 600; padding: 4px 0;">Kota & Provinsi</td><td>: <?= htmlspecialchars($d_preview['kota']); ?>, <?= htmlspecialchars($d_preview['provinsi']); ?></td></tr>
+                    <tr><td style="font-weight: 600; padding: 4px 0; vertical-align: top;">Alamat Rumah</td><td>: <?= htmlspecialchars($d_preview['alamat']); ?></td></tr>
+                </table>
+
+                <h4 style="color: #2563eb; font-size: 15px; margin-bottom: 10px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 3px;">B. Riwayat Pendidikan</h4>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 13px;">
+                    <tr><td style="width: 150px; font-weight: 600; padding: 4px 0;">Jenjang / Kampus</td><td>: <?= htmlspecialchars($d_preview['jenjang']); ?> - <?= htmlspecialchars($d_preview['institusi']); ?></td></tr>
+                    <tr><td style="font-weight: 600; padding: 4px 0;">Jurusan / Prodi</td><td>: <?= htmlspecialchars($d_preview['jurusan']); ?></td></tr>
+                    <tr><td style="font-weight: 600; padding: 4px 0;">Tahun Lulus / IPK</td><td>: Lulus Th. <?= htmlspecialchars($d_preview['tahun_lulus']); ?> (IPK: <?= htmlspecialchars($d_preview['ipk']); ?>)</td></tr>
+                </table>
+
+                <h4 style="color: #2563eb; font-size: 15px; margin-bottom: 10px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 3px;">C. Formasi yang Dilamar</h4>
+                <p style="font-size: 14px; font-weight: 700; color: #1e293b; padding: 4px 0;">LWN-5 (Pusat Rekrutmen Rumah Sakit)</p>
+                
+                <div style="background-color: #fffba6; padding: 12px; border-radius: 8px; font-size: 12px; color: #713f12; border: 1px solid #fef08a; margin-top: 15px; font-weight: 500;">
+                    ⚠️ Pastikan seluruh berkas dan biodata di atas sudah sesuai. Setelah lamaran dikirim, data tidak dapat diubah kembali.
                 </div>
             </div>
 
             <form method="POST" action="">
-                <button type="submit" name="lamar" class="btn-submit" style="background-color: #10b981;">✓ YA, KIRIM LAMARAN SAYA</button>
+                <button type="submit" name="lamar" class="btn-submit" style="background-color: #10b981; padding: 12px; font-size: 14px; font-weight: 700; margin-top: 15px;">✓ YA, DATA SUDAH BENAR & KIRIM LAMARAN</button>
             </form>
         </div>
     </div>
