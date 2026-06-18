@@ -434,8 +434,6 @@ if ($query_ambil_berkas) {
                                 <option value="Ijazah">Ijazah</option>
                                 <option value="Transkrip Nilai">Transkrip Nilai</option>
                                 <option value="SKCK">SKCK</option>
-                                <option value="KTP">KTP / Kartu Identitas</option>
-                                <option value="Sertifikat Pelatihan">Sertifikat Pelatihan</option>
                             </select>
                         </div>
                         
