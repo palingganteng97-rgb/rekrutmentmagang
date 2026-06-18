@@ -478,7 +478,7 @@ if (mysqli_num_rows($query_str_cek) > 0) {
                                 <div class="item-form-str">
                                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                                         <span style="font-weight: bold; color: #475569;">Data STR #<?= ($index + 1); ?></span>
-                                        <button type="button" class="btn-hapus-item" onclick="this.parentNode.parentNode.remove(); urutkanUlangNomorSTR();">Hapus</button>
+                                        <a href="hapus_str.php?id=<?= $str['id']; ?>" class="btn-hapus-item" style="text-decoration: none; display: inline-block;" onclick="return confirm('Apakah Anda yakin ingin menghapus data STR ini secara permanen?')">Hapus</a>
                                     </div>
                                     <div style="margin-bottom: 12px;">
                                         <label style="font-size: 13px; font-weight: 600; color: #475569;">Nomor STR</label>
