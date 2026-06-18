@@ -429,7 +429,12 @@ if ($query_ambil_berkas) {
 <form action="" method="POST" enctype="multipart/form-data">
                         <div class="form-group" style="margin-top: 15px;">
                             <label>Jenis Berkas</label>
-                            <input type="text" name="jenis_berkas[]" class="form-control" value="<?= isset($berkas['jenis_berkas']) ? htmlspecialchars($berkas['jenis_berkas']) : ''; ?>"required>
+<select name="jenis_berkas[]" class="form-control" required>
+    <option value="">-- Pilih Jenis Berkas --</option>
+    <option value="Ijazah" <?= (isset($berkas['jenis_berkas']) && $berkas['jenis_berkas'] == 'Ijazah') ? 'selected' : ''; ?>>Ijazah</option>
+    <option value="Transkrip Nilai" <?= (isset($berkas['jenis_berkas']) && $berkas['jenis_berkas'] == 'Transkrip Nilai') ? 'selected' : ''; ?>>Transkrip Nilai</option>
+    <option value="SKCK" <?= (isset($berkas['jenis_berkas']) && $berkas['jenis_berkas'] == 'SKCK') ? 'selected' : ''; ?>>SKCK</option>
+</select>
                         </div>
                         
                         <div class="form-group">
