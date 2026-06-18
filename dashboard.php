@@ -116,12 +116,10 @@ if (isset($_SESSION['username'])) {
             <!-- GRUP BAWAH: Menyisakan Celah Kosong di Tengah, Memuat Profil & Tombol Log Out Merah -->
             <div style="margin-top: auto; display: flex; flex-direction: column; gap: 20px; padding-top: 40px;">
                 <nav class="menu-list">
-                </nav>
-                
+                </nav>               
                 <!-- TOMBOL LOG OUT DENGAN STYLE KOTAK MERAH ABSOLUT -->
                 <a href="logout.php" style="display: block; width: 100%; padding: 14px; background: #ef4444; color: #ffffff !important; text-align: center; border-radius: 16px; font-weight: 700; font-size: 14px; text-decoration: none; border: none; transition: background 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem Admin?')">Log Out</a>
-            </div>
-            
+            </div>            
         </aside>
 
 

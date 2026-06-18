@@ -429,12 +429,7 @@ if ($query_ambil_berkas) {
 <form action="" method="POST" enctype="multipart/form-data">
                         <div class="form-group" style="margin-top: 15px;">
                             <label>Jenis Berkas</label>
-                            <select name="jenis_berkas" class="form-control" required>
-                                <option value="">-- Pilih Jenis Berkas --</option>
-                                <option value="Ijazah">Ijazah</option>
-                                <option value="Transkrip Nilai">Transkrip Nilai</option>
-                                <option value="SKCK">SKCK</option>
-                            </select>
+                            <input type="text" name="jenis_berkas[]" class="form-control" value="<?= isset($berkas['jenis_berkas']) ? htmlspecialchars($berkas['jenis_berkas']) : ''; ?>"required>
                         </div>
                         
                         <div class="form-group">
@@ -442,15 +437,16 @@ if ($query_ambil_berkas) {
                             <input type="file" name="file_berkas" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
                         </div>
 
-                        <!-- Status Berkas Unggahan -->
-                        <div style="margin-top: 15px; background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px;">
-                            <span style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Status Berkas Unggahan:</span>
-                            <ul style="font-size: 12px; color: #64748b; padding-left: 15px; list-style-type: square;">
-                                <li style="margin-bottom: 5px;">Ijazah: <?= isset($daftar_berkas_saved['Ijazah']) ? '<a href="uploads/'.$daftar_berkas_saved['Ijazah'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
-                                <li style="margin-bottom: 5px;">Transkrip: <?= isset($daftar_berkas_saved['Transkrip Nilai']) ? '<a href="uploads/'.$daftar_berkas_saved['Transkrip Nilai'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
-                                <li>SKCK: <?= isset($daftar_berkas_saved['SKCK']) ? '<a href="uploads/'.$daftar_berkas_saved['SKCK'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
-                            </ul>
-                        </div>
+                        <!-- Status Berkas Unggahan Ringkas -->
+<div style="margin-top: 15px; background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px;">
+    <span style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 8px;">Status Berkas:</span>
+    <ul style="font-size: 13px; color: #64748b; padding-left: 15px; list-style-type: square;">
+        <li style="margin-bottom: 6px;">
+            <?= isset($daftar_berkas_saved['Ijazah']) ? '<a href="uploads/'.$daftar_berkas_saved['Ijazah'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Lihat</a>' : '<span style="color:#dc3545; font-weight:500;">Belum diunggah</span>'; ?>
+        </li>
+    </ul>
+</div>
+
                 </div>
                 <div>
                     <button type="submit" name="simpan_berkas" class="btn-simpan-full" style="background-color: #0d6efd; margin-top: 20px;">Unggah Berkas</button>
