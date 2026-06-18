@@ -386,8 +386,7 @@ if ($query_ambil_berkas) {
                 <span>Riwayat Pendidikan</span>
                 <button type="button" class="btn-tambah-header" id="btn-tambah-pendidikan">+ Tambah Jenjang</button>
             </div>
-            <form action="" method="POST">
-                <div id="container-pendidikan">
+<form action="" method="POST" enctype="multipart/form-data">                <div id="container-pendidikan">
                     <?php if (!empty($list_pendidikan)) : ?>
                         <?php foreach ($list_pendidikan as $index => $pend) : ?>
                             <div class="pendidikan-item">
@@ -427,7 +426,7 @@ if ($query_ambil_berkas) {
             <div class="card-profil" style="margin-bottom: 0; min-height: 480px; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
                     <div class="card-title" style="color: #0d6efd; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Upload Berkas Pelamar</div>
-                    <form action="" method="POST" enctype="multipart/form-data">
+<form action="" method="POST" enctype="multipart/form-data">
                         <div class="form-group" style="margin-top: 15px;">
                             <label>Jenis Berkas</label>
                             <select name="jenis_berkas" class="form-control" required>
@@ -469,7 +468,7 @@ if ($query_ambil_berkas) {
                         <button type="button" class="btn-tambah-header" id="btn-tambah-str" style="background-color: #198754; color: white; border: none;">+ Tambah STR</button>
                     </div>
                     
-                    <form action="" method="POST" enctype="multipart/form-data">
+<form action="" method="POST" enctype="multipart/form-data">
                         <div id="container-form-str" style="margin-top: 15px;">
                             <?php if (!empty($list_str)) : ?>
                                 <?php foreach ($list_str as $index => $str) : ?>
