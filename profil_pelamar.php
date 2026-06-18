@@ -61,7 +61,6 @@ if (isset($_POST['update_profil'])) {
             $error_message = "Format foto harus JPG, JPEG, atau PNG!";
         }
     }
-
     if (empty($error_message)) {
         // MEMASUKKAN KOLOM status_sosial KE DALAM PERINTAH UPDATE SQL
         $query_update = "UPDATE pelamar SET 
@@ -80,11 +79,21 @@ if (isset($_POST['update_profil'])) {
             updated_at = NOW() 
             WHERE id = $pelamar_id";
             
+            // Ganti baris 83-88 dengan ini agar error ditangkap dengan rapi
+    try {
         if (mysqli_query($koneksi, $query_update)) {
-            $_SESSION['pelamar_nama'] = $nama_lengkap; 
+            $_SESSION['pelamar_nama'] = $nama_lengkap;
             $success_message = "Profil biodata Anda berhasil diperbarui!";
         } else {
             $error_message = "Gagal memperbarui data profil: " . mysqli_error($koneksi);
+        }
+    } catch (mysqli_sql_exception $e) {
+        // Jika ada NIK duplikat, pesan ini yang akan muncul di halaman (bukan fatal error)
+        if (strpos($e->getMessage(), 'Duplicate entry') !== false) {
+            $error_message = "⚠️ Gagal menyimpan! NIK tersebut sudah terdaftar pada akun lain.";
+        } else {
+            $error_message = "Terjadi kesalahan database: " . $e->getMessage();
+            }
         }
     }
 }
@@ -193,7 +202,7 @@ while ($row = mysqli_fetch_assoc($query_pend_aktif)) {
                     <?php endif; ?>
                     <div class="form-group" style="margin: 0; flex: 1;">
                         <label>Foto Profil (JPG / PNG)</label>
-                        <input type="file" name="foto" class="form-control">
+                    <input type="file" name="foto" required accept="image/png, image/jpeg, image/jpg">
                     </div>
                 </div>
 
@@ -215,15 +224,6 @@ while ($row = mysqli_fetch_assoc($query_pend_aktif)) {
                     <label>Tanggal Lahir</label>
                     <input type="date" name="tanggal_lahir" class="form-control" required value="<?= htmlspecialchars($data['tanggal_lahir'] ?? ''); ?>">
                 </div>
-
-                                    <div class="form-group">
-                        <label>Tempat Lahir</label>
-                        <input type="text" name="tempat_lahir" class="form-control" required value="<?= htmlspecialchars($data['tempat_lahir'] ?? ''); ?>">
-                    </div>
-                    <div class="form-group">
-                        <label>Tanggal Lahir</label>
-                        <input type="date" name="tanggal_lahir" class="form-control" required value="<?= htmlspecialchars($data['tanggal_lahir'] ?? ''); ?>">
-                    </div>
 
                     <div class="form-group">
                         <label>Jenis Kelamin</label>
