@@ -139,9 +139,9 @@ if ($hasil && mysqli_num_rows($hasil) > 0) {
                     <a href="master_pendidikan.php" class="menu-item">Master Pendidikan</a>
                     <a href="master_lowongan.php" class="menu-item">Master Lowongan</a>
                     <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
+                    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>                    
                     <a href="data_pelamar.php" class="menu-item">Data Pelamar</a>
-                    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>
-                                        <a href="user.php" class="menu-item active">Profil Pengguna</a>
+                    <a href="user.php" class="menu-item active">Profil Pengguna</a>
 
                 </nav>
             </div>

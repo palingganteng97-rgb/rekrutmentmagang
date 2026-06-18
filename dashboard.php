@@ -92,7 +92,7 @@ if (isset($_SESSION['username'])) {
 
     <div class="dashboard-container">
         
-                <!-- SIDEBAR MENU KIRI DENGAN CELAH & TOMBOL LOG OUT MERAH PRESISI -->
+        <!-- SIDEBAR MENU KIRI DENGAN CELAH & TOMBOL LOG OUT MERAH PRESISI -->
         <aside class="sidebar-left" style="display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; padding: 35px; background: #ffffff; border-right: 1px solid #f1f5f9; flex-shrink: 0; width: 280px;">
             
             <!-- GRUP ATAS: Navigasi Utama sampai Lowongan Tahapan -->
@@ -106,9 +106,9 @@ if (isset($_SESSION['username'])) {
                     <a href="master_pendidikan.php" class="menu-item">Master Pendidikan</a>
                     <a href="master_lowongan.php" class="menu-item">Master Lowongan</a>
                     <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
+                    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>                    
                     <a href="data_pelamar.php" class="menu-item">Data Pelamar</a>
-                    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>
-                                        <a href="user.php" class="menu-item">Profil Pengguna</a>
+                    <a href="user.php" class="menu-item">Profil Pengguna</a>
 
                 </nav>
             </div>
