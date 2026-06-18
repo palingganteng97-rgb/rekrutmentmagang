@@ -172,8 +172,20 @@ if (isset($_POST['simpan_pengalaman'])) {
     }
 }
 
-// 6. LOGIKA PROSES SIMPAN MULTI STR (TABEL: pelamar_str)
+// 6. LOGIKA PROSES SIMPAN MULTI DATA STR
 if (isset($_POST['simpan_str'])) {
+    $sql_buat_tabel_str = "CREATE TABLE IF NOT EXISTS `pelamar_str` (
+      `id` INT AUTO_INCREMENT PRIMARY KEY,
+      `pelamar_id` INT NOT NULL,
+      `nomor_str` VARCHAR(100) NOT NULL,
+      `tanggal_terbit` DATE NOT NULL,
+      `tanggal_expired` DATE NOT NULL,
+      `file_str` VARCHAR(255) NOT NULL,
+      `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+    mysqli_query($koneksi, $sql_buat_tabel_str);
+
     $nomor_str_arr   = isset($_POST['nomor_str']) ? $_POST['nomor_str'] : [];
     $tgl_terbit_arr  = isset($_POST['tanggal_terbit']) ? $_POST['tanggal_terbit'] : [];
     $tgl_expired_arr = isset($_POST['tanggal_expired']) ? $_POST['tanggal_expired'] : [];
@@ -200,7 +212,7 @@ if (isset($_POST['simpan_str'])) {
                 move_uploaded_file($file_tmp, $folder_tujuan);
             }
 
-            $query_insert_str = "INSERT INTO pelamar_str (pelamar_id, nomor_str, tanggal_terbit, tanggal_expired, file_str, created_at, updated_at) 
+$query_insert_str = "INSERT INTO pelamar_str (pelamar_id, nomor_str, tanggal_terbit, tanggal_expired, file_str, created_at, updated_at) 
                                  VALUES ($pelamar_id, '$nomor_str', '$tgl_terbit', '$tgl_expired', '$nama_file_str', NOW(), NOW())";
             if (!mysqli_query($koneksi, $query_insert_str)) {
                 $sukses_insert_str = false;
@@ -215,8 +227,7 @@ if (isset($_POST['simpan_str'])) {
     }
 }
 
-
-// ==================== QUERY AMBIL DATA UNTUK FORM ====================
+// 7. QUERY AMBIL DATA UNTUK DITAMPILKAN KEMBALI KE FORM
 $query_user = mysqli_query($koneksi, "SELECT * FROM pelamar WHERE id = $pelamar_id");
 $data = mysqli_fetch_assoc($query_user);
 
@@ -226,7 +237,6 @@ while ($row = mysqli_fetch_assoc($query_pend_aktif)) {
     $list_pendidikan[] = $row;
 }
 
-$data_pengalaman = null;
 $query_exp_cek = mysqli_query($koneksi, "SHOW TABLES LIKE 'pelamar_pengalaman'");
 if (mysqli_num_rows($query_exp_cek) > 0) {
     $query_exp_tampil = mysqli_query($koneksi, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id LIMIT 1");
@@ -247,6 +257,14 @@ if (mysqli_num_rows($query_str_cek) > 0) {
         $list_str[] = $row;
     }
 }
+
+$daftar_berkas_saved = [];
+$query_ambil_berkas = mysqli_query($koneksi, "SELECT jenis_berkas, nama_file FROM pelamar_berkas WHERE pelamar_id = $pelamar_id");
+if ($query_ambil_berkas) {
+    while ($row_berkas = mysqli_fetch_assoc($query_ambil_berkas)) {
+        $daftar_berkas_saved[$row_berkas['jenis_berkas']] = $row_berkas['nama_file'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -261,11 +279,8 @@ if (mysqli_num_rows($query_str_cek) > 0) {
         .brand { font-size: 18px; font-weight: bold; color: #1e293b; text-decoration: none; }
         .btn-kembali { background-color: #64748b; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; }
         .container { max-width: 1300px; margin: 30px auto; padding: 0 20px; }
-        
-        /* Tata Letak Kiri dan Kanan */
         .main-layout { display: grid; grid-template-columns: 1fr 1.3fr; gap: 25px; align-items: start; }
         @media (max-width: 992px) { .main-layout { grid-template-columns: 1fr; } }
-
         .card-profil { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 30px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); margin-bottom: 25px; }
         .card-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; color: #1e293b; display: flex; justify-content: space-between; align-items: center; }
         .alert-success { background-color: #f0fff4; border: 1px solid #c6f6d5; color: #22543d; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px; text-align: center; }
@@ -346,200 +361,165 @@ if (mysqli_num_rows($query_str_cek) > 0) {
                         <input type="text" name="telepon" class="form-control" value="<?= isset($data['telepon']) ? htmlspecialchars($data['telepon']) : ''; ?>" required>
                     </div>
                     <div class="form-group">
-                        <label>Kota</label>
-                        <input type="text" name="kota" class="form-control" value="<?= isset($data['kota']) ? htmlspecialchars($data['kota']) : ''; ?>" required>
-                    </div>
-                    <div class="form-group">
-                        <label>Provinsi</label>
-                        <input type="text" name="provinsi" class="form-control" value="<?= isset($data['provinsi']) ? htmlspecialchars($data['provinsi']) : ''; ?>" required>
-                    </div>
-                    <div class="form-group full-width">
-                        <label>Alamat Lengkap</label>
-                        <input type="text" name="alamat" class="form-control" value="<?= isset($data['alamat']) ? htmlspecialchars($data['alamat']) : ''; ?>" required>
-                    </div>
+                    <label>Kota</label>
+                    <input type="text" name="kota" class="form-control" value="<?= isset($data['kota']) ? htmlspecialchars($data['kota']) : ''; ?>" required>
                 </div>
-                <button type="submit" name="update_profil" class="btn-simpan-full">Perbarui Biodata Profil</button>
-            </form>
-        </div>
-
-        <!-- ==================== SISI KANAN: PENDIDIKAN, PENGALAMAN & STR ==================== -->
-        <div class="right-column">
-            
-            <!-- FORM PENDIDIKAN -->
-            <div class="card-profil">
-                <div class="card-title">
-                    <span>Riwayat Pendidikan</span>
-                    <button type="button" class="btn-tambah-header" id="btn-tambah-pendidikan">+ Tambah Jenjang</button>
+                <div class="form-group">
+                    <label>Provinsi</label>
+                    <input type="text" name="provinsi" class="form-control" value="<?= isset($data['provinsi']) ? htmlspecialchars($data['provinsi']) : ''; ?>" required>
                 </div>
-                <form action="" method="POST">
-                    <div id="container-pendidikan">
-                        <?php if (!empty($list_pendidikan)) : ?>
-                            <?php foreach ($list_pendidikan as $index => $pend) : ?>
-                                <div class="pendidikan-item">
-                                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                                        <span style="font-weight: bold; color: #64748b;">Data Pendidikan</span>
-                                        <?php if ($index > 0) : ?><button type="button" class="btn-hapus-item" onclick="this.parentNode.parentNode.remove()">Hapus</button><?php endif; ?>
-                                    </div>
-                                    <div class="form-grid">
-                                        <div class="form-group">
-                                            <label>Jenjang</label>
-                                            <input type="text" name="jenjang[]" class="form-control" value="<?= htmlspecialchars($pend['jenjang']); ?>" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Nama Institusi / Kampus</label>
-                                            <input type="text" name="institusi[]" class="form-control" value="<?= htmlspecialchars($pend['institusi']); ?>" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Jurusan</label>
-                                            <input type="text" name="jurusan[]" class="form-control" value="<?= htmlspecialchars($pend['jurusan']); ?>">
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Tahun Lulus</label>
-                                            <input type="number" name="tahun_lulus[]" class="form-control" value="<?= $pend['tahun_lulus']; ?>" required>
-                                        </div>
-                                        <div class="form-group full-width">
-                                            <label>IPK / Nilai Rata-rata</label>
-                                            <input type="text" name="ipk[]" class="form-control" value="<?= htmlspecialchars($pend['ipk']); ?>" required>
-                                        </div>
-                                    </div> <!-- Akhir dari .form-grid -->
-                                </div> <!-- Akhir dari .pendidikan-item -->
-                            <?php endforeach; ?>
-                        <?php else : ?>
-                            <!-- Tampilan Default jika Data Pendidikan di Database Kosong -->
-                            <div class="pendidikan-item">
-                                <div class="form-grid">
-                                    <div class="form-group">
-                                        <label>Jenjang Pendidikan</label>
-                                        <input type="text" name="jenjang[]" class="form-control" value="S1 / D4" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Nama Institusi / Kampus</label>
-                                        <input type="text" name="institusi[]" class="form-control" value="Stekom" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Jurusan / Program Studi</label>
-                                        <input type="text" name="jurusan[]" class="form-control" value="Teknologi Informatika">
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Tahun Lulus</label>
-                                        <input type="number" name="tahun_lulus[]" class="form-control" value="2026" required>
-                                    </div>
-                                    <div class="form-group full-width">
-                                        <label>IPK / Nilai Rata-rata</label>
-                                        <input type="text" name="ipk[]" class="form-control" value="4.00" required>
-                                    </div>
-                                </div> <!-- Akhir dari .form-grid -->
-                            </div> <!-- Akhir dari .pendidikan-item -->
-                        <?php endif; ?>
-                    </div> <!-- Akhir dari #container-pendidikan -->
-                    <button type="submit" name="simpan_pendidikan" class="btn-simpan-full btn-hijau">Simpan Semua Data Pendidikan</button>
-                </form>
-            </div> <!-- Akhir dari .card-profil Pendidikan -->
-            <!-- ==================== FORM RIWAYAT PENGALAMAN ==================== -->
-            <div class="card-profil">
-                <div class="card-title" style="color: #0d6efd;">Riwayat Pengalaman</div>
-                <form action="" method="POST">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>Nama Perusahaan</label>
-                            <input type="text" name="perusahaan" class="form-control" value="<?= isset($data['perusahaan']) ? htmlspecialchars($data['perusahaan']) : ''; ?>" placeholder="Contoh: PT Tech Solusi Indonesia" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Jabatan</label>
-                            <input type="text" name="jabatan" class="form-control" value="<?= isset($data['jabatan']) ? htmlspecialchars($data['jabatan']) : ''; ?>" placeholder="Contoh: Staff Administrasi" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Mulai Kerja</label>
-                            <input type="date" name="mulai_kerja" class="form-control" value="<?= isset($data['mulai_kerja']) ? $data['mulai_kerja'] : ''; ?>" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Selesai Kerja (Kosongkan jika masih aktif)</label>
-                            <input type="date" name="selesai_kerja" class="form-control" value="<?= isset($data['selesai_kerja']) ? $data['selesai_kerja'] : ''; ?>">
-                        </div>
-                        <div class="form-group full-width">
-                            <label>Alasan Keluar</label>
-                            <textarea name="alasan_keluar" class="form-control" rows="3" placeholder="Tuliskan alasan Anda resign atau keluar..."><?= isset($data['alasan_keluar']) ? htmlspecialchars($data['alasan_keluar']) : ''; ?></textarea>
-                        </div>
-                    </div>
-                    <button type="submit" name="simpan_pengalaman" class="btn-simpan-full btn-hijau">Simpan Semua Data Pengalaman</button>
-                </form>
+                <div class="form-group full-width">
+                    <label>Alamat Lengkap</label>
+                    <input type="text" name="alamat" class="form-control" value="<?= isset($data['alamat']) ? htmlspecialchars($data['alamat']) : ''; ?>" required>
+                </div>
             </div>
+            <button type="submit" name="update_profil" class="btn-simpan-full">Perbarui Biodata Profil</button>
+        </form>
+    </div>
 
-            <!-- ==================== FORM DATA STR ==================== -->
-            <div class="card-profil">
-                <div class="card-title" style="color: #198754;">
-                    <span>Data STR Pelamar</span>
-                    <button type="button" class="btn-tambah-header" id="btn-tambah-str" style="background-color: #198754; color: white; border: none;">+ Tambah STR</button>
-                </div>
-                <form action="" method="POST" enctype="multipart/form-data">
-                    <div id="container-form-str">
-                        <?php if (!empty($list_str)) : ?>
-                            <?php foreach ($list_str as $index => $str) : ?>
-                                <div class="item-form-str">
-                                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-                                        <span style="font-weight: bold; color: #475569;">Data STR #<?= ($index + 1); ?></span>
-                                        <a href="hapus_str.php?id=<?= $str['id']; ?>" class="btn-hapus-item" style="text-decoration: none; display: inline-block;" onclick="return confirm('Apakah Anda yakin ingin menghapus data STR ini secara permanen?')">Hapus</a>
-                                    </div>
-                                    <div style="margin-bottom: 12px;">
-                                        <label style="font-size: 13px; font-weight: 600; color: #475569;">Nomor STR</label>
-                                        <input type="text" name="nomor_str[]" class="form-control" value="<?= htmlspecialchars($str['nomor_str']); ?>" required>
-                                    </div>
-                                    <div class="form-grid">
-                                        <div class="form-group">
-                                            <label>Tanggal Terbit</label>
-                                            <input type="date" name="tanggal_terbit[]" class="form-control" value="<?= $str['tanggal_terbit']; ?>" required>
-                                        </div>
-                                        <div class="form-group">
-                                            <label>Tanggal Expired</label>
-                                            <input type="date" name="tanggal_expired[]" class="form-control" value="<?= $str['tanggal_expired']; ?>" required>
-                                        </div>
-                                    </div>
-                                    <div style="margin-top: 10px;">
-                                        <?php if (!empty($str['file_str'])): ?>
-                                            <div style="margin-bottom: 5px;">
-                                                <a href="uploads/<?= $str['file_str']; ?>" target="_blank" style="font-size: 12px; color: #0d6efd; font-weight: 600;">Lihat Berkas Saat Ini</a>
-                                            </div>
-                                        <?php endif; ?>
-                                        <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
-                        <?php else : ?>
-                            <!-- Form Default jika data STR kosong -->
-                            <div class="item-form-str">
-                                <h5 style="margin-bottom: 10px; color: #475569;">Data STR #1</h5>
-                                <div style="margin-bottom: 12px;">
-                                    <label style="font-size: 13px; font-weight: 600; color: #475569;">Nomor STR</label>
-                                    <input type="text" name="nomor_str[]" placeholder="Masukkan nomor STR" class="form-control" required>
+    <!-- ==================== SISI KANAN: PENDIDIKAN, PENGALAMAN & BERKAS-STR ==================== -->
+    <div class="right-column">
+        
+        <!-- FORM PENDIDIKAN -->
+        <div class="card-profil">
+            <div class="card-title">
+                <span>Riwayat Pendidikan</span>
+                <button type="button" class="btn-tambah-header" id="btn-tambah-pendidikan">+ Tambah Jenjang</button>
+            </div>
+            <form action="" method="POST">
+                <div id="container-pendidikan">
+                    <?php if (!empty($list_pendidikan)) : ?>
+                        <?php foreach ($list_pendidikan as $index => $pend) : ?>
+                            <div class="pendidikan-item">
+                                <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                                    <span style="font-weight: bold; color: #64748b;">Data Pendidikan</span>
+                                    <?php if ($index > 0) : ?><button type="button" class="btn-hapus-item" onclick="this.parentNode.parentNode.remove()">Hapus</button><?php endif; ?>
                                 </div>
                                 <div class="form-grid">
-                                    <div class="form-group">
-                                        <label>Tanggal Terbit</label>
-                                        <input type="date" name="tanggal_terbit[]" class="form-control" required>
-                                    </div>
-                                    <div class="form-group">
-                                        <label>Tanggal Expired</label>
-                                        <input type="date" name="tanggal_expired[]" class="form-control" required>
-                                    </div>
-                                </div>
-                                <div style="margin-top: 10px;">
-                                    <label style="font-size: 13px; font-weight: 600; color: #475569;">Upload File STR (PDF/JPG/PNG)</label>
-                                    <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+                                    <div class="form-group"><label>Jenjang</label><input type="text" name="jenjang[]" class="form-control" value="<?= htmlspecialchars($pend['jenjang']); ?>" required></div>
+                                    <div class="form-group"><label>Nama Institusi</label><input type="text" name="institusi[]" class="form-control" value="<?= htmlspecialchars($pend['institusi']); ?>" required></div>
+                                    <div class="form-group"><label>Jurusan</label><input type="text" name="jurusan[]" class="form-control" value="<?= htmlspecialchars($pend['jurusan']); ?>"></div>
+                                    <div class="form-group"><label>Tahun Lulus</label><input type="number" name="tahun_lulus[]" class="form-control" value="<?= $pend['tahun_lulus']; ?>" required></div>
+                                    <div class="form-group full-width"><label>IPK</label><input type="text" name="ipk[]" class="form-control" value="<?= htmlspecialchars($pend['ipk']); ?>" required></div>
                                 </div>
                             </div>
-                        <?php endif; ?>
-                    </div>
-                    <button type="submit" name="simpan_str" class="btn-simpan-full" style="background-color: #0d6efd;">Simpan Semua Data STR</button>
-                </form>
+                        <?php endforeach; ?>
+                    <?php else : ?>
+                        <div class="pendidikan-item">
+                            <div class="form-grid">
+                                <div class="form-group"><label>Jenjang Pendidikan</label><input type="text" name="jenjang[]" class="form-control" value="S1 / D4" required></div>
+                                <div class="form-group"><label>Nama Institusi</label><input type="text" name="institusi[]" class="form-control" value="Stekom" required></div>
+                                <div class="form-group"><label>Jurusan</label><input type="text" name="jurusan[]" class="form-control" value="Teknologi Informatika"></div>
+                                <div class="form-group"><label>Tahun Lulus</label><input type="number" name="tahun_lulus[]" class="form-control" value="2026" required></div>
+                                <div class="form-group full-width"><label>IPK</label><input type="text" name="ipk[]" class="form-control" value="4.00" required></div>
+                            </div>
+                        </div>
+                    <?php endif; ?>
+                </div>
+                                <button type="submit" name="simpan_pengalaman" class="btn-simpan-full btn-hijau">Simpan Semua Data Pengalaman</button>
+            </form>
+        </div> <!-- /Akhir card-profil Pengalaman -->
+
+        <!-- ==================== SEGMEN LAYOUT DUA KOLOM HORIZONTAL SEJAJAR ==================== -->
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; align-items: start; margin-top: 25px;">
+            
+            <!-- FORM BERKAS PELAMAR (SISI KIRI) -->
+            <div class="card-profil" style="margin-bottom: 0; min-height: 480px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="card-title" style="color: #0d6efd; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Upload Berkas Pelamar</div>
+                    <form action="" method="POST" enctype="multipart/form-data">
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label>Jenis Berkas</label>
+                            <select name="jenis_berkas" class="form-control" required>
+                                <option value="">-- Pilih Jenis Berkas --</option>
+                                <option value="Ijazah">Ijazah</option>
+                                <option value="Transkrip Nilai">Transkrip Nilai</option>
+                                <option value="SKCK">SKCK</option>
+                                <option value="KTP">KTP / Kartu Identitas</option>
+                                <option value="Sertifikat Pelatihan">Sertifikat Pelatihan</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Pilih File Berkas (PDF/JPG/PNG)</label>
+                            <input type="file" name="file_berkas" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+                        </div>
+
+                        <!-- Status Berkas Unggahan -->
+                        <div style="margin-top: 15px; background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px;">
+                            <span style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Status Berkas Unggahan:</span>
+                            <ul style="font-size: 12px; color: #64748b; padding-left: 15px; list-style-type: square;">
+                                <li style="margin-bottom: 5px;">Ijazah: <?= isset($daftar_berkas_saved['Ijazah']) ? '<a href="uploads/'.$daftar_berkas_saved['Ijazah'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
+                                <li style="margin-bottom: 5px;">Transkrip: <?= isset($daftar_berkas_saved['Transkrip Nilai']) ? '<a href="uploads/'.$daftar_berkas_saved['Transkrip Nilai'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
+                                <li>SKCK: <?= isset($daftar_berkas_saved['SKCK']) ? '<a href="uploads/'.$daftar_berkas_saved['SKCK'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
+                            </ul>
+                        </div>
+                </div>
+                <div>
+                    <button type="submit" name="simpan_berkas" class="btn-simpan-full" style="background-color: #0d6efd; margin-top: 20px;">Unggah Berkas</button>
+                    </form>
+                </div>
             </div>
 
-        </div> <!-- /right-column -->
-    </div> <!-- /main-layout -->
-</div> <!-- /container -->
+            <!-- FORM DATA STR PELAMAR (SISI KANAN) -->
+            <div class="card-profil" style="margin-bottom: 0; min-height: 480px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="card-title" style="color: #198754; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+                        <span>Data STR Pelamar</span>
+                        <button type="button" class="btn-tambah-header" id="btn-tambah-str" style="background-color: #198754; color: white; border: none;">+ Tambah STR</button>
+                    </div>
+                    
+                    <form action="" method="POST" enctype="multipart/form-data">
+                        <div id="container-form-str" style="margin-top: 15px;">
+                            <?php if (!empty($list_str)) : ?>
+                                <?php foreach ($list_str as $index => $str) : ?>
+                                    <div class="item-form-str" style="border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #f8fafc;">
+                                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+                                            <span style="font-weight: bold; color: #475569;">Data STR #<?= ($index + 1); ?></span>
+                                            <a href="hapus_str.php?id=<?= $str['id']; ?>" class="btn-hapus-item" style="text-decoration: none; display: inline-block;" onclick="return confirm('Apakah Anda yakin ingin menghapus data STR ini secara permanen?')">Hapus</a>
+                                        </div>
+                                        <div style="margin-bottom: 12px;">
+                                            <label style="font-size:12px; font-weight:600;">Nomor STR</label>
+                                            <input type="text" name="nomor_str[]" class="form-control" value="<?= htmlspecialchars($str['nomor_str']); ?>" required>
+                                        </div>
+                                        <div class="form-grid">
+                                            <div class="form-group"><label>Tanggal Terbit</label><input type="date" name="tanggal_terbit[]" class="form-control" value="<?= $str['tanggal_terbit']; ?>" required></div>
+                                            <div class="form-group"><label>Tanggal Expired</label><input type="date" name="tanggal_expired[]" class="form-control" value="<?= $str['tanggal_expired']; ?>" required></div>
+                                        </div>
+                                        <div style="margin-top: 10px;">
+                                            <?php if (!empty($str['file_str'])): ?><div style="margin-bottom: 5px;"><a href="uploads/<?= $str['file_str']; ?>" target="_blank" style="font-size: 12px; color: #0d6efd; font-weight: 600;">Lihat Berkas Saat Ini</a></div><?php endif; ?>
+                                            <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                                        </div>
+                                    </div>
+                                <?php endforeach; ?>
+                            <?php else : ?>
+                                <div class="item-form-str" style="border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #f8fafc;">
+                                    <h5 style="margin-bottom: 10px; color: #475569;">Data STR #1</h5>
+                                    <div style="margin-bottom: 12px;"><label style="font-size:12px; font-weight:600;">Nomor STR</label><input type="text" name="nomor_str[]" class="form-control" required></div>
+                                    <div class="form-grid">
+                                        <div class="form-group"><label>Tanggal Terbit</label><input type="date" name="tanggal_terbit[]" class="form-control" required></div>
+                                        <div class="form-group"><label>Tanggal Expired</label><input type="date" name="tanggal_expired[]" class="form-control" required></div>
+                                    </div>
+                                    <div style="margin-top: 10px;"><input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required></div>
+                                </div>
+                            <?php endif; ?>
+                        </div>
+                </div>
+                <div>
+                    <button type="submit" name="simpan_str" class="btn-simpan-full" style="background-color: #198754; margin-top: 20px;">Simpan Semua Data STR</button>
+                    </form>
+                </div>
+            </div>
 
-<!-- ==================== LOGIKA JAVASCRIPT DINAMIS ==================== -->
+        </div> <!-- /Akhir Segmen Layout Grid Berkas & STR -->
+
+    </div> <!-- /Penutup right-column murni -->
+</div> <!-- /Penutup main-layout murni -->
+</div> <!-- /Penutup container murni -->
+
+<!-- ==================== LOGIKA JAVASCRIPT DINAMIS FORM MULTI ARRAYS ==================== -->
 <script>
-// 1. Tambah Baris Pendidikan Dinamis
+// 1. Fungsi Tambah Baris Pendidikan Dinamis
 document.getElementById('btn-tambah-pendidikan').addEventListener('click', function() {
     var container = document.getElementById('container-pendidikan');
     var itemBaru = document.createElement('div');
@@ -560,7 +540,7 @@ document.getElementById('btn-tambah-pendidikan').addEventListener('click', funct
     container.appendChild(itemBaru);
 });
 
-// 2. Tambah Baris STR Dinamis
+// 2. Fungsi Tambah Baris STR Dinamis
 document.getElementById('btn-tambah-str').addEventListener('click', function() {
     const container = document.getElementById('container-form-str');
     const jumlahForm = container.getElementsByClassName('item-form-str').length;
@@ -568,28 +548,21 @@ document.getElementById('btn-tambah-str').addEventListener('click', function() {
 
     const formBaru = document.createElement('div');
     formBaru.className = 'item-form-str';
+    formBaru.style = 'border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #f8fafc;';
     formBaru.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
             <span style="font-weight: bold; color: #475569;">Data STR #${nomorBaru}</span>
             <button type="button" class="btn-hapus-item" onclick="this.parentNode.parentNode.remove(); urutkanUlangNomorSTR();">Hapus</button>
         </div>
         <div style="margin-bottom: 12px;">
-            <label style="font-size: 13px; font-weight: 600; color: #475569;">Nomor STR</label>
-
-            <input type="text" name="nomor_str[]" placeholder="Masukkan nomor STR" class="form-control" required>
+            <label style="font-size:12px; font-weight:600;">Nomor STR</label>
+            <input type="text" name="nomor_str[]" class="form-control" required>
         </div>
         <div class="form-grid">
-            <div class="form-group">
-                <label>Tanggal Terbit</label>
-                <input type="date" name="tanggal_terbit[]" class="form-control" required>
-            </div>
-            <div class="form-group">
-                <label>Tanggal Expired</label>
-                <input type="date" name="tanggal_expired[]" class="form-control" required>
-            </div>
+            <div class="form-group"><label>Tanggal Terbit</label><input type="date" name="tanggal_terbit[]" class="form-control" required></div>
+            <div class="form-group"><label>Tanggal Expired</label><input type="date" name="tanggal_expired[]" class="form-control" required></div>
         </div>
         <div style="margin-top: 10px;">
-            <label style="font-size: 13px; font-weight: 600; color: #475569;">Upload File STR</label>
             <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
         </div>
     `;
@@ -607,6 +580,5 @@ function urutkanUlangNomorSTR() {
     });
 }
 </script>
-
 </body>
 </html>
