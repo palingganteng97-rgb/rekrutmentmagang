@@ -224,7 +224,6 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
 
                 </nav>
             </div>
-
             <!-- Wadah Bawah: Otomatis Terdorong ke Bawah Mengikuti Aturan justify-content: space-between -->
             <div>
                 <nav class="menu-list">
