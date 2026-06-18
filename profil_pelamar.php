@@ -422,48 +422,44 @@ if ($query_ambil_berkas) {
         <!-- ==================== SEGMEN LAYOUT DUA KOLOM HORIZONTAL SEJAJAR ==================== -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; align-items: start; margin-top: 25px;">
             
- <!-- ==================== BERKAS PELAMAR (SISI KEDUA) ==================== -->
-<div class="card-profil" style="margin-bottom: 0; min-height: 480px; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; background: #fff; border-radius: 8px; box-shadow: 0 0 10px rgba(0,0,0,0.05);">
-    
-    <div>
-        <!-- Judul Form -->
-        <h5 style="color: #0d6efd; font-weight: bold; margin-top: 0; margin-bottom: 10px; font-size: 18px;">
-            Upload Berkas Pelamar
-        </h5>
-        
-        <!-- Tombol Tambah Berkas Dinamis -->
-        <button type="button" id="btn-tambah-berkas" style="background-color: #198754; color: white; border: none; padding: 8px; border-radius: 4px; font-size: 13px; cursor: pointer; font-weight: bold; width: 100%; text-align: center; margin-bottom: 20px;">
-            + Tambah Berkas
-        </button>
+            <!-- FORM BERKAS PELAMAR (SISI KIRI) -->
+            <div class="card-profil" style="margin-bottom: 0; min-height: 480px; display: flex; flex-direction: column; justify-content: space-between;">
+                <div>
+                    <div class="card-title" style="color: #0d6efd; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Upload Berkas Pelamar</div>
+<!-- Pastikan strukturnya persis seperti ini -->
+<form action="proses_upload.php" method="POST" enctype="multipart/form-data">
+                        <div class="form-group" style="margin-top: 15px;">
+                            <label>Jenis Berkas</label>
+                            <select name="jenis_berkas" class="form-control" required>
+                                <option value="">-- Pilih Jenis Berkas --</option>
+                                <option value="Ijazah">Ijazah</option>
+                                <option value="Transkrip Nilai">Transkrip Nilai</option>
+                                <option value="SKCK">SKCK</option>
+                                <option value="KTP">KTP / Kartu Identitas</option>
+                                <option value="Sertifikat Pelatihan">Sertifikat Pelatihan</option>
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>Pilih File Berkas (PDF/JPG/PNG)</label>
+                            <input type="file" name="file_berkas" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+                        </div>
 
-        <!-- Wadah Baris Input Berkas -->
-        <div id="container-input-berkas">
-            <div class="item-berkas" style="border-bottom: 1px dashed #cbd5e1; padding-bottom: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="margin-bottom: 15px;">
-                    <label style="font-weight: 600; font-size: 14px; margin-bottom: 5px; display: block;">Jenis Berkas</label>
-                    <select name="jenis_berkas[]" class="form-control" required style="width: 100%;">
-                        <option value="">-- Pilih Jenis Berkas --</option>
-                        <option value="Ijazah">Ijazah</option>
-                        <option value="Transkrip Nilai">Transkrip Nilai</option>
-                        <option value="SKCK">SKCK</option>
-                    </select>
+                        <!-- Status Berkas Unggahan -->
+                        <div style="margin-top: 15px; background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px;">
+                            <span style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Status Berkas Unggahan:</span>
+                            <ul style="font-size: 12px; color: #64748b; padding-left: 15px; list-style-type: square;">
+                                <li style="margin-bottom: 5px;">Ijazah: <?= isset($daftar_berkas_saved['Ijazah']) ? '<a href="uploads/'.$daftar_berkas_saved['Ijazah'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
+                                <li style="margin-bottom: 5px;">Transkrip: <?= isset($daftar_berkas_saved['Transkrip Nilai']) ? '<a href="uploads/'.$daftar_berkas_saved['Transkrip Nilai'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
+                                <li>SKCK: <?= isset($daftar_berkas_saved['SKCK']) ? '<a href="uploads/'.$daftar_berkas_saved['SKCK'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
+                            </ul>
+                        </div>
                 </div>
-
-                <div class="form-group">
-                    <label style="font-weight: 600; font-size: 14px; margin-bottom: 5px; display: block;">Pilih File Berkas (PDF/JPG/PNG)</label>
-                    <input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required style="width: 100%;">
+                <div>
+                    <button type="submit" name="simpan_berkas" class="btn-simpan-full" style="background-color: #0d6efd; margin-top: 20px;">Unggah Berkas</button>
+                    </form>
                 </div>
             </div>
-        </div>
-    </div>
-
-    <!-- Tombol Submit Utama di Paling Bawah Kartu -->
-    <button type="submit" class="btn btn-primary" style="background-color: #0d6efd; color: white; border: none; padding: 10px; border-radius: 6px; width: 100%; font-weight: bold; font-size: 15px; cursor: pointer; margin-top: 15px;">
-        Unggah Berkas
-    </button>
-
-</div>
-<!-- ==================== AKHIR BERKAS PELAMAR ==================== -->
 
             <!-- FORM DATA STR PELAMAR (SISI KANAN) -->
             <div class="card-profil" style="margin-bottom: 0; min-height: 480px; display: flex; flex-direction: column; justify-content: space-between;">
@@ -523,48 +519,66 @@ if ($query_ambil_berkas) {
 
 <!-- ==================== LOGIKA JAVASCRIPT DINAMIS FORM MULTI ARRAYS ==================== -->
 <script>
-// Pastikan kode berjalan setelah tombol tersedia di halaman
-document.getElementById('btn-tambah-berkas').addEventListener('click', function() {
-    var container = document.getElementById('container-input-berkas');
-    
-    // 1. Membuat elemen pembungkus baru untuk baris input tambahan
-    var newRow = document.createElement('div');
-    newRow.className = 'item-berkas';
-    newRow.style = 'border-top: 1px dashed #cbd5e1; padding-top: 15px; margin-top: 15px;';
-    
-    // 2. Memasukkan struktur input baru beserta tombol hapus yang rapi
-    newRow.innerHTML = `
-        <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-            <label style="font-weight: 600; font-size: 14px; margin: 0;">Jenis Berkas</label>
-            <button type="button" class="btn-hapus-berkas" style="background-color: #dc3545; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: bold;">Hapus</button>
+// 1. Fungsi Tambah Baris Pendidikan Dinamis
+document.getElementById('btn-tambah-pendidikan').addEventListener('click', function() {
+    var container = document.getElementById('container-pendidikan');
+    var itemBaru = document.createElement('div');
+    itemBaru.className = 'pendidikan-item';
+    itemBaru.innerHTML = `
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <span style="font-weight: bold; color: #64748b;">Data Pendidikan</span>
+            <button type="button" class="btn-hapus-item" onclick="this.parentNode.parentNode.remove()">Hapus</button>
         </div>
-        
-        <div class="form-group" style="margin-bottom: 15px;">
-            <select name="jenis_berkas[]" class="form-control" required style="width: 100%;">
-                <option value="">-- Pilih Jenis Berkas --</option>
-                <option value="Ijazah">Ijazah</option>
-                <option value="Transkrip Nilai">Transkrip Nilai</option>
-                <option value="SKCK">SKCK</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label style="font-weight: 600; font-size: 14px; margin-bottom: 5px; display: block;">Pilih File Berkas (PDF/JPG/PNG)</label>
-            <input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required style="width: 100%;">
+        <div class="form-grid">
+            <div class="form-group"><label>Jenjang</label><input type="text" name="jenjang[]" class="form-control" required></div>
+            <div class="form-group"><label>Nama Institusi</label><input type="text" name="institusi[]" class="form-control" required></div>
+            <div class="form-group"><label>Jurusan</label><input type="text" name="jurusan[]" class="form-control"></div>
+            <div class="form-group"><label>Tahun Lulus</label><input type="number" name="tahun_lulus[]" class="form-control" required></div>
+            <div class="form-group full-width"><label>IPK</label><input type="text" name="ipk[]" class="form-control" required></div>
         </div>
     `;
-    
-    // 3. Masukkan baris baru ke dalam kontainer berkas
-    container.appendChild(newRow);
+    container.appendChild(itemBaru);
 });
 
-// 4. Fungsi aksi untuk menghapus baris tambahan ketika tombol hapus diklik
-document.getElementById('container-input-berkas').addEventListener('click', function(e) {
-    if (e.target && e.target.classList.contains('btn-hapus-berkas')) {
-        e.target.closest('.item-berkas').remove();
-    }
+// 2. Fungsi Tambah Baris STR Dinamis
+document.getElementById('btn-tambah-str').addEventListener('click', function() {
+    const container = document.getElementById('container-form-str');
+    const jumlahForm = container.getElementsByClassName('item-form-str').length;
+    const nomorBaru = jumlahForm + 1;
+
+    const formBaru = document.createElement('div');
+    formBaru.className = 'item-form-str';
+    formBaru.style = 'border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 15px; background: #f8fafc;';
+    formBaru.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <span style="font-weight: bold; color: #475569;">Data STR #${nomorBaru}</span>
+            <button type="button" class="btn-hapus-item" onclick="this.parentNode.parentNode.remove(); urutkanUlangNomorSTR();">Hapus</button>
+        </div>
+        <div style="margin-bottom: 12px;">
+            <label style="font-size:12px; font-weight:600;">Nomor STR</label>
+            <input type="text" name="nomor_str[]" class="form-control" required>
+        </div>
+        <div class="form-grid">
+            <div class="form-group"><label>Tanggal Terbit</label><input type="date" name="tanggal_terbit[]" class="form-control" required></div>
+            <div class="form-group"><label>Tanggal Expired</label><input type="date" name="tanggal_expired[]" class="form-control" required></div>
+        </div>
+        <div style="margin-top: 10px;">
+            <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+        </div>
+    `;
+    container.appendChild(formBaru);
 });
+
+// 3. Fungsi Reset/Urutkan Penomoran Judul Form STR jika ada yang dihapus
+function urutkanUlangNomorSTR() {
+    const items = document.querySelectorAll('#container-form-str .item-form-str');
+    items.forEach((item, index) => {
+        const header = item.querySelector('span') || item.querySelector('h5');
+        if (header) { 
+            header.innerText = `Data STR #${index + 1}`; 
+        }
+    });
+}
 </script>
-
 </body>
 </html>
