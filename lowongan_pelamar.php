@@ -190,14 +190,15 @@ if (isset($_GET['logout'])) {
     </nav>
 
     <div class="container">
-        <!-- Notifikasi Sistem -->
-        <?php if(!empty($error_message)): ?>
-            <div class="alert alert-error"><?php echo $error_message; ?></div>
-        <?php endif; ?>
-        
+        <!-- Cari bagian notifikasi error milikmu dan tambahkan id="alert-error" -->
+<?php if(!empty($error_message)): ?>
+    <div id="alert-error" class="alert alert-error"><?php echo $error_message; ?></div>
+<?php endif; ?>
+               <!-- Periksa bagian notifikasi sukses milikmu dan tambahkan id="alert-success" -->
         <?php if(!empty($success_message)): ?>
-            <div class="alert alert-success"><?php echo $success_message; ?></div>
+            <div id="alert-success" class="alert alert-success"><?php echo $success_message; ?></div>
         <?php endif; ?>
+
 
         <!-- KARTU LOWONGAN UTAMA -->
         <div class="card-lowongan">
@@ -357,6 +358,28 @@ window.onclick = function(event) {
         event.target.style.display = 'none';
     }
 }
-</script>
+                // Fungsi untuk menghilangkan notifikasi sukses & error secara otomatis
+        window.addEventListener('DOMContentLoaded', (event) => {
+            const successAlert = document.getElementById('alert-success');
+            const errorAlert = document.getElementById('alert-error');
+            
+            // Pengaturan durasi hilangnya alert (4 detik)
+            setTimeout(() => {
+                // 1. Hilangkan Alert Sukses jika ada
+                if (successAlert) {
+                    successAlert.style.transition = "opacity 0.5s ease";
+                    successAlert.style.opacity = "0";
+                    setTimeout(() => { successAlert.style.display = "none"; }, 500);
+                }
+                
+                // 2. Hilangkan Alert Error jika ada
+                if (errorAlert) {
+                    errorAlert.style.transition = "opacity 0.5s ease";
+                    errorAlert.style.opacity = "0";
+                    setTimeout(() => { errorAlert.style.display = "none"; }, 500);
+                }
+            }, 4000); 
+        });
+        </script>
 </body>
 </html>
