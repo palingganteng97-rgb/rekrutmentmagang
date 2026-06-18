@@ -422,44 +422,63 @@ if ($query_ambil_berkas) {
         <!-- ==================== SEGMEN LAYOUT DUA KOLOM HORIZONTAL SEJAJAR ==================== -->
         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 25px; align-items: start; margin-top: 25px;">
             
-            <!-- FORM BERKAS PELAMAR (SISI KIRI) -->
+                        <!-- FORM BERKAS PELAMAR (SISI KIRI) -->
             <div class="card-profil" style="margin-bottom: 0; min-height: 480px; display: flex; flex-direction: column; justify-content: space-between;">
                 <div>
-                    <div class="card-title" style="color: #0d6efd; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Upload Berkas Pelamar</div>
-<!-- Pastikan strukturnya persis seperti ini -->
-<form action="proses_upload.php" method="POST" enctype="multipart/form-data">
-                        <div class="form-group" style="margin-top: 15px;">
-                            <label>Jenis Berkas</label>
-                            <select name="jenis_berkas" class="form-control" required>
-                                <option value="">-- Pilih Jenis Berkas --</option>
-                                <option value="Ijazah">Ijazah</option>
-                                <option value="Transkrip Nilai">Transkrip Nilai</option>
-                                <option value="SKCK">SKCK</option>
-                                <option value="KTP">KTP / Kartu Identitas</option>
-                                <option value="Sertifikat Pelatihan">Sertifikat Pelatihan</option>
-                            </select>
-                        </div>
-                        
-                        <div class="form-group">
-                            <label>Pilih File Berkas (PDF/JPG/PNG)</label>
-                            <input type="file" name="file_berkas" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required>
+                    <div class="card-title" style="color: #0d6efd; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>Upload Berkas Pelamar</span>
+                        <!-- Tombol Tambah diletakkan di header agar simetris dengan Form STR -->
+                        <button type="button" class="btn-tambah-header" id="btn-tambah-berkas" style="background-color: #0d6efd; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 12px; cursor: pointer;">+ Tambah Berkas</button>
+                    </div>
+                    
+                    <form action="" method="POST" enctype="multipart/form-data">
+                        <!-- Container Utama Form Dinamis -->
+                        <div id="container-form-berkas" style="margin-top: 15px; max-height: 280px; overflow-y: auto; padding-right: 5px;">
+                            
+                            <!-- Baris Item Pertama (Template) -->
+                            <div class="item-form-berkas" style="border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; margin-bottom: 12px; background: #f8fafc;">
+                                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                                    <span class="label-nomor-berkas" style="font-weight: bold; font-size: 13px; color: #475569;">Berkas #1</span>
+                                    <!-- Tombol hapus dinonaktifkan di baris pertama -->
+                                    <button type="button" class="btn-hapus-berkas" style="display: none; background: #dc3545; color: white; border: none; padding: 2px 8px; border-radius: 4px; font-size: 11px; cursor: pointer;">Hapus</button>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 8px;">
+                                    <label style="font-size: 12px; font-weight: 600;">Jenis Berkas</label>
+                                    <select name="jenis_berkas[]" class="form-control" required style="width: 100%; box-sizing: border-box;">
+                                        <option value="">-- Pilih Jenis Berkas --</option>
+                                        <option value="Ijazah">Ijazah</option>
+                                        <option value="Transkrip Nilai">Transkrip Nilai</option>
+                                        <option value="SKCK">SKCK</option>
+                                        <option value="KTP">KTP / Kartu Identitas</option>
+                                        <option value="Sertifikat Pelatihan">Sertifikat Pelatihan</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group" style="margin-bottom: 0;">
+                                    <label style="font-size: 12px; font-weight: 600;">Pilih File Berkas (PDF/JPG/PNG)</label>
+                                    <input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required style="width: 100%; box-sizing: border-box;">
+                                </div>
+                            </div>
+
                         </div>
 
-                        <!-- Status Berkas Unggahan -->
-                        <div style="margin-top: 15px; background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px;">
-                            <span style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Status Berkas Unggahan:</span>
-                            <ul style="font-size: 12px; color: #64748b; padding-left: 15px; list-style-type: square;">
-                                <li style="margin-bottom: 5px;">Ijazah: <?= isset($daftar_berkas_saved['Ijazah']) ? '<a href="uploads/'.$daftar_berkas_saved['Ijazah'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
-                                <li style="margin-bottom: 5px;">Transkrip: <?= isset($daftar_berkas_saved['Transkrip Nilai']) ? '<a href="uploads/'.$daftar_berkas_saved['Transkrip Nilai'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
+                        <!-- Status Berkas Unggahan (Ditempatkan di luar container scroll agar tetap terlihat) -->
+                        <div style="margin-top: 10px; background: #fafafa; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 6px;">
+                            <span style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 4px;">Status Berkas Unggahan:</span>
+                            <ul style="font-size: 12px; color: #64748b; padding-left: 15px; list-style-type: square; margin: 0;">
+                                <li style="margin-bottom: 3px;">Ijazah: <?= isset($daftar_berkas_saved['Ijazah']) ? '<a href="uploads/'.$daftar_berkas_saved['Ijazah'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
+                                <li style="margin-bottom: 3px;">Transkrip: <?= isset($daftar_berkas_saved['Transkrip Nilai']) ? '<a href="uploads/'.$daftar_berkas_saved['Transkrip Nilai'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
                                 <li>SKCK: <?= isset($daftar_berkas_saved['SKCK']) ? '<a href="uploads/'.$daftar_berkas_saved['SKCK'].'" target="_blank" style="color:#198754; font-weight:bold; text-decoration:none;">Tersedia (Lihat)</a>' : '<span style="color:#dc3545;">Belum diunggah</span>'; ?></li>
                             </ul>
                         </div>
                 </div>
                 <div>
-                    <button type="submit" name="simpan_berkas" class="btn-simpan-full" style="background-color: #0d6efd; margin-top: 20px;">Unggah Berkas</button>
+                    <button type="submit" name="simpan_berkas" class="btn-simpan-full" style="background-color: #0d6efd; margin-top: 15px; width: 100%;">Unggah Berkas</button>
                     </form>
                 </div>
             </div>
+
 
             <!-- FORM DATA STR PELAMAR (SISI KANAN) -->
             <div class="card-profil" style="margin-bottom: 0; min-height: 480px; display: flex; flex-direction: column; justify-content: space-between;">
@@ -577,6 +596,43 @@ function urutkanUlangNomorSTR() {
         if (header) { 
             header.innerText = `Data STR #${index + 1}`; 
         }
+    });
+}
+</script>
+<script>
+document.getElementById('btn-tambah-berkas').addEventListener('click', function() {
+    const container = document.getElementById('container-form-berkas');
+    const originalItem = container.querySelector('.item-form-berkas');
+    
+    // Kloning elemen form pertama
+    const newItem = originalItem.cloneNode(true);
+    
+    // Reset isi input & select berkas baru
+    newItem.querySelector('select').value = '';
+    newItem.querySelector('input[type="file"]').value = '';
+    
+    // Tampilkan tombol hapus untuk item baru
+    const deleteBtn = newItem.querySelector('.btn-hapus-berkas');
+    deleteBtn.style.display = 'inline-block';
+    
+    // Tambahkan event click untuk menghapus item ini
+    deleteBtn.addEventListener('click', function() {
+        newItem.remove();
+        updateNomorBerkas(); // Perbarui nomor urut setelah dihapus
+    });
+    
+    // Masukkan elemen baru ke dalam container
+    container.appendChild(newItem);
+    
+    // Perbarui penomoran judul berkas
+    updateNomorBerkas();
+});
+
+// Fungsi pembantu untuk mengurutkan string "Berkas #1", "Berkas #2" secara dinamis
+function updateNomorBerkas() {
+    const items = document.querySelectorAll('#container-form-berkas .item-form-berkas');
+    items.forEach((item, index) => {
+        item.querySelector('.label-nomor-berkas').innerText = 'Berkas #' + (index + 1);
     });
 }
 </script>
