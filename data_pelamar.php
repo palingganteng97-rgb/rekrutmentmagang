@@ -185,6 +185,7 @@ try {
                     <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
                     <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>                    
                     <a href="data_pelamar.php" class="menu-item active">Data Pelamar</a>
+                    <a href="lamaran_tahapan.php" class="menu-item">Lamaran Tahapan</a>
                     <a href="user.php" class="menu-item">Profil Pengguna</a>
 
                 </nav>
