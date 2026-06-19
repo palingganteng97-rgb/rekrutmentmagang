@@ -165,11 +165,21 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
             margin-top: 20px;
         }
         
-        .card-lowongan { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
-        .badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-top: 5px; }
+        .card-lowongan { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: space-between; }
         
-        .btn-lamar { width: 100%; background: #4338ca; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: 0.2s; }
+        /* Pembungkus tombol agar sejajar horizontal */
+        .action-buttons { display: flex; gap: 10px; margin-top: 20px; width: 100%; }
+        
+        /* Gaya Tombol Utama */
+        .btn-action { flex: 1; padding: 12px; border-radius: 6px; font-size: 14px; font-weight: bold; border: none; text-align: center; text-decoration: none; cursor: pointer; transition: 0.2s; }
+        
+        .btn-lamar { background: #4338ca; color: white; }
         .btn-lamar:hover { background: #3730a3; }
+        
+        .btn-detail { background: #2563eb; color: white; }
+        .btn-detail:hover { background: #1d4ed8; }
+        
+        .btn-disabled { background: #e2e8f0; color: #64748b; cursor: not-allowed; }
         
         .link-user-profil { color: #2563eb; text-decoration: none; font-weight: bold; transition: color 0.2s; }
         .link-user-profil:hover { color: #1d4ed8; text-decoration: underline; }
@@ -207,39 +217,93 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
             if (mysqli_num_rows($query_lowongan) > 0) {
                 while ($row = mysqli_fetch_assoc($query_lowongan)) {
 
-                            // SINKRONISASI HEIDISQL: Menggunakan judul_lowongan
             $nama_tampil = isset($row['judul_lowongan']) ? $row['judul_lowongan'] : 'Lowongan Magang';
-            $kode_tampil = isset($row['kode_lowongan']) ? $row['kode_lowongan'] : 'LWN-'.$row['id'];
             $deskripsi   = isset($row['deskripsi']) ? $row['deskripsi'] : '';
             $id_lowongan = $row['id'];
             
             $sudah_melamar = in_array($id_lowongan, $lowongan_dilamar);
             ?>
             <div class="card-lowongan">
-                <h3 style="margin: 0; color: #1e293b; font-size: 20px; font-weight: 600;"><?= htmlspecialchars($nama_tampil); ?></h3>
-                <span class="badge"><?= htmlspecialchars($kode_tampil); ?></span>
-                <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin-top: 15px; margin-bottom: 5px;"><?= htmlspecialchars($deskripsi); ?></p>
+                <div>
+                    <h3 style="margin: 0; color: #1e293b; font-size: 20px; font-weight: 600;"><?= htmlspecialchars($nama_tampil); ?></h3>
+                    <!-- KODE LOWONGAN BERHASIL DIHAPUS DARI SINI -->
+                    <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin-top: 15px; margin-bottom: 5px;"><?= htmlspecialchars($deskripsi); ?></p>
+                </div>
                 
-                <?php if ($sudah_melamar) : ?>
-                    <div style="margin-top: 20px;">
-                        <button type="button" class="btn-lamar" style="background: #e2e8f0; color: #64748b; cursor: not-allowed; width: auto; min-width: 150px; display: inline-block; padding: 10px 20px; margin: 0;" disabled>
-                            ✔ Sudah Dilamar
-                        </button>
-                    </div>
-                <?php else : ?>
-                    <button type="button" class="btn-lamar" onclick="bukaPreview('<?= addslashes(htmlspecialchars($nama_tampil)); ?>', '<?= $id_lowongan; ?>')">
-                        Lamar Sekarang
-                    </button>
-                <?php endif; ?>
-            </div>
+<!-- KOLOM TOMBOL AKSI -->
+<div class="action-buttons">
+    <!-- Tombol Detail (Diubah ke button dengan fungsi onclick pop-up) -->
+    <button type="button" class="btn-action btn-detail" onclick="bukaDetail('<?= $id_lowongan; ?>')">
+        Detail
+    </button>
+
+    <?php if ($sudah_melamar) : ?>
+        <button type="button" class="btn-action btn-disabled" disabled>
+            ✔ Sudah Dilamar
+        </button>
+    <?php else : ?>
+        <button type="button" class="btn-action btn-lamar" onclick="bukaPreview('<?= addslashes(htmlspecialchars($nama_tampil)); ?>', '<?= $id_lowongan; ?>')">
+            Lamar
+        </button>
+    <?php endif; ?>
+</div>
+
             <?php
-        } // Penutup while baris 210
+        } 
     } else {
         echo "<p style='color:#64748b; text-align: center; width: 100%;'>Belum ada lowongan magang yang tersedia saat ini.</p>";
     }
     ?>
-    </div> <!-- Penutup grid-lowongan baris 206 -->
-</div> <!-- Penutup container baris 202 -->
+    </div> 
+</div> 
+
+<!-- WINDOW MODAL DETAIL LOWONGAN POP-UP -->
+<div id="modalDetailLowongan" class="modal">
+    <div class="modal-content" style="width: 600px; max-width: 95%; text-align: left; padding: 25px; border-radius: 12px; max-height: 85vh; overflow-y: auto; margin: auto; position: relative;">
+        <h3 id="detailJudul" style="margin-top: 0; color: #1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; font-size: 22px;">-</h3>
+        
+        <div style="font-size: 14px; line-height: 1.6; color: #334155;">
+            <!-- Deskripsi -->
+            <div style="margin-bottom: 15px;">
+                <strong style="color: #4338ca; display:block; margin-bottom: 4px;">Deskripsi Pekerjaan:</strong>
+                <p id="detailDeskripsi" style="margin: 0; color: #475569;">-</p>
+            </div>
+            
+            <!-- Kualifikasi -->
+            <div style="margin-bottom: 15px;">
+                <strong style="color: #4338ca; display:block; margin-bottom: 4px;">Kualifikasi:</strong>
+                <p id="detailKualifikasi" style="margin: 0; color: #475569; white-space: pre-line;">-</p>
+            </div>
+            
+            <!-- Persyaratan -->
+            <div style="margin-bottom: 15px;">
+                <strong style="color: #4338ca; display:block; margin-bottom: 4px;">Persyaratan Dokumen:</strong>
+                <p id="detailPersyaratan" style="margin: 0; color: #475569; white-space: pre-line;">-</p>
+            </div>
+            
+            <!-- Periode Pendaftaran -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; margin-top: 20px; display: flex; justify-content: space-between;">
+                <div>
+                    <span style="font-weight: bold; color: #64748b; display: block; font-size: 12px;">TANGGAL MULAI</span>
+                    <span id="detailTglMulai" style="color: #1e293b; font-weight: 600;">-</span>
+                </div>
+                <div>
+                    <span style="font-weight: bold; color: #64748b; display: block; font-size: 12px;">TANGGAL SELESAI</span>
+                    <span id="detailTglSelesai" style="color: #b91c1c; font-weight: 600;">-</span>
+                </div>
+                <div>
+                    <span style="font-weight: bold; color: #64748b; display: block; font-size: 12px;">KUOTA DIBUTUHKAN</span>
+                    <span id="detailKuota" style="color: #1e293b; font-weight: 600;">- Orang</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tombol Aksi Penutup Pop-up -->
+        <div style="margin-top: 25px; text-align: right;">
+            <button type="button" class="btn-batal" onclick="tutupDetail()" style="margin: 0;">Tutup</button>
+        </div>
+    </div>
+</div>
 
 <!-- WINDOW MODAL PREVIEW DATA SUPER LENGKAP -->
 <div id="modalPreview" class="modal">
@@ -340,6 +404,47 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
     function tutupPreview() {
         document.getElementById('modalPreview').style.display = 'none';
     }
+    function bukaDetail(idLowongan) {
+    fetch('get_detail_lowongan.php?id=' + idLowongan)
+        .then(response => response.json())
+        .then(res => {
+            if (res.status === 'success') {
+                const d = res.data;
+                document.getElementById('detailJudul').innerText = d.judul_lowongan || 'Detail Lowongan';
+                document.getElementById('detailDeskripsi').innerText = d.deskripsi || '-';
+                document.getElementById('detailKualifikasi').innerText = d.kualifikasi || '-';
+                document.getElementById('detailPersyaratan').innerText = d.persyaratan || '-';
+                document.getElementById('detailKuota').innerText = (d.jumlah_kebutuhan || '0') + ' Orang';
+                document.getElementById('detailTglMulai').innerText = d.tanggal_mulai || '-';
+                document.getElementById('detailTglSelesai').innerText = d.tanggal_selesai || '-';
+                
+                document.getElementById('modalDetailLowongan').style.display = 'flex';
+            } else {
+                alert('Gagal mengambil data: ' + res.message);
+            }
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Gagal memuat data detail.');
+        });
+}
+
+function tutupDetail() {
+    document.getElementById('modalDetailLowongan').style.display = 'none';
+}
+
+// Menutup modal secara otomatis jika area luar (latar abu-abu) diklik
+window.addEventListener('click', function(event) {
+    const modalDetail = document.getElementById('modalDetailLowongan');
+    const modalPreview = document.getElementById('modalPreview');
+    if (event.target === modalDetail) {
+        modalDetail.style.display = 'none';
+    }
+    if (event.target === modalPreview) {
+        modalPreview.style.display = 'none';
+    }
+});
+
 </script>
 </body>
 </html>
