@@ -1,6 +1,9 @@
 <?php 
 session_start(); 
 
+// TAMBAHKAN BARIS INI UNTUK MENGUNCI WAKTU INDONESIA BARAT (WIB)
+date_default_timezone_set('Asia/Jakarta');
+
 // 1. KONEKSI DATABASE
 $host     = "10.10.6.59"; 
 $user_db  = "root_host";      
@@ -11,13 +14,15 @@ $koneksi = mysqli_connect($host, $user_db, $pass_db, $nama_db);
 if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
+// TAMBAHKAN BARIS INI TEPAT DI BAWAH KONEKSI
+mysqli_query($koneksi, "SET time_zone = '+07:00'");
 
 // 2. PROTEKSI HALAMAN (WAJIB LOGIN)
 $pelamar_id   = isset($_SESSION['pelamar_id']) ? $_SESSION['pelamar_id'] : null;
 $pelamar_nama = isset($_SESSION['pelamar_nama']) ? $_SESSION['pelamar_nama'] : null;
 
 if (!$pelamar_id) {
-    echo "<script>alert('Anda harus login terlebih dahulu!'); window.location.href='login.php';</script>";
+    echo "<script>alert('Anda harus login terlebih dahulu!'); window.location.href='login_pelamar.php';</script>";
     exit;
 }
 ?>
@@ -61,7 +66,6 @@ if (!$pelamar_id) {
 
         <table>
             <thead>
-                <!-- PERBAIKAN: Judul kolom tabel diletakkan di sini menggunakan tag th -->
                 <tr>
                     <th style="width: 60px; text-align: center;">No</th>
                     <th>Nama Formasi Lowongan</th>
@@ -71,42 +75,41 @@ if (!$pelamar_id) {
                 </tr>
             </thead>
 
-            <tbody>
+                        <tbody>
                 <?php
-                // 3. QUERY AMBIL DATA DENGAN SELECT AMAN
                 $no = 1;
-                $query_riwayat = "SELECT l.id AS lamaran_id, l.created_at, l.status, lw.* 
+                
+                // PERBAIKAN: Memberikan alias l.created_at AS tanggal_kirim agar tidak tertimpa tabel lowongan
+                $query_riwayat = "SELECT l.id AS lamaran_id, l.created_at AS tanggal_kirim, l.status, lw.judul_lowongan, lw.kode_lowongan 
                                   FROM rekrutmen_lamaran l
                                   JOIN rekrutmen_lowongan lw ON l.lowongan_id = lw.id
                                   WHERE l.pelamar_id = $pelamar_id 
                                   ORDER BY l.id DESC";
                 
-                $tampil_data = mysqli_query($koneksi, $query_riwayat);
+                $tampil_data = mysqli_connect_error() ? null : mysqli_query($koneksi, $query_riwayat);
 
                 if ($tampil_data && mysqli_num_rows($tampil_data) > 0) {
                     while ($row = mysqli_fetch_assoc($tampil_data)) {
                         
-                        // LOGIKA OTOMATIS: Mendeteksi nama kolom lowongan agar bebas dari error 'Unknown column'
-                        $nama_lowongan_tampil = 'Lowongan Magang';
-                        if (isset($row['nama_lowongan'])) {
-                            $nama_lowongan_tampil = $row['nama_lowongan'];
-                        } elseif (isset($row['nama'])) {
-                            $nama_lowongan_tampil = $row['nama'];
-                        }
+                        // Menampilkan judul lowongan
+                        $nama_lowongan_tampil = !empty($row['judul_lowongan']) ? $row['judul_lowongan'] : 'Lowongan Magang';
+                        $kode_lowongan = !empty($row['kode_lowongan']) ? ' (' . $row['kode_lowongan'] . ')' : '';
 
                         // Penentuan warna badge status ENUM
                         $status = $row['status'];
                         $badge_class = 'badge-proses';
-                        if ($status == 'Diterima') { $badge_class = 'badge-diterima'; }
-                        if ($status == 'Ditolak') { $badge_class = 'badge-ditolak'; }
+                        if ($status == 'Diterima' || $status == 'TERIMA') { 
+                            $badge_class = 'badge-diterima'; 
+                        } elseif ($status == 'Ditolak' || $status == 'TOLAK') { 
+                            $badge_class = 'badge-ditolak'; 
+                        }
                         
-                        // Penentuan tanggal kirim berkas lamaran
-                        $tanggal = !empty($row['created_at']) ? date('d M Y - H:i', strtotime($row['created_at'])) : 'Sedang diproses';
+                        // PERBAIKAN: Membaca variabel alias 'tanggal_kirim' yang sudah kita buat di atas
+                        $tanggal = !empty($row['tanggal_kirim']) ? date('d M Y - H:i', strtotime($row['tanggal_kirim'])) : 'Sedang diproses';
                         ?>
-                        <!-- PERBAIKAN: Baris data dan tombol detail dicetak di sini (di dalam loop PHP) -->
                         <tr>
                             <td style="text-align: center; font-weight: bold; color: #64748b;"><?= $no++; ?></td>
-                            <td style="font-weight: 500; color: #4338ca;"><?= htmlspecialchars($nama_lowongan_tampil); ?></td>
+                            <td style="font-weight: 500; color: #4338ca;"><?= htmlspecialchars($nama_lowongan_tampil . $kode_lowongan); ?></td>
                             <td><?= $tanggal; ?> WIB</td>
                             <td style="text-align: center;">
                                 <span class="badge <?= $badge_class; ?>"><?= htmlspecialchars($status); ?></span>
@@ -122,6 +125,7 @@ if (!$pelamar_id) {
                 }
                 ?>
             </tbody>
+
         </table>
     </div>
 

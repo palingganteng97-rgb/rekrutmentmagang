@@ -1,6 +1,9 @@
 <?php 
 session_start(); 
 
+// PERBAIKAN UTAMA: WAJIB DIKUNCI DI SINI AGAR VARIABEL KELUARAN JAM PHP MENGIKUTI WIB (JAM LAPTOP)
+date_default_timezone_set('Asia/Jakarta'); 
+
 // 1. KONEKSI DATABASE
 $host     = "10.10.6.59"; 
 $user_db  = "root_host";      
@@ -12,6 +15,9 @@ if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
+// Sinkronisasi zona waktu server database MySQL ke WIB (+07:00)
+mysqli_query($koneksi, "SET time_zone = '+07:00'");
+
 // 2. AMBIL DATA SESSION (PORTAL DAPAT DIAKSES OLEH TAMU)
 $pelamar_id   = isset($_SESSION['pelamar_id']) ? $_SESSION['pelamar_id'] : null;
 $pelamar_nama = isset($_SESSION['pelamar_nama']) ? $_SESSION['pelamar_nama'] : null;
@@ -19,21 +25,29 @@ $pelamar_nama = isset($_SESSION['pelamar_nama']) ? $_SESSION['pelamar_nama'] : n
 $data = null;
 $list_pendidikan = [];
 
-// 3. AMBIL DATA PROFIL & VALIDASI REAL-TIME (HANYA JIKA USER SUDAH LOGIN)
-$data_lengkap = false;
-$pesan_error  = "Silakan login terlebih dahulu.";
 
-// Inisialisasi array kosong di luar agar halaman tidak error saat diakses Tamu
+// =========================================================================
+// 3. AMBIL DATA PROFIL & VALIDASI REAL-TIME (HANYA JIKA USER SUDAH LOGIN)
+// =========================================================================
+$data_lengkap     = false;
+$pesan_error      = "Silakan login terlebih dahulu.";
+
+// Inisialisasi awal semua array agar halaman bebas dari error saat diakses Tamu
 $lowongan_dilamar = []; 
+$list_pendidikan  = [];
+$list_berkas      = [];
+$list_str         = [];
+$list_pengalaman  = [];
+$data             = null; // Mengamankan variabel biodata utama
 
 if ($pelamar_id) {
-    // Ambil Biodata
+    // A. Ambil Biodata Utama Pelamar
     $query_user = mysqli_query($koneksi, "SELECT * FROM pelamar WHERE id = $pelamar_id");
     if ($query_user) {
         $data = mysqli_fetch_assoc($query_user);
     }
 
-    // Ambil Riwayat Pendidikan
+    // B. Ambil Riwayat Pendidikan Pelamar
     $query_pend = mysqli_query($koneksi, "SELECT * FROM pelamar_pendidikan WHERE pelamar_id = $pelamar_id");
     if ($query_pend) {
         while ($row = mysqli_fetch_assoc($query_pend)) {
@@ -41,8 +55,7 @@ if ($pelamar_id) {
         }
     }
     
-    // AMBIL DATA BERKAS PELAMAR UNTUK PREVIEW POP-UP
-    $list_berkas = [];
+    // C. Ambil Lampiran Berkas Dokumen Upload untuk Preview Pop-Up
     $query_bk = mysqli_query($koneksi, "SELECT * FROM pelamar_berkas WHERE pelamar_id = $pelamar_id");
     if ($query_bk) {
         while ($row_bk = mysqli_fetch_assoc($query_bk)) {
@@ -50,8 +63,7 @@ if ($pelamar_id) {
         }
     }
 
-    // AMBIL DATA STR PELAMAR UNTUK PREVIEW POP-UP
-    $list_str = [];
+    // D. Ambil Data Surat Tanda Registrasi (STR) untuk Preview Pop-Up
     $query_s = mysqli_query($koneksi, "SELECT * FROM pelamar_str WHERE pelamar_id = $pelamar_id");
     if ($query_s) {
         while ($row_s = mysqli_fetch_assoc($query_s)) {
@@ -59,8 +71,7 @@ if ($pelamar_id) {
         }
     }
 
-    // AMBIL DATA PENGALAMAN KERJA PELAMAR
-    $list_pengalaman = [];
+    // E. Ambil Riwayat Pengalaman Kerja Pelamar untuk Preview Pop-Up
     $query_exp = mysqli_query($koneksi, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id ORDER BY id DESC");
     if ($query_exp) {
         while ($row_exp = mysqli_fetch_assoc($query_exp)) {
@@ -68,18 +79,15 @@ if ($pelamar_id) {
         }
     }
 
-    // =========================================================================
-    // FITUR UTAMA: KUMPULKAN ID LOWONGAN YANG SUDAH PERNAH DILAMAR USER INI
-    // =========================================================================
+    // F. Fitur Utama Proteksi Duplikasi: Kumpulkan ID Lowongan yang Sudah Pernah Dilamar User Ini
     $query_l_dilamar = mysqli_query($koneksi, "SELECT lowongan_id FROM rekrutmen_lamaran WHERE pelamar_id = $pelamar_id");
     if ($query_l_dilamar) {
         while ($row_ld = mysqli_fetch_assoc($query_l_dilamar)) {
             $lowongan_dilamar[] = $row_ld['lowongan_id'];
         }
     }
-    // =========================================================================
 
-    // Evaluasi Kelengkapan Data utama (Nama, NIK, Alamat, Foto)
+    // G. Evaluasi Kelengkapan Data Profil Wajib Sebelum Diizinkan Melamar
     if ($data) {
         $data_lengkap = true;
         $pesan_error  = "";
@@ -97,13 +105,12 @@ if ($pelamar_id) {
         }
     }
 }
-
-
+// =========================================================================
 
 // 4. PROSES INSERT LAMARAN KE DATABASE (SAAT MODAL DI-SUBMIT)
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])) {
     if (!$pelamar_id) {
-        echo "<script>alert('Anda harus login terlebih dahulu!'); window.location.href='login.php';</script>";
+        echo "<script>alert('Anda harus login terlebih dahulu!'); window.location.href='login_pelamar.php';</script>";
         exit;
     }
     if (!$data_lengkap) {
@@ -111,13 +118,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
         exit;
     }
 
+    // Mengambil jam komputer lokal saat ini (Sudah dikunci ke WIB berkat baris nomor 4)
     $tanggal_masuk = date('Y-m-d H:i:s');
     $status_awal   = 'Proses'; 
     $lowongan_id   = isset($_POST['lowongan_id']) ? intval($_POST['lowongan_id']) : 0;
 
-    // =========================================================================
     // VALIDASI BACKEND: PROTEKSI AGAR USER TIDAK BISA MELAMAR LOWONGAN YANG SAMA
-    // =========================================================================
     $cek_duplikat = mysqli_query($koneksi, "SELECT id FROM rekrutmen_lamaran WHERE pelamar_id = $pelamar_id AND lowongan_id = $lowongan_id");
     if (mysqli_num_rows($cek_duplikat) > 0) {
         echo "<script>
@@ -126,9 +132,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
         </script>";
         exit;
     }
-    // =========================================================================
 
-    // Perintah INSERT utama ke tabel database Anda
+    // Perintah INSERT utama ke tabel database Anda (Memasukkan variabel $tanggal_masuk)
     $query_kirim = "INSERT INTO rekrutmen_lamaran (pelamar_id, lowongan_id, status, created_at, updated_at) 
                     VALUES ($pelamar_id, $lowongan_id, '$status_awal', '$tanggal_masuk', '$tanggal_masuk')";
 
@@ -193,7 +198,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
                 <a href="rekrutmen_lamaran.php" style="background:#198754; color:white; padding:8px 16px; text-decoration:none; border-radius:6px; font-size:14px; font-weight:bold; margin-right:10px;">Data Lamaran Saya</a>
                 <a href="logout_pelamar.php" style="background:#dc2626; color:white; padding:8px 16px; text-decoration:none; border-radius:6px; font-size:14px; font-weight:bold;">Keluar</a>
             <?php else : ?>
-                <a href="login.php" style="background:#2563eb; color:white; padding:8px 16px; text-decoration:none; border-radius:6px; font-size:14px; font-weight:bold;">Masuk Akun</a>
+                <a href="login_pelamar.php" style="background:#2563eb; color:white; padding:8px 16px; text-decoration:none; border-radius:6px; font-size:14px; font-weight:bold;">Masuk Akun</a>
             <?php endif; ?>
         </div>
     </div>
@@ -340,9 +345,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
 
     function bukaPreview(namaLowongan, idLowongan) {
         if (!isLogin) {
-            // Mencegah akses melamar bagi Tamu / Pengguna yang belum login
-            alert("🔒 Akses Terkunci!\n\nAnda harus login terlebih dahulu untuk mengajukan lamaran.");
-            window.location.href = "login.php";
+            // PERBAIKAN: Dialihkan ke file login_pelamar.php jika belum login
+            alert("🔒 Akses Terkunci!\n\nAnda harus login terlebih dahulu untuk mengajukan lamaran kerja.");
+            window.location.href = "login_pelamar.php";
         } else if (!isDataLengkap) {
             // Mencegah kiriman jika kolom wajib di database masih kosong
             alert("⚠️ Pendaftaran Ditolak!\n" + pesanError + "\n\nHarap lengkapi data profil Anda terlebih dahulu.");
