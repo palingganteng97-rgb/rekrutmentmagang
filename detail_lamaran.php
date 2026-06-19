@@ -80,21 +80,35 @@ if ($query_exp) { while ($r = mysqli_fetch_assoc($query_exp)) { $list_pengalaman
         Status Aplikasi: <strong style="color: #d97706;"><?= htmlspecialchars($data_lamaran['status']); ?></strong>
     </div>
 
-    <!-- I. BIODATA -->
-    <div class="section-box">
-        <span class="section-title">I. Informasi Biodata Pelamar</span>
-        <div><strong>Nama Lengkap:</strong> <?= htmlspecialchars($data_user['nama_lengkap'] ?? '-'); ?></div>
-        <div><strong>NIK:</strong> <?= htmlspecialchars($data_user['nik'] ?? '-'); ?></div>
-        <div><strong>Alamat Lengkap:</strong> <?= htmlspecialchars($data_user['alamat'] ?? '-'); ?></div>
-        <div><strong>Pendidikan Terakhir:</strong> 
-            <?php 
-            if (!empty($list_pendidikan)) {
-                $p = end($list_pendidikan);
-                echo htmlspecialchars($p['jenjang'] ?? $p['tingkat'] ?? '-') . " - " . htmlspecialchars($p['nama_sekolah'] ?? $p['institusi'] ?? '-');
-            } else { echo "-"; }
-            ?>
+<!-- I. Informasi Biodata Pelamar (Menggunakan Variabel $data_user Sesuai Backend PHP Anda) -->
+<div class="card-detail" style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 20px;">
+    <h3 style="margin-top: 0; color: #4338ca; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; font-size: 16px;">I. Informasi Biodata Pelamar</h3>
+    
+    <div style="font-size: 14px; line-height: 2.0; color: #334155; margin-top: 15px;">
+        <div style="display: flex;"><span style="width: 160px; font-weight: bold; color: #475569;">Nama Lengkap</span><span style="flex: 1; color: #1e293b;">: <strong><?= htmlspecialchars($data_user['nama_lengkap'] ?? '-'); ?></strong></span></div>
+        <div style="display: flex;"><span style="width: 160px; font-weight: bold; color: #475569;">NIK</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data_user['nik'] ?? '-'); ?></span></div>
+        <div style="display: flex;"><span style="width: 160px; font-weight: bold; color: #475569;">Tempat, Tgl Lahir</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data_user['tempat_lahir'] ?? '-'); ?>, <?= isset($data_user['tanggal_lahir']) ? date('d-m-Y', strtotime($data_user['tanggal_lahir'])) : '-'; ?></span></div>
+        <div style="display: flex;"><span style="width: 160px; font-weight: bold; color: #475569;">Jenis Kelamin</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data_user['jenis_kelamin'] ?? '-'); ?></span></div>
+        <div style="display: flex;"><span style="width: 160px; font-weight: bold; color: #475569;">Agama</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data_user['agama'] ?? '-'); ?></span></div>
+        <div style="display: flex;"><span style="width: 160px; font-weight: bold; color: #475569;">Status Pernikahan</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data_user['status_sosial'] ?? '-'); ?></span></div>
+        <div style="display: flex;"><span style="width: 160px; font-weight: bold; color: #475569;">No. Telepon / WA</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data_user['no_telepon'] ?? '-'); ?></span></div>
+        <div style="display: flex;"><span style="width: 160px; font-weight: bold; color: #475569;">Email</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data_user['email'] ?? '-'); ?></span></div>
+        <div style="display: flex;"><span style="width: 160px; font-weight: bold; color: #475569;">Kota / Provinsi</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data_user['kota'] ?? '-'); ?>, <?= htmlspecialchars($data_user['provinsi'] ?? '-'); ?></span></div>
+        <div style="display: flex;"><span style="width: 160px; font-weight: bold; color: #475569;">Alamat Lengkap</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data_user['alamat'] ?? '-'); ?></span></div>
+        <div style="display: flex; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #cbd5e1;">
+            <span style="width: 160px; font-weight: bold; color: #475569;">Pendidikan Terakhir</span>
+            <span style="flex: 1; color: #1e293b;">: 
+                <?php 
+                if (!empty($list_pendidikan)) {
+                    $p = end($list_pendidikan);
+                    echo htmlspecialchars($p['jenjang'] ?? '-') . " - " . htmlspecialchars($p['institusi'] ?? '-');
+                } else { echo "-"; }
+                ?>
+            </span>
         </div>
     </div>
+</div>
+
 
     <!-- II. BERKAS DOKUMEN -->
     <div class="section-box">
@@ -115,42 +129,58 @@ if ($query_exp) { while ($r = mysqli_fetch_assoc($query_exp)) { $list_pengalaman
         <?php endif; ?>
     </div>
 
-    <!-- III. DATA STR -->
-    <div class="section-box">
-        <span class="section-title" style="color: #d97706;">III. Registrasi STR</span>
+<!-- III. Registrasi STR (Perbaikan Fitur Lihat Berkas Dokumen STR) -->
+<div class="card-detail" style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 20px;">
+    <h3 style="margin-top: 0; color: #d97706; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; font-size: 16px;">III. Registrasi STR</h3>
+    
+    <div style="font-size: 14px; color: #334155; margin-top: 15px;">
         <?php if (!empty($list_str)) : ?>
             <?php foreach ($list_str as $str) : ?>
-                <div>• No. STR: <strong><?= htmlspecialchars($str['nomor_str']); ?></strong> <small style="color:#64748b;">(Berlaku s/d: <?= date('d/m/Y', strtotime($str['tanggal_expired'])); ?>)</small></div>
+                <div style="margin-bottom: 10px; line-height: 1.8;">
+                    • No. STR: <strong><?= htmlspecialchars($str['nomor_str']); ?></strong> 
+                    <?php if (!empty($str['tanggal_expired'])) : ?>
+                        <span style="color: #64748b; font-size: 12px;">(Berlaku s/d: <?= date('d/m/Y', strtotime($str['tanggal_expired'])); ?>)</span>
+                    <?php endif; ?>
+                    
+                    <!-- LOGIKA UNTUK MENAMPILKAN LINK LIHAT FILE STR -->
+                    <?php if (!empty($str['file_str']) && trim($str['file_str']) != '') : ?>
+                        <span style="margin-left: 10px;">
+                            [ <a href="uploads/<?= htmlspecialchars($str['file_str']); ?>" target="_blank" style="color: #0d6efd; text-decoration: none; font-weight: bold;">👁 Lihat Berkas STR</a> ]
+                        </span>
+                    <?php else : ?>
+                        <span style="color: #94a3b8; font-size: 12px; font-style: italic; margin-left: 10px;">(File tidak diunggah)</span>
+                    <?php endif; ?>
+                </div>
             <?php endforeach; ?>
         <?php else : ?>
-            <em style="color:#64748b;">Tidak menyertakan data STR.</em>
+            <span style="color: #64748b; font-style: italic;">Tidak ada data STR pendaftaran yang terlampir.</span>
         <?php endif; ?>
     </div>
+</div>
 
-        <!-- IV. PENGALAMAN -->
-    <div class="section-box">
-        <span class="section-title">IV. Pengalaman Kerja</span>
+<!-- IV. Pengalaman Kerja (Perbaikan Kolom Alasan Keluar) -->
+<div class="card-detail" style="background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; margin-bottom: 20px;">
+    <h3 style="margin-top: 0; color: #4338ca; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; font-size: 16px;">IV. Pengalaman Kerja</h3>
+    
+    <div style="font-size: 14px; color: #334155; margin-top: 15px;">
         <?php if (!empty($list_pengalaman)) : ?>
-            <ul style="margin:0; padding-left:20px;">
+            <ul style="margin: 0; padding-left: 20px; line-height: 2.0;">
                 <?php foreach ($list_pengalaman as $exp) : ?>
-                    <?php 
-                    // LOGIKA OTOMATIS: Mendeteksi nama kolom tahun agar bebas dari error Undefined Key
-                    $masuk  = $exp['tahun_masuk'] ?? $exp['mulai'] ?? $exp['tahun'] ?? $exp['tgl_masuk'] ?? '';
-                    $keluar = $exp['tahun_keluar'] ?? $exp['selesai'] ?? $exp['tgl_keluar'] ?? 'Sekarang';
-                    
-                    // Format tampilan tahun jika data ditemukan
-                    $durasi = (!empty($masuk)) ? " ($masuk - $keluar)" : "";
-                    ?>
-                    <li>
-                        <strong><?= htmlspecialchars($exp['perusahaan'] ?? $exp['nama_perusahaan'] ?? '-'); ?></strong> 
-                        sebagai <em><?= htmlspecialchars($exp['jabatan'] ?? $exp['posisi'] ?? '-'); ?></em><?= $durasi; ?>
+                    <li style="margin-bottom: 15px; list-style-type: square;">
+                        <strong><?= htmlspecialchars($exp['jabatan'] ?? '-'); ?></strong> di <strong><?= htmlspecialchars($exp['perusahaan'] ?? '-'); ?></strong>
+                        <div style="font-size: 13px; color: #64748b; padding-left: 5px; line-height: 1.6;">
+                            <div>• Periode Kerja: <?= !empty($exp['mulai_kerja']) ? date('d/m/Y', strtotime($exp['mulai_kerja'])) : '-'; ?> s/d <?= !empty($exp['selesai_kerja']) ? date('d/m/Y', strtotime($exp['selesai_kerja'])) : 'Sekarang'; ?></div>
+                            <!-- PERBAIKAN UTAMA: Memastikan pemanggilan menggunakan key 'alasan_keluar' sesuai database -->
+                            <div>• Alasan Keluar: <span style="color: #1e293b; font-style: italic; font-weight: 500;"><?= !empty($exp['alasan_keluar']) ? htmlspecialchars($exp['alasan_keluar']) : '-'; ?></span></div>
+                        </div>
                     </li>
                 <?php endforeach; ?>
             </ul>
         <?php else : ?>
-            <em style="color:#64748b;">Fresh Graduate (Belum memiliki riwayat kerja).</em>
+            <span style="color: #64748b; font-style: italic;">Tidak ada riwayat pengalaman kerja yang terlampir.</span>
         <?php endif; ?>
     </div>
+</div>
 
 </div>
 
