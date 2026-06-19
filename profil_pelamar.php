@@ -22,7 +22,7 @@ $error_message = "";
 $success_message = "";
 $pelamar_id = $_SESSION['pelamar_id'];
 
-// 3. LOGIKA PROSES UPDATE PROFIL BIODATA (TABEL: pelamar)
+// 3. LOGIKA PROSES UPDATE PROFIL BIODATA
 if (isset($_POST['update_profil'])) {
     $nama_lengkap  = mysqli_real_escape_string($koneksi, $_POST['nama_lengkap']);
     $nik           = mysqli_real_escape_string($koneksi, $_POST['nik']);
@@ -85,45 +85,7 @@ if (isset($_POST['update_profil'])) {
     }
 }
 
-
-// LOGIKA PROSES SIMPAN RIWAYAT PENGALAMAN (TABEL: pelamar_pengalaman)
-if (isset($_POST['simpan_pengalaman'])) {
-    $perusahaan    = mysqli_real_escape_string($koneksi, $_POST['perusahaan']);
-    $jabatan       = mysqli_real_escape_string($koneksi, $_POST['jabatan']);
-    $mulai_kerja   = mysqli_real_escape_string($koneksi, $_POST['mulai_kerja']);
-    $selesai_kerja = !empty($_POST['selesai_kerja']) ? mysqli_real_escape_string($koneksi, $_POST['selesai_kerja']) : NULL;
-    $alasan_keluar = mysqli_real_escape_string($koneksi, $_POST['alasan_keluar']);
-
-    $cek_data = mysqli_query($koneksi, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id");
-
-    if (mysqli_num_rows($cek_data) > 0) {
-        // PERBAIKAN: Menggunakan alasan_keluar (dengan garis bawah)
-        $query_exp = "UPDATE pelamar_pengalaman SET 
-                        perusahaan = '$perusahaan', 
-                        jabatan = '$jabatan', 
-                        mulai_kerja = '$mulai_kerja', 
-                        selesai_kerja = " . ($selesai_kerja ? "'$selesai_kerja'" : "NULL") . ", 
-                        alasan_keluar = '$alasan_keluar',
-                        updated_at = NOW() 
-                      WHERE pelamar_id = $pelamar_id";
-    } else {
-        // PERBAIKAN: Menggunakan alasan_keluar (dengan garis bawah)
-        $query_exp = "INSERT INTO pelamar_pengalaman (pelamar_id, perusahaan, jabatan, mulai_kerja, selesai_kerja, alasan_keluar, created_at, updated_at) 
-                      VALUES ($pelamar_id, '$perusahaan', '$jabatan', '$mulai_kerja', " . ($selesai_kerja ? "'$selesai_kerja'" : "NULL") . ", '$alasan_keluar', NOW(), NOW())";
-    }
-
-    if (mysqli_query($koneksi, $query_exp)) {
-        echo "<script>alert('✓ Riwayat pengalaman berhasil disimpan!'); window.location.href='profil_pelamar.php';</script>";
-        exit;
-    } else {
-        echo "<script>alert('Gagal menyimpan pengalaman: " . mysqli_error($koneksi) . "');</script>";
-    }
-}
-
-
-// =========================================================================
-// 5. LOGIKA PROSES SIMPAN MULTI DATA PENDIDIKAN
-// =========================================================================
+// 4. LOGIKA PROSES SIMPAN MULTI PENDIDIKAN
 if (isset($_POST['simpan_pendidikan'])) {
     mysqli_query($koneksi, "DELETE FROM pelamar_pendidikan WHERE pelamar_id = $pelamar_id");
 
@@ -149,10 +111,46 @@ if (isset($_POST['simpan_pendidikan'])) {
     exit;
 }
 
-// =========================================================================
-// 6. LOGIKA PROSES SIMPAN BERKAS PELAMAR
-// =========================================================================
+// 5. LOGIKA PROSES SIMPAN MULTI RIWAYAT PENGALAMAN
+if (isset($_POST['simpan_pengalaman'])) {
+    mysqli_query($koneksi, "DELETE FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id");
+
+    $perusahaan_arr    = isset($_POST['perusahaan']) ? $_POST['perusahaan'] : [];
+    $jabatan_arr       = isset($_POST['jabatan']) ? $_POST['jabatan'] : [];
+    $mulai_kerja_arr   = isset($_POST['mulai_kerja']) ? $_POST['mulai_kerja'] : [];
+    $selesai_kerja_arr = isset($_POST['selesai_kerja']) ? $_POST['selesai_kerja'] : [];
+    $alasan_keluar_arr = isset($_POST['alasan_keluar']) ? $_POST['alasan_keluar'] : [];
+
+    $sukses_insert_exp = true;
+
+    for ($i = 0; $i < count($perusahaan_arr); $i++) {
+        $perusahaan    = mysqli_real_escape_string($koneksi, $perusahaan_arr[$i]);
+        $jabatan       = mysqli_real_escape_string($koneksi, $jabatan_arr[$i]);
+        $mulai_kerja   = mysqli_real_escape_string($koneksi, $mulai_kerja_arr[$i]);
+        $selesai_kerja = !empty($selesai_kerja_arr[$i]) ? "'" . mysqli_real_escape_string($koneksi, $selesai_kerja_arr[$i]) . "'" : "NULL";
+        $alasan_keluar = mysqli_real_escape_string($koneksi, $alasan_keluar_arr[$i]);
+
+        if (!empty($perusahaan) && !empty($jabatan)) {
+            $query_exp = "INSERT INTO pelamar_pengalaman (pelamar_id, perusahaan, jabatan, mulai_kerja, selesai_kerja, alasan_keluar, created_at, updated_at) 
+                          VALUES ($pelamar_id, '$perusahaan', '$jabatan', '$mulai_kerja', $selesai_kerja, '$alasan_keluar', NOW(), NOW())";
+            if (!mysqli_query($koneksi, $query_exp)) {
+                $sukses_insert_exp = false;
+            }
+        }
+    }
+
+    if ($sukses_insert_exp) {
+        echo "<script>alert('✓ Semua riwayat pengalaman berhasil diperbarui!'); window.location.href='profil_pelamar.php';</script>";
+        exit;
+    } else {
+        echo "<script>alert('Terjadi kesalahan saat menyimpan data pengalaman.');</script>";
+    }
+}
+
+// 6. LOGIKA PROSES SIMPAN MULTI BERKAS DOKUMEN
 if (isset($_POST['simpan_berkas'])) {
+    mysqli_query($koneksi, "CREATE TABLE IF NOT EXISTS `pelamar_berkas` (`id` INT AUTO_INCREMENT PRIMARY KEY, `pelamar_id` INT NOT NULL, `jenis_berkas` VARCHAR(100) NOT NULL, `nama_file` VARCHAR(255) NOT NULL, `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    
     $jenis_berkas_arr = isset($_POST['jenis_berkas']) ? $_POST['jenis_berkas'] : [];
     
     $berkas_doc_lama = [];
@@ -177,14 +175,14 @@ if (isset($_POST['simpan_berkas'])) {
             mysqli_query($koneksi, "INSERT INTO pelamar_berkas (pelamar_id, jenis_berkas, nama_file) VALUES ($pelamar_id, '$jenis_berkas', '$nama_file_doc')");
         }
     }
-    echo "<script>alert('✓ Seluruh berkas dokumen berhasil disimpan!'); window.location.href='profil_pelamar.php';</script>";
+    echo "<script>alert('✓ Seluruh dokumen berkas pelamar berhasil disimpan!'); window.location.href='profil_pelamar.php';</script>";
     exit;
 }
 
-// =========================================================================
-// 7. LOGIKA PROSES SIMPAN DATA STR
-// =========================================================================
+// 7. LOGIKA PROSES SIMPAN MULTI DATA STR
 if (isset($_POST['simpan_str'])) {
+    mysqli_query($koneksi, "CREATE TABLE IF NOT EXISTS `pelamar_str` (`id` INT AUTO_INCREMENT PRIMARY KEY, `pelamar_id` INT NOT NULL, `nomor_str` VARCHAR(100) NOT NULL, `tanggal_terbit` DATE NOT NULL, `tanggal_expired` DATE NOT NULL, `file_str` VARCHAR(255) NOT NULL, `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    
     $berkas_str_lama = [];
     $query_str_old = mysqli_query($koneksi, "SELECT file_str FROM pelamar_str WHERE pelamar_id = $pelamar_id ORDER BY id ASC");
     if ($query_str_old) {
@@ -196,6 +194,7 @@ if (isset($_POST['simpan_str'])) {
     $nomor_str_arr   = isset($_POST['nomor_str']) ? $_POST['nomor_str'] : [];
     $tgl_terbit_arr  = isset($_POST['tanggal_terbit']) ? $_POST['tanggal_terbit'] : [];
     $tgl_expired_arr = isset($_POST['tanggal_expired']) ? $_POST['tanggal_expired'] : [];
+    $sukses_insert_str = true;
 
     for ($i = 0; $i < count($nomor_str_arr); $i++) {
         $nomor_str   = mysqli_real_escape_string($koneksi, $nomor_str_arr[$i]);
@@ -205,16 +204,33 @@ if (isset($_POST['simpan_str'])) {
 
         if (!empty($nomor_str)) {
             if (isset($_FILES['file_str']['name'][$i]) && $_FILES['file_str']['name'][$i] != '') {
-                $ekstensi = pathinfo($_FILES['file_str']['name'][$i], PATHINFO_EXTENSION);
+                $file_name = $_FILES['file_str']['name'][$i];
+                $file_tmp  = $_FILES['file_str']['tmp_name'][$i];
+                $ekstensi  = pathinfo($file_name, PATHINFO_EXTENSION);
+                
                 $nama_file_str = "str_" . $pelamar_id . "_" . $i . "_" . time() . "." . $ekstensi;
-                if (!is_dir('uploads')) { mkdir('uploads', 0777, true); }
-                move_uploaded_file($_FILES['file_str']['tmp_name'][$i], "uploads/" . $nama_file_str);
+                $folder_tujuan = "uploads/" . $nama_file_str;
+
+                if (!is_dir('uploads')) {
+                    mkdir('uploads', 0777, true);
+                }
+                move_uploaded_file($file_tmp, $folder_tujuan);
             }
-            mysqli_query($koneksi, "INSERT INTO pelamar_str (pelamar_id, nomor_str, tanggal_terbit, tanggal_expired, file_str) VALUES ($pelamar_id, '$nomor_str', '$tgl_terbit', '$tgl_expired', '$nama_file_str')");
+
+            $query_insert_str = "INSERT INTO pelamar_str (pelamar_id, nomor_str, tanggal_terbit, tanggal_expired, file_str, created_at, updated_at) 
+                                 VALUES ($pelamar_id, '$nomor_str', '$tgl_terbit', '$tgl_expired', '$nama_file_str', NOW(), NOW())";
+            if (!mysqli_query($koneksi, $query_insert_str)) {
+                $sukses_insert_str = false;
+            }
         }
     }
-    echo "<script>alert('✓ Semua data STR berhasil diperbarui!'); window.location.href='profil_pelamar.php';</script>";
-    exit;
+
+    if ($sukses_insert_str) {
+        echo "<script>alert('✓ Semua data STR berhasil diperbarui!'); window.location.href='profil_pelamar.php';</script>";
+        exit;
+    } else {
+        echo "<script>alert('Terjadi kesalahan saat menyimpan data STR.');</script>";
+    }
 }
 
 // =========================================================================
@@ -229,28 +245,22 @@ if ($query_pend_aktif) {
     while ($row = mysqli_fetch_assoc($query_pend_aktif)) { $list_pendidikan[] = $row; }
 }
 
-$query_exp_cek = mysqli_query($koneksi, "SHOW TABLES LIKE 'pelamar_pengalaman'");
-if ($query_exp_cek && mysqli_num_rows($query_exp_cek) > 0) {
-    $query_exp_tampil = mysqli_query($koneksi, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id LIMIT 1");
-    if ($data_exp = mysqli_fetch_assoc($query_exp_tampil)) {
-        $data['perusahaan'] = $data_exp['perusahaan'];
-        $data['jabatan'] = $data_exp['jabatan'];
-        $data['mulai_kerja'] = $data_exp['mulai_kerja'];
-        $data['selesai_kerja'] = $data_exp['selesai_kerja'];
-        $data['alasan_keluar'] = $data_exp['alasan keluar'] ?? $data_exp['alasan_keluar'] ?? '';
-    }
+$list_pengalaman = [];
+$query_exp_tampil = mysqli_query($koneksi, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id ORDER BY id ASC");
+if ($query_exp_tampil) {
+    while ($row = mysqli_fetch_assoc($query_exp_tampil)) { $list_pengalaman[] = $row; }
 }
 
 $list_str = [];
 $query_str_cek = mysqli_query($koneksi, "SHOW TABLES LIKE 'pelamar_str'");
-if ($query_str_cek && mysqli_num_rows($query_str_cek) > 0) {
+if (mysqli_num_rows($query_str_cek) > 0) {
     $query_str_tampil = mysqli_query($koneksi, "SELECT * FROM pelamar_str WHERE pelamar_id = $pelamar_id ORDER BY id ASC");
     while ($row = mysqli_fetch_assoc($query_str_tampil)) { $list_str[] = $row; }
 }
 
 $list_berkas = [];
 $query_berkas_cek = mysqli_query($koneksi, "SHOW TABLES LIKE 'pelamar_berkas'");
-if ($query_berkas_cek && mysqli_num_rows($query_berkas_cek) > 0) {
+if (mysqli_num_rows($query_berkas_cek) > 0) {
     $query_berkas_tampil = mysqli_query($koneksi, "SELECT * FROM pelamar_berkas WHERE pelamar_id = $pelamar_id ORDER BY id ASC");
     while ($row = mysqli_fetch_assoc($query_berkas_tampil)) { $list_berkas[] = $row; }
 }
@@ -305,31 +315,70 @@ if ($query_berkas_cek && mysqli_num_rows($query_berkas_cek) > 0) {
                 <div class="form-group"><label>NIK (Nomor Induk Kependudukan)</label><input type="text" name="nik" class="form-control" value="<?= htmlspecialchars($data['nik'] ?? ''); ?>" required></div>
                 <div style="display: flex; gap: 15px;"><div class="form-group" style="flex: 1;"><label>Tempat Lahir</label><input type="text" name="tempat_lahir" class="form-control" value="<?= htmlspecialchars($data['tempat_lahir'] ?? ''); ?>"></div><div class="form-group" style="flex: 1;"><label>Tanggal Lahir</label><input type="date" name="tanggal_lahir" class="form-control" value="<?= $data['tanggal_lahir'] ?? ''; ?>"></div></div>
                 <div style="display: flex; gap: 15px;"><div class="form-group" style="flex: 1;"><label>Jenis Kelamin</label><select name="jenis_kelamin" class="form-control"><option value="Laki-laki" <?= ($data['jenis_kelamin'] ?? '') == 'Laki-laki' ? 'selected' : ''; ?>>Laki-laki</option><option value="Perempuan" <?= ($data['jenis_kelamin'] ?? '') == 'Perempuan' ? 'selected' : ''; ?>>Perempuan</option></select></div><div class="form-group" style="flex: 1;"><label>Agama</label><input type="text" name="agama" class="form-control" value="<?= htmlspecialchars($data['agama'] ?? ''); ?>"></div></div>
-                <div style="display: flex; gap: 15px;"><div class="form-group" style="flex: 1;"><label>Status Hubungan / Sosial</label><input type="text" name="status_hubungan" class="form-control" value="<?= htmlspecialchars($data['status_social'] ?? ''); ?>"></div><div class="form-group" style="flex: 1;"><label>No. Telepon / WA</label><input type="text" name="telepon" class="form-control" value="<?= htmlspecialchars($data['telepon'] ?? ''); ?>" required></div></div>
+                <div style="display: flex; gap: 15px;"><div class="form-group" style="flex: 1;"><label>Status Hubungan / Sosial</label><input type="text" name="status_hubungan" class="form-control" value="<?= htmlspecialchars($data['status_sosial'] ?? ''); ?>"></div><div class="form-group" style="flex: 1;"><label>No. Telepon / WA</label><input type="text" name="telepon" class="form-control" value="<?= htmlspecialchars($data['telepon'] ?? ''); ?>" required></div></div>
                 <div style="display: flex; gap: 15px;"><div class="form-group" style="flex: 1;"><label>Kota</label><input type="text" name="kota" class="form-control" value="<?= htmlspecialchars($data['kota'] ?? ''); ?>"></div><div class="form-group" style="flex: 1;"><label>Provinsi</label><input type="text" name="provinsi" class="form-control" value="<?= htmlspecialchars($data['provinsi'] ?? ''); ?>"></div></div>
                 <div class="form-group"><label>Alamat Rumah Lengkap</label><textarea name="alamat" class="form-control" rows="3" style="resize: none;"><?= htmlspecialchars($data['alamat'] ?? ''); ?></textarea></div>
                 <button type="submit" name="update_profil" class="btn-simpan-full">Perbarui Biodata Profil</button>
             </form>
         </div>
 
-        <!-- KARTU 2: PENGALAMAN -->
+        <!-- KARTU 2: PENGALAMAN MULTI-FORM -->
         <div class="card-profil">
-            <div class="card-title" style="color: #0d6efd; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Riwayat Pengalaman Kerja</div>
-            <form action="" method="POST" style="margin-top: 15px;">
-                <div class="form-group"><label>Nama Perusahaan / Instansi</label><input type="text" name="perusahaan" class="form-control" value="<?= htmlspecialchars($data['perusahaan'] ?? ''); ?>"></div>
-                <div class="form-group"><label>Jabatan / Posisi</label><input type="text" name="jabatan" class="form-control" value="<?= htmlspecialchars($data['jabatan'] ?? ''); ?>"></div>
-                <div style="display: flex; gap: 15px;"><div class="form-group" style="flex: 1;"><label>Mulai Kerja</label><input type="date" name="mulai_kerja" class="form-control" value="<?= $data['mulai_kerja'] ?? ''; ?>"></div><div class="form-group" style="flex: 1;"><label>Selesai Kerja</label><input type="date" name="selesai_kerja" class="form-control" value="<?= $data['selesai_kerja'] ?? ''; ?>"></div></div>
-                <div class="form-group"><label>Alasan Keluar</label><textarea name="alasan_keluar" class="form-control" rows="3" style="resize: none;"><?= htmlspecialchars($data['alasan_keluar'] ?? ''); ?></textarea></div>
-                <button type="submit" name="simpan_pengalaman" class="btn-simpan-full" style="background-color: #0d6efd; margin-top: 15px;">
-                    Simpan Pengalaman Kerja
-                </button>
-            </form>
-        </div>
-    </div> <!-- TUTUP KOLOM GRID SEBELAH KIRI -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+                <div class="card-title" style="color: #0d6efd; margin-bottom: 0;">Riwayat Pengalaman Kerja</div>
 
-    <!-- ==================== KOLOM KANAN (PENDIDIKAN, BERKAS, STR) ==================== -->
-    <div>
-        <!-- KARTU 3: PENDIDIKAN -->
+            <button type="button" onclick="tambahBarisPengalaman()" style="background-color: #0d6efd; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah Pengalaman</button>
+        </div>
+        
+        <form action="" method="POST" style="margin-top: 15px;">
+            <div id="container-pengalaman">
+                <?php 
+                if (empty($list_pengalaman)) { 
+                    $list_pengalaman[] = ['perusahaan' => '', 'jabatan' => '', 'mulai_kerja' => '', 'selesai_kerja' => '', 'alasan_keluar' => '']; 
+                }
+                foreach ($list_pengalaman as $index => $exp) : 
+                ?>
+                    <div class="item-pengalaman-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 12px; position: relative;">
+                        <div style="text-align: right; margin-bottom: 10px;">
+                            <button type="button" onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold; cursor:pointer; padding: 0;">Hapus</button>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label style="font-size: 11px; font-weight: bold; color: #475569;">Nama Perusahaan / Instansi</label>
+                            <input type="text" name="perusahaan[]" class="form-control" value="<?= htmlspecialchars($exp['perusahaan'] ?? ''); ?>" required placeholder="Contoh: PT Tech Solusi Indonesia" style="padding:6px 12px; font-size:13px;">
+                        </div>
+
+                        <div class="form-group">
+                            <label style="font-size: 11px; font-weight: bold; color: #475569;">Jabatan / Posisi</label>
+                            <input type="text" name="jabatan[]" class="form-control" value="<?= htmlspecialchars($exp['jabatan'] ?? ''); ?>" required placeholder="Contoh: Staff Administrasi" style="padding:6px 12px; font-size:13px;">
+                        </div>
+
+                        <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label style="font-size: 11px; font-weight: bold; color: #475569;">Mulai Kerja</label>
+                                <input type="date" name="mulai_kerja[]" class="form-control" value="<?= $exp['mulai_kerja'] ?? ''; ?>" required style="padding:4px 12px; font-size:12px;">
+                            </div>
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <label style="font-size: 11px; font-weight: bold; color: #475569;">Selesai Kerja</label>
+                                <input type="date" name="selesai_kerja[]" class="form-control" value="<?= $exp['selesai_kerja'] ?? ''; ?>" style="padding:4px 12px; font-size:12px;">
+                            </div>
+                        </div>
+
+                        <div class="form-group" style="margin-bottom: 0;">
+                            <label style="font-size: 11px; font-weight: bold; color: #475569;">Alasan Keluar</label>
+                            <textarea name="alasan_keluar[]" class="form-control" rows="2" placeholder="Tulis alasan singkat..." style="resize: none; padding:6px 12px; font-size:13px;"><?= htmlspecialchars($exp['alasan_keluar'] ?? ''); ?></textarea>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <button type="submit" name="simpan_pengalaman" class="btn-simpan-full" style="background-color: #0d6efd; margin-top: 10px;">Simpan Pengalaman Kerja</button>
+        </form>
+    </div>
+</div> <!-- TUTUP KOLOM GRID SEBELAH KIRI -->
+
+<!-- ==================== KOLOM KANAN (PENDIDIKAN, BERKAS, STR) ==================== -->
+<div>
+        <!-- ==================== KARTU 3: RIWAYAT PENDIDIKAN MULTI-ROW ==================== -->
         <div class="card-profil">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
                 <div class="card-title" style="color: #0d6efd; margin-bottom: 0;">Riwayat Pendidikan</div>
@@ -344,18 +393,18 @@ if ($query_berkas_cek && mysqli_num_rows($query_berkas_cek) > 0) {
                         <div class="item-pendidikan-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
                             <div style="text-align: right;"><button type="button" onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold; cursor:pointer;">Hapus</button></div>
                             <div style="display: flex; gap: 15px; margin-bottom: 10px;">
-<div class="form-group" style="flex: 1;">
-    <label>Jenjang</label>
-    <select name="jenjang[]" class="form-control" required>
-        <option value="">-- Pilih --</option>
-        <option value="SMA/SMK" <?= ($pend['jenjang'] ?? '') == 'SMA/SMK' ? 'selected' : ''; ?>>SMA/SMK</option>
-        <option value="D3" <?= ($pend['jenjang'] ?? '') == 'D3' ? 'selected' : ''; ?>>D3</option>
-        <option value="D4" <?= ($pend['jenjang'] ?? '') == 'D4' ? 'selected' : ''; ?>>D4</option>
-        <option value="S1" <?= ($pend['jenjang'] ?? '') == 'S1' ? 'selected' : ''; ?>>S1</option>
-        <option value="S2" <?= ($pend['jenjang'] ?? '') == 'S2' ? 'selected' : ''; ?>>S2</option>
-        <option value="S3" <?= ($pend['jenjang'] ?? '') == 'S3' ? 'selected' : ''; ?>>S3</option>
-    </select>
-</div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Jenjang</label>
+                                    <select name="jenjang[]" class="form-control" required>
+                                        <option value="">-- Pilih --</option>
+                                        <option value="SMA/SMK" <?= ($pend['jenjang'] ?? '') == 'SMA/SMK' ? 'selected' : ''; ?>>SMA/SMK</option>
+                                        <option value="D3" <?= ($pend['jenjang'] ?? '') == 'D3' ? 'selected' : ''; ?>>D3</option>
+                                        <option value="D4" <?= ($pend['jenjang'] ?? '') == 'D4' ? 'selected' : ''; ?>>D4</option>
+                                        <option value="S1" <?= ($pend['jenjang'] ?? '') == 'S1' ? 'selected' : ''; ?>>S1</option>
+                                        <option value="S2" <?= ($pend['jenjang'] ?? '') == 'S2' ? 'selected' : ''; ?>>S2</option>
+                                        <option value="S3" <?= ($pend['jenjang'] ?? '') == 'S3' ? 'selected' : ''; ?>>S3</option>
+                                    </select>
+                               </div>
                                 <div class="form-group" style="flex: 1;"><label>Institusi</label><input type="text" name="institusi[]" class="form-control" value="<?= htmlspecialchars($pend['institusi'] ?? ''); ?>" required></div>
                             </div>
                             <div style="display: flex; gap: 15px;">
@@ -370,7 +419,7 @@ if ($query_berkas_cek && mysqli_num_rows($query_berkas_cek) > 0) {
             </form>
         </div>
 
-        <!-- KARTU 4: BERKAS -->
+        <!-- ==================== KARTU 4: UPLOAD BERKAS PELAMAR ==================== -->
         <div class="card-profil">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
                 <div class="card-title" style="color: #0d6efd; margin-bottom: 0;">Upload Berkas Pelamar</div>
@@ -387,7 +436,7 @@ if ($query_berkas_cek && mysqli_num_rows($query_berkas_cek) > 0) {
                             <div class="form-group"><label>Pilih File</label><input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png"></div>
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
                                 <div><?= !empty($bk['nama_file']) ? '<a href="uploads/'.$bk['nama_file'].'" target="_blank" style="font-size:12px; color:#198754; font-weight:bold; text-decoration:none;">👁 Lihat Berkas</a>' : '<span style="font-size:12px; color:#64748b; font-style:italic;">Berkas baru</span>'; ?></div>
-                                <button type="button" onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold;">Hapus</button>
+                                <button type="button" onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: bold;">Hapus</button>
                             </div>
                         </div>
                     <?php endforeach; ?>
@@ -396,7 +445,7 @@ if ($query_berkas_cek && mysqli_num_rows($query_berkas_cek) > 0) {
             </form>
         </div>
 
-        <!-- KARTU 5: STR -->
+        <!-- ==================== KARTU 5: DATA STR PELAMAR ==================== -->
         <div class="card-profil">
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
                 <div class="card-title" style="color: #198754; margin-bottom: 0;">Data STR Pelamar</div>
@@ -419,7 +468,7 @@ if ($query_berkas_cek && mysqli_num_rows($query_berkas_cek) > 0) {
                 <button type="submit" name="simpan_str" class="btn-simpan-full" style="background-color: #198754;">Simpan Semua Data STR</button>
             </form>
         </div>
-    </div> <!-- TUTUP KOLOM GRID SEBELAH KANAN -->
+    </div> <!-- TUTUP KOLOM KANAN -->
 
 </div> <!-- TUTUP MAIN-CONTAINER -->
 
@@ -430,35 +479,37 @@ function tambahBarisPendidikan() {
     const divBaru = document.createElement('div');
     divBaru.className = 'item-pendidikan-row';
     divBaru.style.cssText = 'background:#fafafa; border:1px dashed #cbd5e1; padding:15px; border-radius:6px; margin-bottom:12px;';
-    
-    divBaru.innerHTML = `
-        <div style="text-align:right;"><button type="button" onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold; cursor:pointer;">Hapus</button></div>
-        <div style="display:flex; gap:15px; margin-bottom:10px;">
-            <div class="form-group" style="flex:1;">
-                <label>Jenjang</label>
-                <select name="jenjang[]" class="form-control" required>
-                    <option value="">-- Pilih --</option>
-                    <option value="SMA/SMK">SMA/SMK</option>
-                    <option value="D3">D3</option>
-                    <option value="D4">D4</option>
-                    <option value="S1">S1</option>
-                    <option value="S2">S2</option>
-                    <option value="S3">S3</option>
-                </select>
+        divBaru.innerHTML = `
+            <div style="text-align:right;"><button type="button" onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold; cursor:pointer;">Hapus</button></div>
+            <div style="display:flex; gap:15px; margin-bottom:10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>Jenjang</label>
+                    <select name="jenjang[]" class="form-control" required>
+                        <option value="">-- Pilih --</option>
+                        <option value="SMA/SMK">SMA/SMK</option>
+                        <option value="D3">D3</option>
+                        <option value="D4">D4</option>
+                        <option value="S1">S1</option>
+                        <option value="S2">S2</option>
+                        <option value="S3">S3</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>Institusi</label>
+                    <input type="text" name="institusi[]" class="form-control" required>
+                </div>
             </div>
-            <div class="form-group" style="flex:1;">
-                <label>Institusi</label>
-                <input type="text" name="institusi[]" class="form-control" required>
+            <div style="display:flex; gap:15px;">
+                <div class="form-group" style="flex:2;"><label>Jurusan</label><input type="text" name="jurusan[]" class="form-control"></div>
+                <div class="form-group" style="flex:1;"><label>Tahun</label><input type="number" name="tahun_lulus[]" class="form-control"></div>
+                <div class="form-group" style="flex:1;"><label>IPK</label><input type="text" name="ipk[]" class="form-control"></div>
             </div>
-        </div>
-        <div style="display:flex; gap:15px;">
-            <div class="form-group" style="flex:2;"><label>Jurusan</label><input type="text" name="jurusan[]" class="form-control"></div>
-            <div class="form-group" style="flex:1;"><label>Tahun</label><input type="number" name="tahun_lulus[]" class="form-control"></div>
-            <div class="form-group" style="flex:1;"><label>IPK</label><input type="text" name="ipk[]" class="form-control"></div>
-        </div>
-    `;
-    container.appendChild(divBaru);
-}
+        `;
+        container.appendChild(divBaru);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    // 2. FUNGSI MULTI-FORM BERKAS PELAMAR
     function tambahBarisBerkas() {
         const container = document.getElementById('container-berkas');
         const divBaru = document.createElement('div');
@@ -467,13 +518,13 @@ function tambahBarisPendidikan() {
         divBaru.innerHTML = `
             <div class="form-group"><label>Nama / Jenis Berkas</label><input type="text" name="jenis_berkas[]" class="form-control" required></div>
             <div class="form-group"><label>Pilih File</label><input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required></div>
-            <div style="text-align: right;">
-                <button type="button" onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold;">Hapus</button>
-            </div>
+            <div style="text-align:right;"><button type="button" onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold;">Hapus</button></div>
         `;
         container.appendChild(divBaru);
+        container.scrollTop = container.scrollHeight;
     }
 
+    // 3. FUNGSI MULTI-FORM DATA STR PELAMAR
     function tambahBarisSTR() {
         const container = document.getElementById('container-str');
         const totalBaris = container.getElementsByClassName('item-str-row').length + 1;
@@ -493,6 +544,7 @@ function tambahBarisPendidikan() {
             <div class="form-group"><label>File STR</label><input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" required></div>
         `;
         container.appendChild(divBaru);
+        container.scrollTop = container.scrollHeight;
     }
 </script>
 
