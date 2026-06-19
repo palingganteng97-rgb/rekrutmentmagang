@@ -1,16 +1,10 @@
 <?php 
 session_start(); 
 
-// 1. PROTEKSI LOGIN PELAMAR
-if (!isset($_SESSION['pelamar_logged_in'])) {
-    header("Location: login.php");
-    exit;
-}
-
-// 2. KONEKSI DATABASE SERVER
+// 1. PENGATURAN KONEKSI DATABASE SERVER
 $host     = "10.10.6.59"; 
 $user_db  = "root_host";      
-$pass_db  = "password";          
+$pass_db  = "password"; 
 $nama_db  = "magang_rekrutmen_rs"; 
 
 $koneksi = mysqli_connect($host, $user_db, $pass_db, $nama_db);
@@ -18,33 +12,43 @@ if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
-$pelamar_id = $_SESSION['pelamar_id'];
+// 2. AMBIL DATA SESSION (PROFIL AMAN JIKA BELUM LOGIN)
+$pelamar_id   = isset($_SESSION['pelamar_id']) ? $_SESSION['pelamar_id'] : null;
+$pelamar_nama = isset($_SESSION['pelamar_nama']) ? $_SESSION['pelamar_nama'] : 'Tamu';
 
-// =========================================================================
-// PROSES SIMPAN DINAMIS SESUAI ID LOWONGAN DI DATABASE (100% BEBAS ERROR FOREIGN KEY)
-// =========================================================================
+// Inisialisasi variabel awal agar HTML di bawah tidak error saat diakses Tamu
+$data = null;
+$list_pendidikan = [];
+$data_pengalaman = null;
+
+
+// 3. PROSES SIMPAN DINAMIS (HANYA BERJALAN JIKA USER SUDAH LOGIN & SUBMIT FORM)
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])) {
+    if (!$pelamar_id) {
+        echo "<script>alert('Anda harus login terlebih dahulu!'); window.location.href='login.php';</script>";
+        exit;
+    }
+
     $tanggal_masuk = date('Y-m-d H:i:s');
     $status_awal   = 'Pending';
 
-    // AMBIL ID PERTAMA YANG TERSEDIA DARI TABEL LOWONGAN (ANTI ERROR NAMA KOLOM)
+    // Ambil ID pertama dari tabel lowongan
     $ambil_id_lowongan = mysqli_query($koneksi, "SELECT id FROM rekrutmen_lowongan LIMIT 1");
     if (mysqli_num_rows($ambil_id_lowongan) > 0) {
         $data_low = mysqli_fetch_assoc($ambil_id_lowongan);
         $lowongan_id = $data_low['id'];
     } else {
-        $lowongan_id = 1; // Cadangan terakhir jika tabel benar-benar kosong
+        $lowongan_id = 1;
     }
 
-
-    // 2. QUERY SIMPAN KE TABEL UTAMA REKRUTMEN_LAMARAN
+    // Query simpan lamaran utama
     $query_kirim = "INSERT INTO rekrutmen_lamaran (pelamar_id, lowongan_id, created_at, updated_at) 
                     VALUES ($pelamar_id, $lowongan_id, '$tanggal_masuk', '$tanggal_masuk')";
 
     if (mysqli_query($koneksi, $query_kirim)) {
         $lamaran_id_baru = mysqli_insert_id($koneksi);
         
-        // 3. INSERT STATUS AWAL KE TABEL LAMARAN_TAHAPAN AGAR MASUK KE ADMIN
+        // Insert ke tabel tahapan lamaran
         mysqli_query($koneksi, "INSERT INTO lamaran_tahapan (lamaran_id, tahapan_id, tanggal_mulai, status, petugas_id, created_at, updated_at) 
                                 VALUES ($lamaran_id_baru, 1, '$tanggal_masuk', '$status_awal', 1, '$tanggal_masuk', '$tanggal_masuk')");
 
@@ -58,39 +62,57 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
     }
 }
 
-// 4. AMBIL DATA BIODATA PELAMAR
-$query_user = mysqli_query($koneksi, "SELECT * FROM pelamar WHERE id = $pelamar_id");
-$data = mysqli_fetch_assoc($query_user);
 
-// 5. AMBIL DATA PENDIDIKAN PELAMAR
-$query_pend = mysqli_query($koneksi, "SELECT * FROM pelamar_pendidikan WHERE pelamar_id = $pelamar_id ORDER BY id ASC");
-$list_pendidikan = [];
-while ($row = mysqli_fetch_assoc($query_pend)) {
-    $list_pendidikan[] = $row;
-}
+// =========================================================================
+// JALANKAN QUERY BERIKUT HANYA JIKA USER SUDAH LOGIN (ANTI FATAL ERROR SQL)
+// =========================================================================
+if ($pelamar_id) {
 
-// 6. AMBIL DATA PENGALAMAN PELAMAR
-$query_exp_cek = mysqli_query($koneksi, "SHOW TABLES LIKE 'pelamar_pengalaman'");
-$data_pengalaman = null;
-if (mysqli_num_rows($query_exp_cek) > 0) {
-    $query_pengalaman = mysqli_query($koneksi, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id LIMIT 1");
-    $data_pengalaman = mysqli_fetch_assoc($query_pengalaman);
+    // 4. AMBIL DATA BIODATA PELAMAR
+    $query_user = mysqli_query($koneksi, "SELECT * FROM pelamar WHERE id = $pelamar_id");
+    if ($query_user) {
+        $data = mysqli_fetch_assoc($query_user);
+    }
+
+    // 5. AMBIL DATA PENDIDIKAN PELAMAR
+    $query_pend = mysqli_query($koneksi, "SELECT * FROM pelamar_pendidikan WHERE pelamar_id = $pelamar_id ORDER BY id ASC");
+    if ($query_pend) {
+        while ($row = mysqli_fetch_assoc($query_pend)) {
+            $list_pendidikan[] = $row;
+        }
+    }
+
+    // 6. AMBIL DATA PENGALAMAN PELAMAR
+    $query_exp_cek = mysqli_query($koneksi, "SHOW TABLES LIKE 'pelamar_pengalaman'");
+    if ($query_exp_cek && mysqli_num_rows($query_exp_cek) > 0) {
+        $query_pengalaman = mysqli_query($koneksi, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id LIMIT 1");
+        if ($query_pengalaman) {
+            $data_pengalaman = mysqli_fetch_assoc($query_pengalaman);
+        }
+    }
 }
 
 // 7. VALIDASI KELENGKAPAN DATA UNTUK TOMBOL LAMAR
-$data_lengkap = true;
-$pesan_error = "";
-if (empty($data['nama_lengkap']) || empty($data['nik']) || empty($data['telepon']) || empty($data['alamat']) || empty($data['foto'])) {
-    $data_lengkap = false;
-    $pesan_error = "Biodata, NIK, atau Foto Profil Anda belum lengkap.";
-} elseif (empty($list_pendidikan)) {
-    $data_lengkap = false;
-    $pesan_error = "Riwayat Pendidikan Anda belum diisi.";
-} elseif (!$data_pengalaman || empty($data_pengalaman['perusahaan'])) {
-    $data_lengkap = false;
-    $pesan_error = "Riwayat Pengalaman kerja Anda belum diisi.";
+$data_lengkap = false;
+$pesan_error = "Silakan masuk akun terlebih dahulu.";
+
+if ($pelamar_id) {
+    $data_lengkap = true;
+    $pesan_error = "";
+    if (empty($data['nama_lengkap']) || empty($data['nik']) || empty($data['telepon']) || empty($data['alamat']) || empty($data['foto'])) {
+        $data_lengkap = false;
+        $pesan_error = "Biodata, NIK, atau Foto Profil Anda belum lengkap.";
+    } elseif (empty($list_pendidikan)) {
+        $data_lengkap = false;
+        $pesan_error = "Riwayat Pendidikan Anda belum diisi.";
+    } elseif (!$data_pengalaman || empty($data_pengalaman['perusahaan'])) {
+        $data_lengkap = false;
+        $pesan_error = "Riwayat Pengalaman kerja Anda belum diisi.";
+    }
 }
+
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -134,9 +156,17 @@ if (empty($data['nama_lengkap']) || empty($data['nik']) || empty($data['telepon'
 <div class="navbar">
     <a href="#" class="brand">PORTAL KARIR</a>
     <div class="user-info">
-        <span class="user-name">Halo, <?php echo htmlspecialchars($_SESSION['pelamar_nama']); ?></span>
-        <a href="profil_pelamar.php" class="btn-action">Ubah Profil</a>
-        <a href="logout.php" class="btn-logout">Keluar</a>
+        <span class="user-name">Halo, <?php echo htmlspecialchars($pelamar_nama); ?></span>
+        
+        <?php if ($pelamar_id) : ?>
+            <!-- Menu ini HANYA tampil jika pelamar sudah masuk akun -->
+            <a href="profil_pelamar.php" class="btn-action">Ubah Profil</a>
+            <a href="logout.php" class="btn-logout">Keluar</a>
+        <?php else : ?>
+            <!-- Menu ini HANYA tampil jika statusnya masih Tamu -->
+            <a href="login_pelamar.php" class="btn-action" style="background-color: #4f46e5;">Masuk</a>
+            <a href="daftar_pelamar.php" class="btn-action" style="background-color: #00b57a;">Daftar</a>
+        <?php endif; ?>
     </div>
 </div>
 
