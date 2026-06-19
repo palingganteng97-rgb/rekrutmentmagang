@@ -302,15 +302,32 @@ if (mysqli_num_rows($query_berkas_cek) > 0) {
         <div class="card-profil">
             <div class="card-title" style="color: #0d6efd; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Biodata Profil Pelamar</div>
             <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
+                
+                <!-- BAGIAN FOTO PROFIL LINGKARAN (BISA DIKLIK) -->
                 <div style="text-align: center; margin-bottom: 25px; background: #fafafa; padding: 20px; border-radius: 8px; border: 1px dashed #cbd5e1;">
                     <label style="display: block; font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 10px;">Foto Profil</label>
-                    <?php if (!empty($data['foto'])) : ?>
-                        <img src="uploads/<?= htmlspecialchars($data['foto']); ?>" style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid #cbd5e1;">
-                    <?php else : ?>
-                        <div style="width: 110px; height: 110px; border-radius: 50%; background: #e2e8f0; margin: 0 auto; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px;">Belum Ada Foto</div>
-                    <?php endif; ?>
-                    <input type="file" name="foto" class="form-control" accept="image/*" style="margin-top: 15px;">
+                    
+                    <!-- Wadah Lingkaran Foto -->
+                    <div class="avatar-wrapper" style="position: relative; width: 110px; height: 110px; margin: 0 auto; cursor: pointer;" onclick="document.getElementById('inputFoto').click();">
+                        <?php if (!empty($data['foto'])) : ?>
+                            <img id="previewFoto" src="uploads/<?= htmlspecialchars($data['foto']); ?>" style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid #cbd5e1; transition: brightness 0.2s;">
+                        <?php else : ?>
+                            <div id="placeholderFoto" style="width: 110px; height: 110px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; border: 3px solid #cbd5e1;">Belum Ada Foto</div>
+                            <img id="previewFoto" src="" style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid #cbd5e1; display: none;">
+                        <?php endif; ?>
+                        
+                        <!-- Overlay Teks Saat Kursor Diarahkan (Hover) -->
+                        <div class="avatar-overlay" style="position: absolute; top: 0; left: 0; width: 110px; height: 110px; border-radius: 50%; background: rgba(0,0,0,0.4); color: #fff; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: bold; opacity: 0; transition: opacity 0.2s;">
+                            Ubah Foto
+                        </div>
+                    </div>
+                    
+                    <small style="display: block; margin-top: 8px; color: #64748b; font-size: 11px;">Klik gambar di atas untuk memilih berkas foto baru</small>
+
+                    <!-- Input File Disembunyikan Total Secara Visual -->
+                    <input type="file" id="inputFoto" name="foto" accept="image/*" style="display: none;" onchange="bacaGambar(this)">
                 </div>
+
                 <div class="form-group"><label>Nama Lengkap</label><input type="text" name="nama_lengkap" class="form-control" value="<?= htmlspecialchars($data['nama_lengkap'] ?? ''); ?>" required></div>
                 <div class="form-group"><label>NIK (Nomor Induk Kependudukan)</label><input type="text" name="nik" class="form-control" value="<?= htmlspecialchars($data['nik'] ?? ''); ?>" required></div>
                 
@@ -330,13 +347,12 @@ if (mysqli_num_rows($query_berkas_cek) > 0) {
                     <div class="form-group" style="flex: 1;"><label>Agama</label><input type="text" name="agama" class="form-control" value="<?= htmlspecialchars($data['agama'] ?? ''); ?>"></div>
                 </div>
 
-                <!-- PERBAIKAN: Status Hubungan berdiri sendiri dalam satu baris penuh dengan kelas CSS form-control -->
                 <div class="form-group">
                     <label for="status_hubungan">Status Hubungan / Sosial</label>
                     <select id="status_hubungan" name="status_hubungan" class="form-control">
                         <option value="">-- Pilih Status --</option>
-                        <option value="Belum Kawin" <?= ($data['status_hubungan'] ?? '') == 'Belum Kawin' ? 'selected' : ''; ?>>Belum Kawin</option>
-                        <option value="Kawin" <?= ($data['status_hubungan'] ?? '') == 'Kawin' ? 'selected' : ''; ?>>Kawin</option>
+                        <option value="Belum Kawin" <?= ($data['status_sosial'] ?? '') == 'Belum Kawin' ? 'selected' : ''; ?>>Belum Kawin</option>
+                        <option value="Kawin" <?= ($data['status_sosial'] ?? '') == 'Kawin' ? 'selected' : ''; ?>>Kawin</option>
                     </select>
                 </div>
 
@@ -462,7 +478,18 @@ if (mysqli_num_rows($query_berkas_cek) > 0) {
                     ?>
                         <div class="item-berkas-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
                             <div class="form-group"><label>Nama / Jenis Berkas</label><input type="text" name="jenis_berkas[]" class="form-control" value="<?= htmlspecialchars($bk['jenis_berkas'] ?? ''); ?>" required></div>
-                            <div class="form-group"><label>Pilih File</label><input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png"></div>
+                            
+                            <!-- INPUT HIDDEN: Menyimpan nama file lama agar tidak hilang saat di-submit -->
+                            <input type="hidden" name="file_berkas_lama[]" value="<?= htmlspecialchars($bk['nama_file'] ?? ''); ?>">
+                            
+                            <div class="form-group">
+                                <label>Pilih File</label>
+                                <input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                                <?php if (!empty($bk['nama_file'])) : ?>
+                                    <small style="color: #198754; display: block; margin-top: 4px;">File aktif: <strong><?= htmlspecialchars($bk['nama_file']); ?></strong></small>
+                                <?php endif; ?>
+                            </div>
+                            
                             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 10px;">
                                 <div><?= !empty($bk['nama_file']) ? '<a href="uploads/'.$bk['nama_file'].'" target="_blank" style="font-size:12px; color:#198754; font-weight:bold; text-decoration:none;">👁 Lihat Berkas</a>' : '<span style="font-size:12px; color:#64748b; font-style:italic;">Berkas baru</span>'; ?></div>
                                 <button type="button" onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: bold;">Hapus</button>
@@ -490,7 +517,18 @@ if (mysqli_num_rows($query_berkas_cek) > 0) {
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;"><strong style="font-size:12px; color:#475569;">Data STR #<?= $i+1; ?></strong><button type="button" onclick="this.parentElement.parentElement.remove()" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold;">Hapus</button></div>
                             <div class="form-group"><label>Nomor STR</label><input type="text" name="nomor_str[]" class="form-control" value="<?= htmlspecialchars($str['nomor_str'] ?? ''); ?>" required></div>
                             <div style="display:flex; gap:10px;"><div class="form-group" style="flex:1;"><label>Tanggal Terbit</label><input type="date" name="tanggal_terbit[]" class="form-control" value="<?= $str['tanggal_terbit'] ?? ''; ?>" required></div><div class="form-group" style="flex:1;"><label>Tanggal Expired</label><input type="date" name="tanggal_expired[]" class="form-control" value="<?= $str['tanggal_expired'] ?? ''; ?>" required></div></div>
-                            <div class="form-group"><label>File STR</label><input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png"><?= !empty($str['file_str']) ? '<a href="uploads/'.$str['file_str'].'" target="_blank" style="font-size:12px; color:#198754; font-weight:bold; text-decoration:none; display:block; margin-top:5px;">👁 Lihat STR</a>' : ''; ?></div>
+                            
+                            <!-- INPUT HIDDEN: Menyimpan nama file STR lama agar tidak hilang saat di-submit -->
+                            <input type="hidden" name="file_str_lama[]" value="<?= htmlspecialchars($str['file_str'] ?? ''); ?>">
+                            
+                            <div class="form-group">
+                                <label>File STR</label>
+                                <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+                                <?php if (!empty($str['file_str'])) : ?>
+                                    <small style="color: #198754; display: block; margin-top: 4px;">File aktif: <strong><?= htmlspecialchars($str['file_str']); ?></strong></small>
+                                    <a href="uploads/<?= $str['file_str']; ?>" target="_blank" style="font-size:12px; color:#198754; font-weight:bold; text-decoration:none; display:block; margin-top:5px;">👁 Lihat STR</a>
+                                <?php endif; ?>
+                            </div>
                         </div>
                     <?php endforeach; ?>
                 </div>
@@ -500,6 +538,7 @@ if (mysqli_num_rows($query_berkas_cek) > 0) {
     </div> <!-- TUTUP KOLOM KANAN -->
 
 </div> <!-- TUTUP MAIN-CONTAINER -->
+
 
 <!-- ==================== JAVASCRIPT DINAMIS MULTI-FORM ==================== -->
 <script>
@@ -606,8 +645,33 @@ function tambahBarisPengalaman() {
     // 6. Masukkan baris baru hasil duplikasi ke dalam container utama
     container.appendChild(newRow);
 }
+<!-- SCRIPT JAVASCRIPT & STYLE UNTUK HOVER EFFECT DAN PREVIEW INSTAN -->
+<style>
+    .avatar-wrapper:hover .avatar-overlay {
+        opacity: 1 !important;
+    }
+    .avatar-wrapper:hover img {
+        filter: brightness(0.8);
+    }
+</style>
 
+function bacaGambar(input) {
+    if (input.files && input.files[0]) {
+        var pembaca = new FileReader();
+        pembaca.onload = function(e) {
+            var imgPreview = document.getElementById('previewFoto');
+            var placeholder = document.getElementById('placeholderFoto');
+            
+            imgPreview.src = e.target.result;
+            imgPreview.style.display = 'block';
+            
+            if(placeholder) {
+                placeholder.style.display = 'none';
+            }
+        }
+        pembaca.readAsDataURL(input.files[0]);
+    }
+}
 </script>
-
 </body>
 </html>

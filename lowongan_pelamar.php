@@ -1,7 +1,7 @@
 <?php 
 session_start(); 
 
-// 1. PENGATURAN KONEKSI DATABASE SERVER
+// 1. KONEKSI DATABASE
 $host     = "10.10.6.59"; 
 $user_db  = "root_host";      
 $pass_db  = "password"; 
@@ -12,320 +12,353 @@ if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
-// 2. AMBIL DATA SESSION (PROFIL AMAN JIKA BELUM LOGIN)
+// 2. AMBIL DATA SESSION (PORTAL DAPAT DIAKSES OLEH TAMU)
 $pelamar_id   = isset($_SESSION['pelamar_id']) ? $_SESSION['pelamar_id'] : null;
-$pelamar_nama = isset($_SESSION['pelamar_nama']) ? $_SESSION['pelamar_nama'] : 'Tamu';
+$pelamar_nama = isset($_SESSION['pelamar_nama']) ? $_SESSION['pelamar_nama'] : null;
 
-// Inisialisasi variabel awal agar HTML di bawah tidak error saat diakses Tamu
 $data = null;
 $list_pendidikan = [];
-$data_pengalaman = null;
 
+// 3. AMBIL DATA PROFIL & VALIDASI REAL-TIME (HANYA JIKA USER SUDAH LOGIN)
+$data_lengkap = false;
+$pesan_error  = "Silakan login terlebih dahulu.";
 
-// 3. PROSES SIMPAN DINAMIS (HANYA BERJALAN JIKA USER SUDAH LOGIN & SUBMIT FORM)
-if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])) {
-    if (!$pelamar_id) {
-        echo "<script>alert('Anda harus login terlebih dahulu!'); window.location.href='login.php';</script>";
-        exit;
-    }
+// Inisialisasi array kosong di luar agar halaman tidak error saat diakses Tamu
+$lowongan_dilamar = []; 
 
-    $tanggal_masuk = date('Y-m-d H:i:s');
-    $status_awal   = 'Pending';
-
-    // Ambil ID pertama dari tabel lowongan
-    $ambil_id_lowongan = mysqli_query($koneksi, "SELECT id FROM rekrutmen_lowongan LIMIT 1");
-    if (mysqli_num_rows($ambil_id_lowongan) > 0) {
-        $data_low = mysqli_fetch_assoc($ambil_id_lowongan);
-        $lowongan_id = $data_low['id'];
-    } else {
-        $lowongan_id = 1;
-    }
-
-    // Query simpan lamaran utama
-    $query_kirim = "INSERT INTO rekrutmen_lamaran (pelamar_id, lowongan_id, created_at, updated_at) 
-                    VALUES ($pelamar_id, $lowongan_id, '$tanggal_masuk', '$tanggal_masuk')";
-
-    if (mysqli_query($koneksi, $query_kirim)) {
-        $lamaran_id_baru = mysqli_insert_id($koneksi);
-        
-        // Insert ke tabel tahapan lamaran
-        mysqli_query($koneksi, "INSERT INTO lamaran_tahapan (lamaran_id, tahapan_id, tanggal_mulai, status, petugas_id, created_at, updated_at) 
-                                VALUES ($lamaran_id_baru, 1, '$tanggal_masuk', '$status_awal', 1, '$tanggal_masuk', '$tanggal_masuk')");
-
-        echo "<script>
-                alert('✓ Sukses! Lamaran Anda berhasil dikirim ke Admin.');
-                window.location.href='lowongan_pelamar.php';
-              </script>";
-        exit;
-    } else {
-        echo "<script>alert('Gagal mengirim lamaran: " . mysqli_error($koneksi) . "');</script>";
-    }
-}
-
-
-// =========================================================================
-// JALANKAN QUERY BERIKUT HANYA JIKA USER SUDAH LOGIN (ANTI FATAL ERROR SQL)
-// =========================================================================
 if ($pelamar_id) {
-
-    // 4. AMBIL DATA BIODATA PELAMAR
+    // Ambil Biodata
     $query_user = mysqli_query($koneksi, "SELECT * FROM pelamar WHERE id = $pelamar_id");
     if ($query_user) {
         $data = mysqli_fetch_assoc($query_user);
     }
 
-    // 5. AMBIL DATA PENDIDIKAN PELAMAR
-    $query_pend = mysqli_query($koneksi, "SELECT * FROM pelamar_pendidikan WHERE pelamar_id = $pelamar_id ORDER BY id ASC");
+    // Ambil Riwayat Pendidikan
+    $query_pend = mysqli_query($koneksi, "SELECT * FROM pelamar_pendidikan WHERE pelamar_id = $pelamar_id");
     if ($query_pend) {
         while ($row = mysqli_fetch_assoc($query_pend)) {
             $list_pendidikan[] = $row;
         }
     }
+    
+    // AMBIL DATA BERKAS PELAMAR UNTUK PREVIEW POP-UP
+    $list_berkas = [];
+    $query_bk = mysqli_query($koneksi, "SELECT * FROM pelamar_berkas WHERE pelamar_id = $pelamar_id");
+    if ($query_bk) {
+        while ($row_bk = mysqli_fetch_assoc($query_bk)) {
+            $list_berkas[] = $row_bk;
+        }
+    }
 
-    // 6. AMBIL DATA PENGALAMAN PELAMAR
-    $query_exp_cek = mysqli_query($koneksi, "SHOW TABLES LIKE 'pelamar_pengalaman'");
-    if ($query_exp_cek && mysqli_num_rows($query_exp_cek) > 0) {
-        $query_pengalaman = mysqli_query($koneksi, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id LIMIT 1");
-        if ($query_pengalaman) {
-            $data_pengalaman = mysqli_fetch_assoc($query_pengalaman);
+    // AMBIL DATA STR PELAMAR UNTUK PREVIEW POP-UP
+    $list_str = [];
+    $query_s = mysqli_query($koneksi, "SELECT * FROM pelamar_str WHERE pelamar_id = $pelamar_id");
+    if ($query_s) {
+        while ($row_s = mysqli_fetch_assoc($query_s)) {
+            $list_str[] = $row_s;
+        }
+    }
+
+    // AMBIL DATA PENGALAMAN KERJA PELAMAR
+    $list_pengalaman = [];
+    $query_exp = mysqli_query($koneksi, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id ORDER BY id DESC");
+    if ($query_exp) {
+        while ($row_exp = mysqli_fetch_assoc($query_exp)) {
+            $list_pengalaman[] = $row_exp;
+        }
+    }
+
+    // =========================================================================
+    // FITUR UTAMA: KUMPULKAN ID LOWONGAN YANG SUDAH PERNAH DILAMAR USER INI
+    // =========================================================================
+    $query_l_dilamar = mysqli_query($koneksi, "SELECT lowongan_id FROM rekrutmen_lamaran WHERE pelamar_id = $pelamar_id");
+    if ($query_l_dilamar) {
+        while ($row_ld = mysqli_fetch_assoc($query_l_dilamar)) {
+            $lowongan_dilamar[] = $row_ld['lowongan_id'];
+        }
+    }
+    // =========================================================================
+
+    // Evaluasi Kelengkapan Data utama (Nama, NIK, Alamat, Foto)
+    if ($data) {
+        $data_lengkap = true;
+        $pesan_error  = "";
+
+        if (empty($data['nama_lengkap']) || trim($data['nama_lengkap']) == '' ||
+            empty($data['nik']) || trim($data['nik']) == '' ||
+            empty($data['alamat']) || trim($data['alamat']) == '' ||
+            empty($data['foto']) || trim($data['foto']) == '') {
+            
+            $data_lengkap = false;
+            $pesan_error  = "Biodata, NIK, Alamat, atau Foto Profil Anda belum lengkap.";
+        } elseif (empty($list_pendidikan)) {
+            $data_lengkap = false;
+            $pesan_error  = "Riwayat Pendidikan Anda belum diisi.";
         }
     }
 }
 
-// 7. VALIDASI KELENGKAPAN DATA UNTUK TOMBOL LAMAR
-$data_lengkap = false;
-$pesan_error = "Silakan masuk akun terlebih dahulu.";
 
-if ($pelamar_id) {
-    $data_lengkap = true;
-    $pesan_error = "";
-    if (empty($data['nama_lengkap']) || empty($data['nik']) || empty($data['telepon']) || empty($data['alamat']) || empty($data['foto'])) {
-        $data_lengkap = false;
-        $pesan_error = "Biodata, NIK, atau Foto Profil Anda belum lengkap.";
-    } elseif (empty($list_pendidikan)) {
-        $data_lengkap = false;
-        $pesan_error = "Riwayat Pendidikan Anda belum diisi.";
-    } elseif (!$data_pengalaman || empty($data_pengalaman['perusahaan'])) {
-        $data_lengkap = false;
-        $pesan_error = "Riwayat Pengalaman kerja Anda belum diisi.";
+
+// 4. PROSES INSERT LAMARAN KE DATABASE (SAAT MODAL DI-SUBMIT)
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])) {
+    if (!$pelamar_id) {
+        echo "<script>alert('Anda harus login terlebih dahulu!'); window.location.href='login.php';</script>";
+        exit;
+    }
+    if (!$data_lengkap) {
+        echo "<script>alert('Akses ditolak! Data Anda belum lengkap.'); window.location.href='profil_pelamar.php';</script>";
+        exit;
+    }
+
+    $tanggal_masuk = date('Y-m-d H:i:s');
+    $status_awal   = 'Proses'; 
+    $lowongan_id   = isset($_POST['lowongan_id']) ? intval($_POST['lowongan_id']) : 0;
+
+    // =========================================================================
+    // VALIDASI BACKEND: PROTEKSI AGAR USER TIDAK BISA MELAMAR LOWONGAN YANG SAMA
+    // =========================================================================
+    $cek_duplikat = mysqli_query($koneksi, "SELECT id FROM rekrutmen_lamaran WHERE pelamar_id = $pelamar_id AND lowongan_id = $lowongan_id");
+    if (mysqli_num_rows($cek_duplikat) > 0) {
+        echo "<script>
+            alert('⚠️ Anda sudah pernah mengirimkan berkas lamaran untuk posisi lowongan ini!');
+            window.location.href='rekrutmen_lamaran.php';
+        </script>";
+        exit;
+    }
+    // =========================================================================
+
+    // Perintah INSERT utama ke tabel database Anda
+    $query_kirim = "INSERT INTO rekrutmen_lamaran (pelamar_id, lowongan_id, status, created_at, updated_at) 
+                    VALUES ($pelamar_id, $lowongan_id, '$status_awal', '$tanggal_masuk', '$tanggal_masuk')";
+
+    if (mysqli_query($koneksi, $query_kirim)) {
+        $lamaran_id_baru = mysqli_insert_id($koneksi);
+        
+        // Input histori log pelacakan alur ke lamaran_tahapan
+        mysqli_query($koneksi, "INSERT INTO lamaran_tahapan (lamaran_id, tahapan_id, tanggal_mulai, status, created_at, updated_at) 
+                                VALUES ($lamaran_id_baru, 1, '$tanggal_masuk', '$status_awal', '$tanggal_masuk', '$tanggal_masuk')");
+
+        echo "<script>alert('✓ Sukses! Lamaran Anda berhasil dikirim.'); window.location.href='rekrutmen_lamaran.php';</script>";
+        exit;
+    } else {
+        echo "<script>alert('Gagal mengirim lamaran: " . mysqli_error($koneksi) . "');</script>";
     }
 }
-
 ?>
+
 
 <!DOCTYPE html>
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Portal Lowongan Kerja</title>
     <style>
-        * { box-sizing: border-box; font-family: 'Segoe UI', Arial, sans-serif; margin: 0; padding: 0; }
-        body { background-color: #f8fafc; color: #334155; padding-bottom: 80px; }
-        .navbar { display: flex; justify-content: space-between; align-items: center; padding: 20px 10%; background: #fff; border-bottom: 1px solid #eef2f5; }
-        .brand { font-size: 18px; font-weight: bold; color: #111; text-decoration: none; }
-        .user-info { display: flex; align-items: center; gap: 15px; }
-        .user-name { font-size: 14px; font-weight: 600; color: #4f46e5; }
-        .btn-action { background-color: #4f46e5; color: white; padding: 8px 16px; border-radius: 6px; text-decoration: none; font-size: 14px; font-weight: 500; border: none; cursor: pointer; display: inline-block; text-align: center; }
-        .btn-logout { background-color: #dc3545; color: white; padding: 6px 14px; border-radius: 4px; text-decoration: none; font-size: 14px; font-weight: 500; }
-        .main-container { max-width: 1000px; margin: 40px auto; padding: 0 20px; }
-        .page-title { font-size: 22px; font-weight: 700; color: #1e293b; margin-bottom: 25px; }
-        .grid-lowongan { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
-        .card-lowongan { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 24px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.02); display: flex; flex-direction: column; justify-content: space-between; }
-        .lowongan-title { font-size: 18px; font-weight: 700; color: #1e293b; margin-bottom: 8px; }
-        .lowongan-code { display: inline-block; background: #e0f2fe; color: #0369a1; font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 4px; margin-bottom: 15px; }
-        .lowongan-desc { font-size: 14px; color: #64748b; line-height: 1.5; margin-bottom: 20px; }
-        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.6); z-index: 1000; justify-content: center; align-items: center; padding: 20px; }
-        .preview-box { background: white; border-radius: 16px; padding: 30px; max-width: 750px; width: 100%; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.15); position: relative; animation: slideUp 0.3s ease; }
-        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
-        .preview-title { font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 20px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; }
-        .section-title { font-size: 15px; font-weight: 700; color: #4f46e5; margin-bottom: 8px; margin-top: 15px; }
-        .profile-preview-layout { display: flex; gap: 20px; margin-bottom: 15px; background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; }
-        .profile-photo-area { width: 130px; text-align: center; flex-shrink: 0; }
-        .profile-photo-area img { width: 100%; height: auto; border-radius: 8px; border: 2px solid #cbd5e1; object-fit: cover; }
-        .info-table { width: 100%; font-size: 13.5px; line-height: 1.6; border-collapse: collapse; }
-        .info-table td { padding: 4px 0; vertical-align: top; }
-        .data-box { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; font-size: 13.5px; line-height: 1.6; margin-bottom: 5px; }
-        .modal-footer { display: flex; gap: 15px; justify-content: center; margin-top: 35px; padding-bottom: 10px; }
-        .btn-batal { background-color: #cbd5e1; color: #334155; border: none; padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; text-decoration: none; display: inline-block; }
-        .btn-kirim { background-color: #00b57a; color: white; border: none; padding: 12px 24px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
+        .navbar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .container { max-width: 1200px; margin: 40px auto; }
+        .grid-lowongan { 
+            display: grid; 
+            /* Mengunci lebar maksimum tiap kartu agar rapi dan pas di layar */
+            grid-template-columns: repeat(auto-fill, minmax(300px, 350px)); 
+            gap: 25px; 
+            justify-content: start; /* Memaksa kartu pertama tetap rata kiri */
+            margin-top: 20px;
+        }
+        .card-lowongan { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; }
+        .badge { display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-top: 5px; }
+        .btn-lamar { width: 100%; background: #4338ca; color: white; border: none; padding: 12px; border-radius: 6px; font-size: 14px; font-weight: bold; cursor: pointer; margin-top: 20px; transition: 0.2s; }
+        .btn-lamar:hover { background: #3730a3; }
+        
+        /* Tautan interaktif nama user */
+        .link-user-profil { color: #2563eb; text-decoration: none; font-weight: bold; transition: color 0.2s; }
+        .link-user-profil:hover { color: #1d4ed8; text-decoration: underline; }
+        
+        /* Style Jendela Modal */
+        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index: 1000; }
+        .modal-content { background:white; padding:30px; border-radius:8px; width:400px; text-align:center; }
+        .btn-konfirmasi { background:#198754; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold; }
+        .btn-batal { background:#6c757d; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold; margin-right:10px; }
     </style>
 </head>
 <body>
 
-<div class="navbar">
-    <a href="#" class="brand">PORTAL KARIR</a>
-    <div class="user-info">
-        <span class="user-name">Halo, <?php echo htmlspecialchars($pelamar_nama); ?></span>
+    <div class="navbar">
+        <h2 style="margin:0; color:#1e293b;">PORTAL KARIR</h2>
+        <div>
+            <?php if ($pelamar_id) : ?>
+                <span style="margin-right:15px; color:#475569;">
+                    Halo, <a href="profil_pelamar.php" class="link-user-profil" title="Klik untuk mengubah data profil"><?= htmlspecialchars($pelamar_nama); ?></a>
+                </span>
+                <a href="rekrutmen_lamaran.php" style="background:#198754; color:white; padding:8px 16px; text-decoration:none; border-radius:6px; font-size:14px; font-weight:bold; margin-right:10px;">Data Lamaran Saya</a>
+                <a href="logout_pelamar.php" style="background:#dc2626; color:white; padding:8px 16px; text-decoration:none; border-radius:6px; font-size:14px; font-weight:bold;">Keluar</a>
+            <?php else : ?>
+                <a href="login.php" style="background:#2563eb; color:white; padding:8px 16px; text-decoration:none; border-radius:6px; font-size:14px; font-weight:bold;">Masuk Akun</a>
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <div class="container">
+        <h3 style="color:#1e293b; margin-bottom:25px;">Lowongan Magang Tersedia</h3>
         
-        <?php if ($pelamar_id) : ?>
-            <!-- Menu ini HANYA tampil jika pelamar sudah masuk akun -->
-            <a href="profil_pelamar.php" class="btn-action">Ubah Profil</a>
-            <a href="logout.php" class="btn-logout">Keluar</a>
-        <?php else : ?>
-            <!-- Menu ini HANYA tampil jika statusnya masih Tamu -->
-            <a href="login_pelamar.php" class="btn-action" style="background-color: #4f46e5;">Masuk</a>
-            <a href="daftar_pelamar.php" class="btn-action" style="background-color: #00b57a;">Daftar</a>
-        <?php endif; ?>
+<div class="grid-lowongan">
+    <?php
+    // Mengambil data lowongan magang dari database
+    $query_lowongan = mysqli_query($koneksi, "SELECT * FROM rekrutmen_lowongan");
+    if (mysqli_num_rows($query_lowongan) > 0) {
+        while ($row = mysqli_fetch_assoc($query_lowongan)) {
+            // SINKRONISASI HEIDISQL: Menggunakan kolom 'judul_lowongan' dan 'kode_lowongan'
+            $nama_tampil = isset($row['judul_lowongan']) ? $row['judul_lowongan'] : 'Lowongan Magang';
+            $kode_tampil = isset($row['kode_lowongan']) ? $row['kode_lowongan'] : 'LWN-'.$row['id'];
+            $deskripsi   = isset($row['deskripsi']) ? $row['deskripsi'] : '';
+            $id_lowongan = $row['id'];
+            
+            // Cek apakah ID lowongan ini sudah pernah dilamar oleh pelamar yang login
+            $sudah_melamar = in_array($id_lowongan, $lowongan_dilamar);
+            ?>
+            <div class="card-lowongan">
+                <!-- JUDUL LOWONGAN -->
+                <h3 style="margin: 0; color: #1e293b; font-size: 20px; font-weight: 600;"><?= htmlspecialchars($nama_tampil); ?></h3>
+                
+                <!-- BADGE KODE -->
+                <span class="badge" style="display: inline-block; background: #e0f2fe; color: #0369a1; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-weight: bold; margin-top: 8px;"><?= htmlspecialchars($kode_tampil); ?></span>
+                
+                <!-- DESKRIPSI -->
+                <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin-top: 15px; margin-bottom: 5px;"><?= htmlspecialchars($deskripsi); ?></p>
+                
+                <?php if ($sudah_melamar) : ?>
+    <!-- Tampilan Tombol Jika Sudah Dilamar (Ukurannya dibatasi agar tidak penuh) -->
+    <div style="margin-top: 20px;">
+        <button type="button" class="btn-lamar" style="background: #e2e8f0; color: #64748b; cursor: not-allowed; width: auto; min-width: 150px; display: inline-block; padding: 10px 20px;" disabled>
+            ✔ Sudah Dilamar
+        </button>
     </div>
+<?php else : ?>
+    <!-- Tampilan Tombol Normal Jika Belum Dilamar -->
+    <button type="button" class="btn-lamar" onclick="bukaPreview('<?= addslashes(htmlspecialchars($nama_tampil)); ?>', '<?= $id_lowongan; ?>')">
+        Lamar Sekarang
+    </button>
+<?php endif; ?>
+
+            </div>
+            <?php
+        }
+    } else {
+        echo "<p style='color:#64748b; text-align: center; width: 100%;'>Belum ada lowongan magang yang tersedia saat ini.</p>";
+    }
+    ?>
 </div>
 
-<div class="main-container">
-    <h2 class="page-title">Lowongan Magang Tersedia</h2>
-    <div class="grid-lowongan">
-        <div class="card-lowongan">
-            <div>
-                <h4 class="lowongan-title">Pusat Rekrutmen Rumah Sakit</h4>
-                <span class="lowongan-code">LWN-5</span>
-                <p class="lowongan-desc">Terbuka untuk posisi magang umum di unit administrasi, pelayanan medik, dan teknologi informasi jajaran rumah sakit terintegrasi.</p>
+    <!-- WINDOW MODAL PREVIEW DATA SUPER LENGKAP -->
+    <div id="modalPreview" class="modal">
+        <div class="modal-content" style="width: 550px; max-width: 95%; text-align: left; padding: 25px; border-radius: 12px; max-height: 85vh; overflow-y: auto;">
+            <h3 style="margin-top: 0; color: #1e293b; text-align: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Preview Kelengkapan Data</h3>
+            
+            <p style="color: #64748b; font-size: 13px; margin-bottom: 20px; text-align: center;">Periksa kembali berkas pendaftaran Anda sebelum dikirim untuk posisi:<br><strong id="textFormasi" style="color: #4338ca; font-size: 15px;">-</strong></p>
+            
+            <!-- BAGIAN 1: BIODATA UTAMA -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; line-height: 1.8;">
+                <strong style="color: #4338ca; display: block; margin-bottom: 8px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">I. Biodata & Pendidikan</strong>
+                <div style="display: flex;"><span style="width: 130px; font-weight: bold; color: #475569;">Nama Lengkap</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data['nama_lengkap'] ?? '-'); ?></span></div>
+                <div style="display: flex;"><span style="width: 130px; font-weight: bold; color: #475569;">NIK</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data['nik'] ?? '-'); ?></span></div>
+                <div style="display: flex;"><span style="width: 130px; font-weight: bold; color: #475569;">Jenis Kelamin</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data['jenis_kelamin'] ?? '-'); ?></span></div>
+                <div style="display: flex;"><span style="width: 130px; font-weight: bold; color: #475569;">Alamat</span><span style="flex: 1; color: #1e293b;">: <?= htmlspecialchars($data['alamat'] ?? '-'); ?></span></div>
+                <div style="display: flex;"><span style="width: 130px; font-weight: bold; color: #475569;">Pendidikan</span><span style="flex: 1; color: #1e293b;">: 
+                    <?php 
+                    if (!empty($list_pendidikan)) {
+                        $pend_terakhir = end($list_pendidikan);
+                        echo htmlspecialchars($pend_terakhir['jenjang'] ?? $pend_terakhir['tingkat'] ?? '-') . " - " . htmlspecialchars($pend_terakhir['nama_sekolah'] ?? $pend_terakhir['institusi'] ?? '-');
+                    } else { echo "-"; }
+                    ?>
+                </span></div>
             </div>
-            <button type="button" class="btn-action" onclick="bukaPreview('DOKTER UMUM')">Lamar Sekarang</button>
-        </div>
-        <div class="card-lowongan">
-            <div>
-                <h4 class="lowongan-title">Asisten Lab Komputer</h4>
-                <span class="lowongan-code">LWN-6</span>
-                <p class="lowongan-desc">Membantu pengelolaan prasarana laboratorium komputer, penjadwalan praktikum, serta asistensi teknis jaringan.</p>
-            </div>
-            <button type="button" class="btn-action" onclick="bukaPreview('ASISTEN LAB')">Lamar Sekarang</button>
-        </div>
-    </div>
-</div>
 
-<!-- ==================== MODAL OVERLAY PREVIEW ==================== -->
-<div id="modalPreview" class="modal-overlay">
-    <div class="preview-box">
-        <h3 class="preview-title">Pratinjau Data Konfirmasi Lamaran</h3>
-
-        <h5 class="section-title">A. Biodata Profil Pelamar</h5>
-        <div class="profile-preview-layout">
-            <div class="profile-photo-area">
-                <?php if (!empty($data['foto'])) : ?>
-                    <img src="uploads/<?php echo $data['foto']; ?>" alt="Foto Profil">
+            <!-- BAGIAN 2: BERKAS DOKUMEN UPLOAD -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 15px; font-size: 13px; line-height: 1.8;">
+                <strong style="color: #198754; display: block; margin-bottom: 8px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">II. Lampiran Berkas Dokumen</strong>
+                <?php if (!empty($list_berkas)) : ?>
+                    <ul style="margin: 0; padding-left: 20px; color: #1e293b;">
+                        <?php foreach ($list_berkas as $bk) : ?>
+                            <?php if(!empty($bk['nama_file'])) : ?>
+                                <li><?= htmlspecialchars($bk['jenis_berkas']); ?> (<span style="color: #198754; font-weight: 500;">✔ Terunggah</span>)</li>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                    </ul>
                 <?php else : ?>
-                    <div style="width:100%; height:160px; background:#e2e8f0; display:flex; align-items:center; justify-content:center; font-size:12px; color:#64748b; border-radius:8px;">Tidak Ada Foto</div>
+                    <span style="color: #dc3545; font-style: italic;">Tidak ada lampiran berkas dokumen yang terunggah.</span>
                 <?php endif; ?>
             </div>
-            <div style="flex-grow: 1;">
-                <table class="info-table">
-                    <tr>
-                        <td style="width: 140px; color: #64748b;">Nama Lengkap</td>
-                        <td style="width: 15px;">:</td>
-                        <td><strong><?php echo isset($data['nama_lengkap']) ? htmlspecialchars($data['nama_lengkap']) : '-'; ?></strong></td>
-                    </tr>
-                    <tr>
-                        <td style="color: #64748b;">NIK</td>
-                        <td>:</td>
-                        <td><?php echo isset($data['nik']) ? htmlspecialchars($data['nik']) : '-'; ?></td>
-                    </tr>
-                    <tr>
-                        <td style="color: #64748b;">Tempat, Tgl Lahir</td>
-                        <td>:</td>
-                        <td><?php echo isset($data['tempat_lahir']) ? htmlspecialchars($data['tempat_lahir']) : '-'; ?>, <?php echo isset($data['tanggal_lahir']) ? date('d/m/Y', strtotime($data['tanggal_lahir'])) : '-'; ?></td>
-                    </tr>
-                    <tr>
-                        <td style="color: #64748b;">Jenis Kelamin</td>
-                        <td>:</td>
-                        <td><?php echo isset($data['jenis_kelamin']) ? htmlspecialchars($data['jenis_kelamin']) : '-'; ?></td>
-                    </tr>
-                    <tr>
-                        <td style="color: #64748b;">Agama</td>
-                        <td>:</td>
-                        <td><?php echo isset($data['agama']) ? htmlspecialchars($data['agama']) : '-'; ?></td>
-                    </tr>
-                    <tr>
-                        <td style="color: #64748b;">Status Hubungan</td>
-                        <td>:</td>
-                        <td><?php echo isset($data['status_sosial']) ? htmlspecialchars($data['status_sosial']) : '-'; ?></td>
-                    </tr>
-                    <tr>
-                        <td style="color: #64748b;">No. Telepon / WA</td>
-                        <td>:</td>
-                        <td><?php echo isset($data['telepon']) ? htmlspecialchars($data['telepon']) : '-'; ?></td>
-                    </tr>
-                    <tr>
-                        <td style="color: #64748b;">Kota & Provinsi</td>
-                        <td>:</td>
-                        <td><?php echo isset($data['kota']) ? htmlspecialchars($data['kota']) . ", " . htmlspecialchars($data['provinsi']) : '-'; ?></td>
-                    </tr>
-                    <tr>
-                        <td style="color: #64748b;">Alamat Rumah</td>
-                        <td>:</td>
-                        <td><?php echo isset($data['alamat']) ? htmlspecialchars($data['alamat']) : '-'; ?></td>
-                    </tr>
-                </table>
+
+            <!-- BAGIAN 3: DATA SURAT TANDA REGISTRASI (STR) -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; line-height: 1.8;">
+                <strong style="color: #d97706; display: block; margin-bottom: 8px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">III. Data STR Aktif</strong>
+                <?php if (!empty($list_str) && !empty($list_str[0]['nomor_str'])) : ?>
+                    <?php foreach ($list_str as $str) : ?>
+                        <div style="margin-bottom: 5px; color: #1e293b;">
+                            • No. STR: <strong><?= htmlspecialchars($str['nomor_str']); ?></strong> <small style="color: #64748b;">(Exp: <?= date('d/m/Y', strtotime($str['tanggal_expired'])); ?>)</small>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else : ?>
+                    <span style="color: #64748b; font-style: italic;">Tidak ada data STR (Opsional / Non-Medis).</span>
+                <?php endif; ?>
             </div>
-        </div>
-
-        <!-- B. RIWAYAT PENDIDIKAN -->
-        <h5 class="section-title">B. Riwayat Pendidikan</h5>
-        <div class="data-box">
-            <?php if (!empty($list_pendidikan)) : ?>
-                <?php foreach ($list_pendidikan as $index => $pend) : ?>
-                    <strong>Jenjang / Kampus :</strong> <?php echo htmlspecialchars($pend['jenjang']); ?> - <?php echo htmlspecialchars($pend['institusi']); ?><br>
-                    <strong>Jurusan / Prodi :</strong> <?php echo htmlspecialchars($pend['jurusan']); ?><br>
-                    <strong>Tahun Lulus / IPK :</strong> Lulus Th. <?php echo htmlspecialchars($pend['tahun_lulus']); ?> (IPK: <?php echo htmlspecialchars($pend['ipk']); ?>)<br><br>
-                <?php endforeach; ?>
-            <?php else : ?>
-                <span style="color:#dc3545;">Data Pendidikan Kosong</span>
-            <?php endif; ?>
-        </div>
-
-        <!-- C. RIWAYAT PENGALAMAN KERJA -->
-        <h5 class="section-title">C. Riwayat Pengalaman Kerja</h5>
-        <div class="data-box">
-            <?php if ($data_pengalaman && !empty($data_pengalaman['perusahaan'])) : ?>
-                <strong>Nama Perusahaan :</strong> <?php echo htmlspecialchars($data_pengalaman['perusahaan']); ?><br>
-                <strong>Jabatan / Posisi :</strong> <?php echo htmlspecialchars($data_pengalaman['jabatan']); ?><br>
-                <strong>Periode Kerja :</strong> 
-                <?php 
-                    $mulai = date('d/m/Y', strtotime($data_pengalaman['mulai_kerja']));
-                    $selesai = !empty($data_pengalaman['selesai_kerja']) ? date('d/m/Y', strtotime($data_pengalaman['selesai_kerja'])) : 'Sekarang';
-                    echo $mulai . " s/d " . $selesai;
-                ?><br>
-                <strong>Alasan Keluar :</strong> <?php echo !empty($data_pengalaman['alasan_keluar']) ? htmlspecialchars($data_pengalaman['alasan_keluar']) : '-'; ?>
-            <?php else : ?>
-                <span style="color:#dc3545;">Data Pengalaman Kosong</span>
-            <?php endif; ?>
-        </div>
-
-        <!-- D. FORMASI YANG DILAMAR -->
-        <h5 class="section-title">D. Formasi yang Dilamar</h5>
-        <div class="data-box" style="background-color: #eff6ff; border-color: #bfdbfe;">
-            <strong id="textFormasi">-</strong>
-        </div>
-
-        <!-- TOMBOL KONFIRMASI FINAL (PROSES DI HALAMAN SAMA) -->
-        <form action="" method="POST">
-            <input type="hidden" name="nama_formasi" id="inputFormasi">
-            <div class="modal-footer">
-                <button type="button" class="btn-batal" onclick="tutupPreview()">Batal</button>
-                <button type="submit" name="kirim_lamaran_final" class="btn-kirim">✓ YA, DATA SUDAH BENAR & KIRIM LAMARAN</button>
+            
+                        <!-- BAGIAN 4: RIWAYAT PENGALAMAN KERJA -->
+            <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; line-height: 1.8;">
+                <strong style="color: #4338ca; display: block; margin-bottom: 8px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">IV. Riwayat Pengalaman Kerja</strong>
+                <?php if (!empty($list_pengalaman)) : ?>
+                    <ul style="margin: 0; padding-left: 20px; color: #1e293b;">
+                        <?php foreach ($list_pengalaman as $exp) : ?>
+                            <li style="margin-bottom: 5px;">
+                                <strong><?= htmlspecialchars($exp['perusahaan'] ?? $exp['nama_perusahaan'] ?? '-'); ?></strong> 
+                                Sebagai <span style="color: #4338ca; font-weight: 500;"><?= htmlspecialchars($exp['jabatan'] ?? $exp['posisi'] ?? '-'); ?></span> 
+                                <small style="color: #64748b;">(<?= htmlspecialchars($exp['tahun_masuk'] ?? ''); ?> - <?= htmlspecialchars($exp['tahun_keluar'] ?? 'Sekarang'); ?>)</small>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php else : ?>
+                    <span style="color: #64748b; font-style: italic;">Belum memiliki riwayat pengalaman kerja (Fresh Graduate).</span>
+                <?php endif; ?>
             </div>
-        </form>
+
+            <!-- Tombol Aksi Form -->
+            <form action="" method="POST" style="display: flex; justify-content: flex-end; gap: 10px;">
+                <input type="hidden" id="inputFormasi" name="lowongan_id" value="">
+                <button type="button" class="btn-batal" onclick="tutupPreview()" style="margin: 0;">Batal</button>
+                <button type="submit" name="kirim_lamaran_final" class="btn-konfirmasi">Kirim Lamaran</button>
+            </form>
+        </div>
     </div>
-</div>
 
-<!-- ==================== LOGIKA JAVASCRIPT VALIDASI ==================== -->
+
+<!-- LOGIKA JAVASCRIPT VALIDASI INTERAKTIF -->
 <script>
-const isDataLengkap = <?php echo $data_lengkap ? 'true' : 'false'; ?>;
-const pesanError = "<?php echo $pesan_error; ?>";
+    // Membaca variabel kontrol langsung dari backend PHP
+    const isLogin       = <?= $pelamar_id ? 'true' : 'false'; ?>;
+    const isDataLengkap = <?= $data_lengkap ? 'true' : 'false'; ?>;
+    const pesanError    = "<?= isset($pesan_error) ? addslashes($pesan_error) : ''; ?>";
 
-function bukaPreview(namaLowongan) {
-    if (!isDataLengkap) {
-        alert("⚠️ Pendaftaran Ditolak!\n" + pesanError + "\n\nHarap lengkapi semua data profil Anda terlebih dahulu.");
-        window.location.href = "profil_pelamar.php";
-    } else {
-        document.getElementById('textFormasi').innerText = namaLowongan;
-        document.getElementById('inputFormasi').value = namaLowongan;
-        document.getElementById('modalPreview').style.display = 'flex';
+    function bukaPreview(namaLowongan, idLowongan) {
+        if (!isLogin) {
+            // Mencegah akses melamar bagi Tamu / Pengguna yang belum login
+            alert("🔒 Akses Terkunci!\n\nAnda harus login terlebih dahulu untuk mengajukan lamaran.");
+            window.location.href = "login.php";
+        } else if (!isDataLengkap) {
+            // Mencegah kiriman jika kolom wajib di database masih kosong
+            alert("⚠️ Pendaftaran Ditolak!\n" + pesanError + "\n\nHarap lengkapi data profil Anda terlebih dahulu.");
+            window.location.href = "profil_pelamar.php";
+        } else {
+            // Membuka modal konfirmasi pendaftaran
+            document.getElementById('textFormasi').innerText = namaLowongan;
+            document.getElementById('inputFormasi').value = idLowongan;
+            document.getElementById('modalPreview').style.display = 'flex';
+        }
     }
-}
 
-function tutupPreview() {
-    document.getElementById('modalPreview').style.display = 'none';
-}
+    function tutupPreview() {
+        // Menutup kembali jendela modal konfirmasi
+        document.getElementById('modalPreview').style.display = 'none';
+    }
 </script>
-
 </body>
 </html>
