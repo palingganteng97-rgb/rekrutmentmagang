@@ -22,9 +22,7 @@ $error_message = "";
 $success_message = "";
 $pelamar_id = $_SESSION['pelamar_id'];
 
-// =========================================================================
-// 3. LOGIKA PROSES UPDATE PROFIL BIODATA
-// =========================================================================
+// 3. LOGIKA PROSES UPDATE PROFIL BIODATA (TABEL: pelamar)
 if (isset($_POST['update_profil'])) {
     $nama_lengkap  = mysqli_real_escape_string($koneksi, $_POST['nama_lengkap']);
     $nik           = mysqli_real_escape_string($koneksi, $_POST['nik']);
@@ -32,7 +30,7 @@ if (isset($_POST['update_profil'])) {
     $tanggal_lahir = mysqli_real_escape_string($koneksi, $_POST['tanggal_lahir']);
     $jenis_kelamin = mysqli_real_escape_string($koneksi, $_POST['jenis_kelamin']);
     $agama         = mysqli_real_escape_string($koneksi, $_POST['agama']);
-    $status_social = mysqli_real_escape_string($koneksi, $_POST['status_hubungan']); 
+    $status_sosial = isset($_POST['status_hubungan']) ? mysqli_real_escape_string($koneksi, $_POST['status_hubungan']) : ''; 
     $telepon       = mysqli_real_escape_string($koneksi, $_POST['telepon']);
     $alamat        = mysqli_real_escape_string($koneksi, $_POST['alamat']);
     $kota          = mysqli_real_escape_string($koneksi, $_POST['kota']);
@@ -49,27 +47,46 @@ if (isset($_POST['update_profil'])) {
         if (in_array($tipe_file, $ekstensi_diperbolehkan)) {
             $ekstensi = pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION);
             $nama_foto_baru = "foto_" . $pelamar_id . "_" . time() . "." . $ekstensi;
-            if (!is_dir('uploads')) { mkdir('uploads', 0777, true); }
-            move_uploaded_file($_FILES['foto']['tmp_name'], "uploads/" . $nama_foto_baru);
+            $folder_tujuan = "uploads/" . $nama_foto_baru;
+            
+            if (!is_dir('uploads')) {
+                mkdir('uploads', 0777, true);
+            }
+            move_uploaded_file($_FILES['foto']['tmp_name'], $folder_tujuan);
+        } else {
+            $error_message = "Format foto harus JPG, JPEG, atau PNG!";
         }
     }
-
-    $query_update = "UPDATE pelamar SET 
-        nama_lengkap = '$nama_lengkap', nik = '$nik', tempat_lahir = '$tempat_lahir', tanggal_lahir = '$tanggal_lahir', 
-        jenis_kelamin = '$jenis_kelamin', agama = '$agama', status_social = '$status_social', telepon = '$telepon', 
-        alamat = '$alamat', kota = '$kota', provinsi = '$provinsi', foto = '$nama_foto_baru', updated_at = NOW() 
-        WHERE id = $pelamar_id";
-        
-    if (mysqli_query($koneksi, $query_update)) {
-        $_SESSION['pelamar_nama'] = $nama_lengkap;
-        echo "<script>alert('✓ Biodata profil berhasil diperbarui!'); window.location.href='profil_pelamar.php';</script>";
-        exit;
+    
+    if (empty($error_message)) {
+        $query_update = "UPDATE pelamar SET 
+            nama_lengkap = '$nama_lengkap', 
+            nik = '$nik', 
+            tempat_lahir = '$tempat_lahir', 
+            tanggal_lahir = '$tanggal_lahir', 
+            jenis_kelamin = '$jenis_kelamin', 
+            agama = '$agama', 
+            status_sosial = '$status_sosial', 
+            telepon = '$telepon', 
+            alamat = '$alamat', 
+            kota = '$kota', 
+            provinsi = '$provinsi', 
+            foto = '$nama_foto_baru', 
+            updated_at = NOW() 
+            WHERE id = $pelamar_id";
+            
+        if (mysqli_query($koneksi, $query_update)) {
+            $_SESSION['pelamar_nama'] = $nama_lengkap;
+            echo "<script>alert('✓ Profil biodata Anda berhasil diperbarui!'); window.location.href='profil_pelamar.php';</script>";
+            exit;
+        } else {
+            $error_message = "Gagal memperbarui data profil: " . mysqli_error($koneksi);
+        }
     }
 }
 
-// =========================================================================
-// 4. LOGIKA PROSES SIMPAN RIWAYAT PENGALAMAN
-// =========================================================================
+
+// LOGIKA PROSES SIMPAN RIWAYAT PENGALAMAN (TABEL: pelamar_pengalaman)
 if (isset($_POST['simpan_pengalaman'])) {
     $perusahaan    = mysqli_real_escape_string($koneksi, $_POST['perusahaan']);
     $jabatan       = mysqli_real_escape_string($koneksi, $_POST['jabatan']);
@@ -80,20 +97,29 @@ if (isset($_POST['simpan_pengalaman'])) {
     $cek_data = mysqli_query($koneksi, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id");
 
     if (mysqli_num_rows($cek_data) > 0) {
+        // PERBAIKAN: Menggunakan alasan_keluar (dengan garis bawah)
         $query_exp = "UPDATE pelamar_pengalaman SET 
-                        perusahaan = '$perusahaan', jabatan = '$jabatan', mulai_kerja = '$mulai_kerja', 
-                        selesai_kerja = " . ($selesai_kerja ? "'$selesai_kerja'" : "NULL") . ", `alasan keluar` = '$alasan_keluar', updated_at = NOW() 
+                        perusahaan = '$perusahaan', 
+                        jabatan = '$jabatan', 
+                        mulai_kerja = '$mulai_kerja', 
+                        selesai_kerja = " . ($selesai_kerja ? "'$selesai_kerja'" : "NULL") . ", 
+                        alasan_keluar = '$alasan_keluar',
+                        updated_at = NOW() 
                       WHERE pelamar_id = $pelamar_id";
     } else {
-        $query_exp = "INSERT INTO pelamar_pengalaman (pelamar_id, perusahaan, jabatan, mulai_kerja, selesai_kerja, `alasan keluar`, created_at, updated_at) 
+        // PERBAIKAN: Menggunakan alasan_keluar (dengan garis bawah)
+        $query_exp = "INSERT INTO pelamar_pengalaman (pelamar_id, perusahaan, jabatan, mulai_kerja, selesai_kerja, alasan_keluar, created_at, updated_at) 
                       VALUES ($pelamar_id, '$perusahaan', '$jabatan', '$mulai_kerja', " . ($selesai_kerja ? "'$selesai_kerja'" : "NULL") . ", '$alasan_keluar', NOW(), NOW())";
     }
 
     if (mysqli_query($koneksi, $query_exp)) {
         echo "<script>alert('✓ Riwayat pengalaman berhasil disimpan!'); window.location.href='profil_pelamar.php';</script>";
         exit;
+    } else {
+        echo "<script>alert('Gagal menyimpan pengalaman: " . mysqli_error($koneksi) . "');</script>";
     }
 }
+
 
 // =========================================================================
 // 5. LOGIKA PROSES SIMPAN MULTI DATA PENDIDIKAN
