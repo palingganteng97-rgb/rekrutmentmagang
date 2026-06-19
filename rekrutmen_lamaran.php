@@ -14,8 +14,11 @@ $koneksi = mysqli_connect($host, $user_db, $pass_db, $nama_db);
 if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
-// TAMBAHKAN BARIS INI TEPAT DI BAWAH KONEKSI
+// SINKRONISASI WAKTU DATABASE
 mysqli_query($koneksi, "SET time_zone = '+07:00'");
+// MEMAKSA DATABASE SEGERA MENGISI WAKTU OTOMATIS SAAT ADA DATA BARU
+mysqli_query($koneksi, "ALTER TABLE rekrutmen_lamaran MODIFY created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+mysqli_query($koneksi, "ALTER TABLE rekrutmen_lamaran MODIFY updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
 
 // 2. PROTEKSI HALAMAN (WAJIB LOGIN)
 $pelamar_id   = isset($_SESSION['pelamar_id']) ? $_SESSION['pelamar_id'] : null;
@@ -47,9 +50,9 @@ if (!$pelamar_id) {
         
         /* Style Badge Status Enum */
         .badge { display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; text-align: center; }
-        .badge-proses { background: #fef3c7; color: #d97706; } /* Kuning */
-        .badge-diterima { background: #dcfce7; color: #15803d; } /* Hijau */
-        .badge-ditolak { background: #fee2e2; color: #b91c1c; } /* Merah */
+        .badge-proses { background: #fef3c7; color: #d97706; }
+        .badge-diterima { background: #dcfce7; color: #15803d; }
+        .badge-ditolak { background: #fee2e2; color: #b91c1c; }
         
         .text-empty { text-align: center; color: #64748b; font-style: italic; padding: 30px 0; }
     </style>
@@ -75,36 +78,33 @@ if (!$pelamar_id) {
                 </tr>
             </thead>
 
-                        <tbody>
+            <tbody>
                 <?php
                 $no = 1;
-                
-                // PERBAIKAN: Memberikan alias l.created_at AS tanggal_kirim agar tidak tertimpa tabel lowongan
+                // PERBAIKAN UTAMA: Memastikan $koneksi dan $pelamar_id ditulis huruf kecil sesuai deklarasi atas
                 $query_riwayat = "SELECT l.id AS lamaran_id, l.created_at AS tanggal_kirim, l.status, lw.judul_lowongan, lw.kode_lowongan 
                                   FROM rekrutmen_lamaran l
-                                  JOIN rekrutmen_lowongan lw ON l.lowongan_id = lw.id
+                                  LEFT JOIN rekrutmen_lowongan lw ON l.lowongan_id = lw.id
                                   WHERE l.pelamar_id = $pelamar_id 
                                   ORDER BY l.id DESC";
                 
-                $tampil_data = mysqli_connect_error() ? null : mysqli_query($koneksi, $query_riwayat);
+                $tampil_data = mysqli_query($koneksi, $query_riwayat);
 
                 if ($tampil_data && mysqli_num_rows($tampil_data) > 0) {
                     while ($row = mysqli_fetch_assoc($tampil_data)) {
                         
-                        // Menampilkan judul lowongan
                         $nama_lowongan_tampil = !empty($row['judul_lowongan']) ? $row['judul_lowongan'] : 'Lowongan Magang';
-                        $kode_lowongan = !empty($row['kode_lowongan']) ? ' (' . $row['kode_lowongan'] . ')' : '';
+                        $kode_lowongan = !empty($row['kode_lowongan']) ? ' ('.$row['kode_lowongan'].')' : '';
 
-                        // Penentuan warna badge status ENUM
                         $status = $row['status'];
                         $badge_class = 'badge-proses';
+                        
                         if ($status == 'Diterima' || $status == 'TERIMA') { 
                             $badge_class = 'badge-diterima'; 
                         } elseif ($status == 'Ditolak' || $status == 'TOLAK') { 
                             $badge_class = 'badge-ditolak'; 
                         }
                         
-                        // PERBAIKAN: Membaca variabel alias 'tanggal_kirim' yang sudah kita buat di atas
                         $tanggal = !empty($row['tanggal_kirim']) ? date('d M Y - H:i', strtotime($row['tanggal_kirim'])) : 'Sedang diproses';
                         ?>
                         <tr>
@@ -125,7 +125,6 @@ if (!$pelamar_id) {
                 }
                 ?>
             </tbody>
-
         </table>
     </div>
 
