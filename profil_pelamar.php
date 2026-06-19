@@ -313,14 +313,43 @@ if (mysqli_num_rows($query_berkas_cek) > 0) {
                 </div>
                 <div class="form-group"><label>Nama Lengkap</label><input type="text" name="nama_lengkap" class="form-control" value="<?= htmlspecialchars($data['nama_lengkap'] ?? ''); ?>" required></div>
                 <div class="form-group"><label>NIK (Nomor Induk Kependudukan)</label><input type="text" name="nik" class="form-control" value="<?= htmlspecialchars($data['nik'] ?? ''); ?>" required></div>
-                <div style="display: flex; gap: 15px;"><div class="form-group" style="flex: 1;"><label>Tempat Lahir</label><input type="text" name="tempat_lahir" class="form-control" value="<?= htmlspecialchars($data['tempat_lahir'] ?? ''); ?>"></div><div class="form-group" style="flex: 1;"><label>Tanggal Lahir</label><input type="date" name="tanggal_lahir" class="form-control" value="<?= $data['tanggal_lahir'] ?? ''; ?>"></div></div>
-                <div style="display: flex; gap: 15px;"><div class="form-group" style="flex: 1;"><label>Jenis Kelamin</label><select name="jenis_kelamin" class="form-control"><option value="Laki-laki" <?= ($data['jenis_kelamin'] ?? '') == 'Laki-laki' ? 'selected' : ''; ?>>Laki-laki</option><option value="Perempuan" <?= ($data['jenis_kelamin'] ?? '') == 'Perempuan' ? 'selected' : ''; ?>>Perempuan</option></select></div><div class="form-group" style="flex: 1;"><label>Agama</label><input type="text" name="agama" class="form-control" value="<?= htmlspecialchars($data['agama'] ?? ''); ?>"></div></div>
-                <div style="display: flex; gap: 15px;"><div class="form-group" style="flex: 1;"><label>Status Hubungan / Sosial</label><input type="text" name="status_hubungan" class="form-control" value="<?= htmlspecialchars($data['status_sosial'] ?? ''); ?>"></div><div class="form-group" style="flex: 1;"><label>No. Telepon / WA</label><input type="text" name="telepon" class="form-control" value="<?= htmlspecialchars($data['telepon'] ?? ''); ?>" required></div></div>
-                <div style="display: flex; gap: 15px;"><div class="form-group" style="flex: 1;"><label>Kota</label><input type="text" name="kota" class="form-control" value="<?= htmlspecialchars($data['kota'] ?? ''); ?>"></div><div class="form-group" style="flex: 1;"><label>Provinsi</label><input type="text" name="provinsi" class="form-control" value="<?= htmlspecialchars($data['provinsi'] ?? ''); ?>"></div></div>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;"><label>Tempat Lahir</label><input type="text" name="tempat_lahir" class="form-control" value="<?= htmlspecialchars($data['tempat_lahir'] ?? ''); ?>"></div>
+                    <div class="form-group" style="flex: 1;"><label>Tanggal Lahir</label><input type="date" name="tanggal_lahir" class="form-control" value="<?= $data['tanggal_lahir'] ?? ''; ?>"></div>
+                </div>
+                
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label>Jenis Kelamin</label>
+                        <select name="jenis_kelamin" class="form-control">
+                            <option value="Laki-laki" <?= ($data['jenis_kelamin'] ?? '') == 'Laki-laki' ? 'selected' : ''; ?>>Laki-laki</option>
+                            <option value="Perempuan" <?= ($data['jenis_kelamin'] ?? '') == 'Perempuan' ? 'selected' : ''; ?>>Perempuan</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex: 1;"><label>Agama</label><input type="text" name="agama" class="form-control" value="<?= htmlspecialchars($data['agama'] ?? ''); ?>"></div>
+                </div>
+
+                <!-- PERBAIKAN: Status Hubungan berdiri sendiri dalam satu baris penuh dengan kelas CSS form-control -->
+                <div class="form-group">
+                    <label for="status_hubungan">Status Hubungan / Sosial</label>
+                    <select id="status_hubungan" name="status_hubungan" class="form-control">
+                        <option value="">-- Pilih Status --</option>
+                        <option value="Belum Kawin" <?= ($data['status_hubungan'] ?? '') == 'Belum Kawin' ? 'selected' : ''; ?>>Belum Kawin</option>
+                        <option value="Kawin" <?= ($data['status_hubungan'] ?? '') == 'Kawin' ? 'selected' : ''; ?>>Kawin</option>
+                    </select>
+                </div>
+
+                <div style="display: flex; gap: 15px;">
+                    <div class="form-group" style="flex: 1;"><label>Kota</label><input type="text" name="kota" class="form-control" value="<?= htmlspecialchars($data['kota'] ?? ''); ?>"></div>
+                    <div class="form-group" style="flex: 1;"><label>Provinsi</label><input type="text" name="provinsi" class="form-control" value="<?= htmlspecialchars($data['provinsi'] ?? ''); ?>"></div>
+                </div>
+                
                 <div class="form-group"><label>Alamat Rumah Lengkap</label><textarea name="alamat" class="form-control" rows="3" style="resize: none;"><?= htmlspecialchars($data['alamat'] ?? ''); ?></textarea></div>
                 <button type="submit" name="update_profil" class="btn-simpan-full">Perbarui Biodata Profil</button>
             </form>
         </div>
+
 
         <!-- KARTU 2: PENGALAMAN MULTI-FORM -->
         <div class="card-profil">
@@ -546,6 +575,38 @@ function tambahBarisPendidikan() {
         container.appendChild(divBaru);
         container.scrollTop = container.scrollHeight;
     }
+function tambahBarisPengalaman() {
+    // 1. Ambil container utama tempat baris pengalaman ditampung
+    const container = document.getElementById('container-pengalaman');
+    
+    // 2. Ambil semua elemen baris yang ada saat ini
+    const rows = container.getElementsByClassName('item-pengalaman-row');
+    
+    // Jika tidak ada baris sama sekali, fungsi berhenti (mencegah error clone)
+    if (rows.length === 0) return;
+    
+    // 3. Duplikasi (clone) baris pertama yang ada di dalam container
+    const newRow = rows[0].cloneNode(true);
+    
+    // 4. Bersihkan nilai (value) dari semua input teks, tanggal, dan textarea pada baris baru
+    newRow.querySelectorAll('input').forEach(input => {
+        input.value = '';
+    });
+    newRow.querySelectorAll('textarea').forEach(textarea => {
+        textarea.value = '';
+    });
+    
+    // 5. Pastikan tombol hapus pada baris baru langsung tampil dan berfungsi jika diklik
+    const btnHapus = newRow.querySelector('button[onclick]');
+    if (btnHapus) {
+        btnHapus.style.display = 'inline-block';
+        btnHapus.setAttribute('onclick', 'this.parentElement.parentElement.remove()');
+    }
+    
+    // 6. Masukkan baris baru hasil duplikasi ke dalam container utama
+    container.appendChild(newRow);
+}
+
 </script>
 
 </body>
