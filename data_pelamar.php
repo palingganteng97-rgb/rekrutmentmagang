@@ -71,9 +71,11 @@ if (isset($_SESSION['username'])) {
 try {
     $query_pelamar = "SELECT 
                 rl.id AS lamaran_id, p.id AS pelamar_id,
-                p.nama_lengkap AS nama_pendaftar, p.nik AS nik_pendaftar, p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.alamat, p.kota, p.provinsi, p.telepon, p.email,
+                p.nama_lengkap AS nama_pendaftar, p.nik AS nik_pendaftar, p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.alamat, p.kota, p.provinsi, 
+                p.no_telepon, -- PERBAIKAN SINKRONISASI NO HP DARI p.telepon KE p.no_telepon
+                p.email,
                 p.status_sosial, p.foto AS foto_pelamar,
-                low.nama_lowongan AS nama_lowongan,
+                low.judul_lowongan AS nama_lowongan,
                 rl.created_at AS tanggal_daftar,
                 lt.status AS status_tahap,
                 pd.jenjang, pd.institusi, pd.jurusan, pd.ipk,
@@ -91,7 +93,9 @@ try {
 } catch (Exception $e) {
     $query_backup = "SELECT 
                 rl.id AS lamaran_id, p.id AS pelamar_id,
-                p.nama_lengkap AS nama_pendaftar, p.nik AS nik_pendaftar, p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.alamat, p.kota, p.provinsi, p.telepon, p.email,
+                p.nama_lengkap AS nama_pendaftar, p.nik AS nik_pendaftar, p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.alamat, p.kota, p.provinsi, 
+                p.no_telepon, -- PERBAIKAN SINKRONISASI NO HP DI QUERY BACKUP
+                p.email,
                 p.status_sosial, p.foto AS foto_pelamar,
                 'DOKTER UMUM' AS nama_lowongan,
                 rl.created_at AS tanggal_daftar,
@@ -107,6 +111,7 @@ try {
     $result_pelamar = mysqli_query($koneksi, $query_backup);
 }
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -212,7 +217,7 @@ try {
                         <th style="text-align: center; width: 200px;">Aksi Kontrol</th>
                     </tr>
                 </thead>
-                <tbody>
+                 <tbody>
                     <?php if ($result_pelamar && mysqli_num_rows($result_pelamar) > 0) : ?>
                         <?php while ($row = mysqli_fetch_assoc($result_pelamar)) : ?>
                             <?php 
@@ -230,9 +235,11 @@ try {
                                 <td><?php echo date('d M Y', strtotime($row['tanggal_daftar'])); ?></td>
                                 <td><span class="status-pill <?php echo $class_badge; ?>">• <?php echo htmlspecialchars($status_badge); ?></span></td>
                                 <td style="text-align: center;">
+                                    <!-- PERBAIKAN: Mengganti $row['telepon'] menjadi $row['no_telepon'] dan menambahkan parameter ID Pelamar di baris pertama -->
                                     <button type="button" class="btn-detail" onclick="bukaDetailModal(
                                         '<?php echo $row['lamaran_id']; ?>', 
-                                        '<?php echo $row['nama_pendaftar']; ?>', 
+                                        '<?php echo $row['pelamar_id']; ?>', 
+                                        '<?php echo addslashes(htmlspecialchars($row['nama_pendaftar'])); ?>', 
                                         '<?php echo $row['nik_pendaftar']; ?>', 
                                         '<?php echo $row['foto_pelamar']; ?>', 
                                         '<?php echo $row['tempat_lahir'].', '.date('d/m/Y', strtotime($row['tanggal_lahir'])); ?>', 
@@ -240,18 +247,18 @@ try {
                                         '<?php echo $row['agama']; ?>', 
                                         '<?php echo $row['status_sosial']; ?>', 
                                         '<?php echo $row['email']; ?>', 
-                                        '<?php echo $row['telepon']; ?>', 
+                                        '<?php echo $row['no_telepon']; ?>', 
                                         '<?php echo $row['kota'].', '.$row['provinsi']; ?>', 
                                         '<?php echo $row['alamat']; ?>', 
-                                        '<?php echo $row['institusi']; ?>', 
-                                        '<?php echo $row['jurusan']; ?>', 
+                                        '<?php echo addslashes(htmlspecialchars($row['institusi'])); ?>', 
+                                        '<?php echo addslashes(htmlspecialchars($row['jurusan'])); ?>', 
                                         '<?php echo $row['ipk']; ?>', 
                                         '<?php echo $status_badge; ?>',
-                                        '<?php echo isset($row['perusahaan']) ? htmlspecialchars($row['perusahaan']) : ''; ?>',
-                                        '<?php echo isset($row['jabatan']) ? htmlspecialchars($row['jabatan']) : ''; ?>',
+                                        '<?php echo isset($row['perusahaan']) ? addslashes(htmlspecialchars($row['perusahaan'])) : ''; ?>',
+                                        '<?php echo isset($row['jabatan']) ? addslashes(htmlspecialchars($row['jabatan'])) : ''; ?>',
                                         '<?php echo isset($row['mulai_kerja']) ? $row['mulai_kerja'] : ''; ?>',
                                         '<?php echo isset($row['selesai_kerja']) ? $row['selesai_kerja'] : ''; ?>',
-                                        '<?php echo isset($row['alasan_keluar']) ? htmlspecialchars($row['alasan_keluar']) : ''; ?>'
+                                        '<?php echo isset($row['alasan_keluar']) ? addslashes(htmlspecialchars($row['alasan_keluar'])) : ''; ?>'
                                     )">Lihat Detail</button>
                                     <a href="?action=hapus_lamaran&lamaran_id=<?php echo $row['lamaran_id']; ?>" class="text-danger" style="margin-left: 12px;" onclick="return confirm('Apakah Anda yakin ingin menghapus data lamaran pendaftar ini?')">Hapus</a>
                                 </td>
@@ -309,6 +316,23 @@ try {
                 <tr><td style="color: #94a3b8;">Alasan Keluar</td><td>:</td><td id="md_alasan_keluar">-</td></tr>
             </table>
         </div>
+<!-- TEMPATKAN KODE INI TEPAT DI BAWAH ALASAN KELUAR PENGALAMAN KERJA -->
+
+<!-- D. LAMPIRAN BERKAS DOKUMEN -->
+<div style="margin-top: 20px; text-align: left;">
+    <strong style="color: #198754; display: block; margin-bottom: 8px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px; font-size: 14px;">D. LAMPIRAN BERKAS DOKUMEN</strong>
+    <div id="admin-wadah-berkas">
+        <!-- Data Berkas akan masuk ke sini via JavaScript -->
+    </div>
+</div>
+
+<!-- E. DATA SURAT TANDA REGISTRASI (STR) -->
+<div style="margin-top: 20px; margin-bottom: 20px; text-align: left;">
+    <strong style="color: #d97706; display: block; margin-bottom: 8px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px; font-size: 14px;">E. DATA SURAT TANDA REGISTRASI (STR)</strong>
+    <div id="admin-wadah-str">
+        <!-- Data STR akan masuk ke sini via JavaScript -->
+    </div>
+</div>
 
                 <!-- FORM UPDATE STATUS SELEKSI ADMIN (PERBAIKAN VISUAL DROPDOWN) -->
         <form action="" method="POST">
@@ -332,7 +356,14 @@ try {
 
 <!-- ==================== LOGIKA JAVASCRIPT SUNTIK MODAL ==================== -->
 <script>
-function bukaDetailModal(id, nama, nik, foto, ttl, jk, agama, status, email, telepon, lokasi, alamat, kampus, prodi, nilai, statusAksi, perusahaan, jabatan, mulai, selesai, alasan) {
+// SINKRONISASI TOTAL: Menangkap parameter sesuai baris tombol tabel dan ID elemen asli Anda
+function bukaDetailModal(
+    lamaranId, pelamarId, nama, nik, foto, ttl, 
+    jk, agama, status, email, telepon, lokasi, 
+    alamat, kampus, prodi, nilai, statusAksi,
+    perusahaan, jabatan, mulai, selesai, alasan
+) {
+    // 1. Suntik Biodata Utama Pelamar (Menggunakan ID Elemen Asli Anda)
     document.getElementById('md_nama').innerText = nama ? nama : '-';
     document.getElementById('md_nik').innerText = nik ? nik : '-';
     document.getElementById('md_ttl').innerText = ttl ? ttl : '-';
@@ -344,11 +375,12 @@ function bukaDetailModal(id, nama, nik, foto, ttl, jk, agama, status, email, tel
     document.getElementById('md_lokasi').innerText = lokasi ? lokasi : '-';
     document.getElementById('md_alamat').innerText = alamat ? alamat : '-';
     
+    // 2. Suntik Riwayat Pendidikan
     document.getElementById('md_kampus').innerText = kampus ? kampus : '-';
     document.getElementById('md_prodi').innerText = prodi ? prodi : '-';
     document.getElementById('md_nilai').innerText = nilai ? nilai : '-';
 
-    // SUNTIK DATA RIWAYAT PENGALAMAN KERJA ASLI PELAMAR
+    // 3. Suntik Riwayat Pengalaman Kerja
     document.getElementById('md_perusahaan').innerText = perusahaan ? perusahaan : 'Tidak Ada Pengalaman';
     document.getElementById('md_jabatan').innerText = jabatan ? jabatan : '-';
     
@@ -361,30 +393,97 @@ function bukaDetailModal(id, nama, nik, foto, ttl, jk, agama, status, email, tel
     }
     document.getElementById('md_alasan_keluar').innerText = alasan ? alasan : '-';
 
+    // 4. Pengendali Tampilan Foto Profil Asli Anda
     const imgObj = document.getElementById('modalFoto');
     const noImgObj = document.getElementById('modalNoFoto');
     if (foto && foto !== '') {
         imgObj.src = 'uploads/' + foto;
         imgObj.style.display = 'inline-block';
-        noImgObj.style.display = 'none';
+        if(noImgObj) noImgObj.style.display = 'none';
     } else {
         imgObj.style.display = 'none';
-        noImgObj.style.display = 'flex';
+        if(noImgObj) noImgObj.style.display = 'flex';
     }
 
-    document.getElementById('formLamaranId').value = id;
+    // 5. Masukkan ID ke Form Update Status Dokumen Anda
+    document.getElementById('formLamaranId').value = lamaranId;
     document.getElementById('formStatusAksi').value = statusAksi;
+
+    // =========================================================================
+    // 6. LOGIKA OTOMATIS: AMBIL DATA BERKAS & STR VIA AJAX (GET)
+    // =========================================================================
+    const wadahBerkas = document.getElementById('admin-wadah-berkas');
+    const wadahSTR    = document.getElementById('admin-wadah-str');
+
+    // Tampilkan animasi loading teks ringan sebelum data termuat
+    if(wadahBerkas) wadahBerkas.innerHTML = '<span style="color: #64748b; font-size: 13px; font-style: italic;">Memuat berkas dokumen...</span>';
+    if(wadahSTR) wadahSTR.innerHTML    = '<span style="color: #64748b; font-size: 13px; font-style: italic;">Memuat data STR...</span>';
+
+    // Menembak AJAX fetch ke file api get_berkas_str_admin.php
+    fetch('get_berkas_str_admin.php?pelamar_id=' + pelamarId)
+        .then(response => response.json())
+        .then(res => {
+            if (res.status === 'success') {
+                // A. Tampilkan paket Berkas Dokumen Pelamar
+                if (wadahBerkas) {
+                    if (res.berkas.length > 0) {
+                        let htmlBerkas = '<table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 5px;">';
+                        res.berkas.forEach(bk => {
+                            htmlBerkas += `
+                                <tr style="border-bottom: 1px solid #f1f5f9;">
+                                    <td style="padding: 8px 0; color: #475569; font-weight: 500;">• ${bk.jenis_berkas}</td>
+                                    <td style="padding: 8px 0; text-align: right;">
+                                        ${bk.nama_file ? `<a href="uploads/${bk.nama_file}" target="_blank" style="color: #0d6efd; text-decoration: none; font-weight: bold;">👁 Lihat Berkas</a>` : '<span style="color: #94a3b8; font-style: italic;">Belum diunggah</span>'}
+                                    </td>
+                                </tr>`;
+                        });
+                        htmlBerkas += '</table>';
+                        wadahBerkas.innerHTML = htmlBerkas;
+                    } else {
+                        wadahBerkas.innerHTML = '<span style="color: #64748b; font-size: 13px; font-style: italic;">Pelamar belum melampirkan berkas dokumen.</span>';
+                    }
+                }
+
+                // B. Tampilkan paket Data Surat Tanda Registrasi (STR)
+                if (wadahSTR) {
+                    if (res.str.length > 0) {
+                        let htmlSTR = '';
+                        res.str.forEach(s => {
+                            htmlSTR += `
+                                <div style="background: #fafafa; border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 13px; line-height: 1.6;">
+                                    <div style="display: flex;"><span style="width: 120px; color: #475569; font-weight: bold;">Nomor STR</span><span style="flex: 1; color: #1e293b;">: ${s.nomor_str}</span></div>
+                                    <div style="display: flex;"><span style="width: 120px; color: #475569;">Tanggal Terbit</span><span style="flex: 1; color: #1e293b;">: ${s.tanggal_terbit || '-'}</span></div>
+                                    <div style="display: flex;"><span style="width: 120px; color: #475569;">Tanggal Expired</span><span style="flex: 1; color: #b91c1c; font-weight: 500;">: ${s.tanggal_expired || '-'}</span></div>
+                                    ${s.file_str ? `<div style="margin-top: 5px; text-align: right;"><a href="uploads/${s.file_str}" target="_blank" style="color: #0d6efd; text-decoration: none; font-weight: bold; font-size: 12px;">👁 Lihat Dokumen STR</a></div>` : ''}
+                                </div>`;
+                        });
+                        wadahSTR.innerHTML = htmlSTR;
+                    } else {
+                        wadahSTR.innerHTML = '<span style="color: #64748b; font-size: 13px; font-style: italic;">Pelamar tidak mengisi/menginput data STR aktif.</span>';
+                    }
+                }
+            }
+        })
+        .catch(err => {
+            console.error(err);
+        });
+
+    // 7. Buka Jendela Modal Utama Admin Anda
     document.getElementById('detailModal').style.display = 'flex';
 }
-
 function tutupDetailPelamar() {
+    // Berfungsi menyembunyikan modal kembali saat tombol Batal diklik
     document.getElementById('detailModal').style.display = 'none';
 }
 
+// Menutup modal otomatis jika area luar (latar belakang gelap) diklik
 window.onclick = function(event) {
     const modal = document.getElementById('detailModal');
-    if (event.target === modal) { modal.style.display = 'none'; }
+    if (event.target === modal) { 
+        modal.style.display = 'none'; 
+    }
 }
+
 </script>
 </body>
 </html>
