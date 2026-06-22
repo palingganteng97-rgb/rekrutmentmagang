@@ -119,6 +119,7 @@ if (!$query_progress) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lamaran Tahapan Seleksi</title>
+
     <style>
 
         .btn-score:hover {
@@ -290,112 +291,63 @@ if (!$query_progress) {
         }
 
         /* =========================================================================
-           4. TABLE DATA & BADGES STYLING
+           4. TABLE DATA & BADGES STYLING (PERBAIKAN WARNA STATUS BARU)
            ========================================================================= */
-        .table-wrapper { 
-            background: #ffffff; 
-            border: 1px solid #f1f5f9; 
-            border-radius: 24px; 
-            padding: 25px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.01); 
+        .table-wrapper { background: #ffffff; border: 1px solid #f1f5f9; border-radius: 24px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.01); 
         }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            text-align: left; 
-            font-size: 14px; 
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; 
         }
-        th { 
-            color: #94a3b8; 
-            padding-bottom: 16px; 
-            font-weight: 700; 
-            font-size: 11px; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px; 
-            border-bottom: 1px solid #f1f5f9; 
+        th { color: #94a3b8; padding-bottom: 16px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; 
         }
-        td { 
-            padding: 18px 0; 
-            color: #475569; 
-            border-bottom: 1px solid #f8fafc; 
-            vertical-align: middle; 
+        td { padding: 18px 0; color: #475569; border-bottom: 1px solid #f8fafc; vertical-align: middle; 
         }
-        .candidate-name { 
-            font-weight: 700; 
-            color: #1e293b; 
-            font-size: 14px; 
+        .candidate-name { font-weight: 700; color: #1e293b; font-size: 14px; 
         }
         
         /* Style Badge Status Kapsul Pastel */
-        .badge { 
-            display: inline-block; 
-            padding: 6px 14px; 
-            border-radius: 20px; 
-            font-size: 12px; 
-            font-weight: 700; 
-            text-align: center; 
+        .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; text-align: center; text-transform: uppercase;
         }
-        .badge-pending   { background: #fef3c7; color: #d97706; }
-        .badge-proses    { background: #e2e8f0; color: #475569; }
-        .badge-diterima  { background: #dcfce7; color: #15803d; }
-        .badge-ditolak   { background: #fee2e2; color: #b91c1c; }
+        
+        /* Pending -> Kuning */
+        .badge-pending   { background: #fef3c7 !important; color: #d97706 !important; }
+        
+        /* Lulus / Diterima -> Hijau */
+        .badge-diterima  { background: #dcfce7 !important; color: #15803d !important; }
+        
+        /* Tidak Lulus / Ditolak -> Merah */
+        .badge-ditolak   { background: #fee2e2 !important; color: #b91c1c !important; }
+
+        /* Proses -> Diubah Menjadi Warna Biru */
+        .badge-proses    { background: #e0f2fe !important; color: #0369a1 !important; }
+
+        
+        /* Skip -> Hitam */
+        .badge-skip      { background: #1e293b !important; color: #ffffff !important; }
+
         .text-empty      { text-align: center; color: #64748b; font-style: italic; padding: 40px 0; }
+
 
         /* =========================================================================
            6. FLOATING MODAL POP-UP LAYER
            ========================================================================= */
-        .modal-overlay { 
-            display: none; 
-            position: fixed; 
-            top: 0; 
-            left: 0; 
-            width: 100vw; 
-            height: 100vh; 
-            background: rgba(15, 23, 42, 0.6); 
-            backdrop-filter: blur(5px); 
-            justify-content: center; 
-            align-items: center; 
-            z-index: 999999; 
+        .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(15, 23, 42, 0.6); 
+                   backdrop-filter: blur(5px); justify-content: center; align-items: center; z-index: 999999; 
         }
-        .modal-box { 
-            background: #ffffff; 
-            width: 90%; 
-            max-width: 440px; 
-            padding: 35px; 
-            border-radius: 24px; 
-            box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); 
-            animation: modalEfekMasuk 0.25s ease-out; 
+        .modal-box { background: #ffffff; width: 90%; max-width: 440px; padding: 35px; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25); animation: modalEfekMasuk 0.25s ease-out; 
         }
-        @keyframes modalEfekMasuk { 
-            from { transform: scale(0.95); opacity: 0; } 
-            to { transform: scale(1); opacity: 1; } 
+        @keyframes modalEfekMasuk { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } 
         }
-        .modal-box h2 { 
-            font-size: 22px; 
-            font-weight: 800; 
-            color: #1e293b; 
-            margin-bottom: 20px; 
-            letter-spacing: -0.5px; 
+        .modal-box h2 { font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 20px; letter-spacing: -0.5px; 
         }
-        .form-group { 
-            display: flex; 
-            flex-direction: column; 
-            gap: 8px; 
-            margin-bottom: 24px; 
-            text-align: left; 
+        .form-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 24px; text-align: left; 
         }
-        .form-group label { 
-            font-size: 11px; 
-            font-weight: 700; 
-            color: #94a3b8; 
+        .form-group label { font-size: 11px; font-weight: 700; color: #94a3b8; 
         }
         .form-control { width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 12px; font-size: 14px; color: #1e293b; font-weight: 600; background-color: #f8fafc; outline: none; transition: border-color 0.2s; }
         .form-control:focus { border-color: #4f46e5; }
         .modal-buttons { display: flex; justify-content: flex-end; gap: 12px; }
         .btn-primary, .btn-secondary { padding: 12px 22px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; border: none; transition: background 0.2s; }
-        .btn-primary { background: #4f46e5; color: #ffffff; }
-        .btn-primary:hover { background: #4338ca; }
-        .btn-secondary { background: #f1f5f9; color: #64748b; }
+        .btn-primary { background: #4f46e5; color: #ffffff; }.btn-primary:hover { background: #4338ca; }.btn-secondary { background: #f1f5f9; color: #64748b; }
         .btn-secondary:hover { background: #e2e8f0; }
     </style>
 </head>
@@ -483,59 +435,70 @@ if (!$query_progress) {
                 </div>
                 <div class="table-wrapper">
                     <table>
-<thead>
-    <tr>
-        <th>NAMA PELAMAR</th>
-        <th>FORMASI LOWONGAN</th>
-        <th>TANGGAL UPDATE</th>
-        <th>STATUS TAHAP</th>
-        <th style="text-align: center; width: 100px;">AKSI</th> <!-- TAMBAHKAN INI -->
-    </tr>
-</thead>
-
+                            <thead>
+                                <tr>
+                                    <th>NAMA PELAMAR</th>
+                                    <th>FORMASI LOWONGAN</th>
+                                    <th>TANGGAL UPDATE</th>
+                                    <th>STATUS TAHAP</th>
+                                    <th style="text-align: center; width: 100px;">AKSI</th> <!-- TAMBAHKAN INI -->
+                                </tr>
+                            </thead>
                         <tbody>
-                        <?php if ($query_progress && mysqli_num_rows($query_progress) > 0) : ?>
-<?php while ($row = mysqli_fetch_assoc($query_progress)) : ?>
-    <?php 
-        $status_badge = !empty($row['status_tahap']) ? $row['status_tahap'] : 'Pending'; 
-        $class_badge  = 'badge-pending';
-        
-        if ($status_badge == 'Proses') { 
-            $class_badge = 'badge-proses'; 
-        } elseif ($status_badge == 'Lulus' || $status_badge == 'Terima' || $status_badge == 'Diterima') { 
-            $class_badge = 'badge-diterima'; 
-        } elseif ($status_badge == 'Tidak Lulus' || $status_badge == 'Tolak' || $status_badge == 'Ditolak' || $status_badge == 'Skip') { 
-            $class_badge = 'badge-ditolak'; 
-        }
-        
-        // PERBAIKAN BARIS INI: Ambil alias 'id_tahapan' dari query SQL Anda
-        $id_lamaran_tahapan = $row['id_tahapan'] ?? ''; 
-    ?>
-    <tr>
-        <td>
-            <div class="candidate-name"><?php echo htmlspecialchars($row['nama_pendaftar']); ?></div>
-            <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">NIK: <?php echo htmlspecialchars($row['nik'] ?? '-'); ?></div>
-        </td>
-        <td><span style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($row['nama_lowongan']); ?></span></td>
-        <td><?php echo date('d M Y - H:i', strtotime($row['tanggal_update'])); ?> WIB</td>
-        <td>
-            <span class="badge <?php echo $class_badge; ?>"><?php echo htmlspecialchars($status_badge); ?></span>
-        </td>
-<!-- KOLOM AKSI: TOMBOL NILAI -->
-<td style="text-align: center; white-space: nowrap;">
-    <?php $id_lamaran_tahapan = $row['id_tahapan'] ?? ''; ?>
-    <a href="penilaian_tahapan.php?id=<?php echo urlencode($id_lamaran_tahapan); ?>" class="btn-score" title="Beri Nilai Pelamar" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 14px; background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; border-radius: 8px; font-weight: 700; font-size: 13px; text-decoration: none; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-        <!-- PERBAIKAN: xmls sudah dinormalisasi ke w3.org/2000/svg -->
-        <svg xmlns="http://w3.org" width="14" height="14" fill="currentColor" class="bi bi-bookmark-star" viewBox="0 0 16 16" style="display: inline-block; vertical-align: middle;">
-            <path d="M7.84 4.1a.5.5 0 0 1 .32 0l1.353.362-.124.484L8 4.584l-1.39.362-.122-.484zM6.6 6.3a.5.5 0 0 0 .117-.168l1-2a.5.5 0 0 0-.834-.464l-1 2A.5.5 0 0 0 6.6 6.3"/>
-            <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.543a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/>
-        </svg>
-        <span style="line-height: 1;">Nilai</span>
-    </a>
-</td>
-    </tr>
-<?php endwhile; ?>
 
+<?php if ($query_progress && mysqli_num_rows($query_progress) > 0) : ?>
+    <?php while ($row = mysqli_fetch_assoc($query_progress)) : ?>
+        <?php 
+            // 1. Ambil status dari database (Default: Pending)
+            $status_badge = !empty($row['status_tahap']) ? $row['status_tahap'] : 'Pending'; 
+            
+            // PERBAIKAN UTAMA: Jika isi database adalah 'Tolak', paksa tampilan menjadi 'Tidak Lulus'
+            if ($status_badge == 'Tolak' || $status_badge == 'Ditolak') {
+                $status_badge = 'Tidak Lulus';
+            }
+
+            // 2. Tentukan kelas warna badge berdasarkan status masing-masing (Case-Insensitive)
+            $status_cek = strtoupper($status_badge);
+            $class_badge = 'badge-pending'; // Default: Kuning
+            
+            if ($status_cek == 'PROSES') { 
+                $class_badge = 'badge-proses';     // Abu-abu
+            } elseif ($status_cek == 'LULUS' || $status_cek == 'TERIMA' || $status_cek == 'DITERIMA') { 
+                $class_badge = 'badge-diterima';   // Hijau
+            } elseif ($status_cek == 'TIDAK LULUS') { 
+                $class_badge = 'badge-ditolak';    // Merah
+            } elseif ($status_cek == 'SKIP') { 
+                $class_badge = 'badge-skip';       // Hitam (Sesuai CSS .badge-skip)
+            }
+            
+            // Ambil alias 'id_tahapan' dari query SQL Anda untuk tombol Nilai
+            $id_lamaran_tahapan = $row['id_tahapan'] ?? ''; 
+        ?>
+
+                                <tr>
+                                    <td>
+                                        <div class="candidate-name"><?php echo htmlspecialchars($row['nama_pendaftar']); ?></div>
+                                        <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">NIK: <?php echo htmlspecialchars($row['nik'] ?? '-'); ?></div>
+                                    </td>
+                                    <td><span style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($row['nama_lowongan']); ?></span></td>
+                                    <td><?php echo date('d M Y - H:i', strtotime($row['tanggal_update'])); ?> WIB</td>
+                                    <td>
+                                        <span class="badge <?php echo $class_badge; ?>"><?php echo htmlspecialchars($status_badge); ?></span>
+                                    </td>
+                            <!-- KOLOM AKSI: TOMBOL NILAI -->
+                            <td style="text-align: center; white-space: nowrap;">
+                                <?php $id_lamaran_tahapan = $row['id_tahapan'] ?? ''; ?>
+                                <a href="penilaian_tahapan.php?id=<?php echo urlencode($id_lamaran_tahapan); ?>" class="btn-score" title="Beri Nilai Pelamar" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 14px; background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; border-radius: 8px; font-weight: 700; font-size: 13px; text-decoration: none; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                                    <!-- PERBAIKAN: xmls sudah dinormalisasi ke w3.org/2000/svg -->
+                                    <svg xmlns="http://w3.org" width="14" height="14" fill="currentColor" class="bi bi-bookmark-star" viewBox="0 0 16 16" style="display: inline-block; vertical-align: middle;">
+                                        <path d="M7.84 4.1a.5.5 0 0 1 .32 0l1.353.362-.124.484L8 4.584l-1.39.362-.122-.484zM6.6 6.3a.5.5 0 0 0 .117-.168l1-2a.5.5 0 0 0-.834-.464l-1 2A.5.5 0 0 0 6.6 6.3"/>
+                                        <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.543a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/>
+                                    </svg>
+                                    <span style="line-height: 1;">Nilai</span>
+                                </a>
+                            </td>
+                                </tr>
+                            <?php endwhile; ?>
                         <?php else : ?>
                             <tr>
                                 <td colspan="5" class="text-empty" style="text-align: center; padding: 24px; color: #64748b;">

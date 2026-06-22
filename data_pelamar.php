@@ -66,48 +66,38 @@ if (isset($_SESSION['username'])) {
 }
 
 // =========================================================================
-// 3. QUERY UTAMA ADMIN SINKRON DATA PELAMAR, PENDIDIKAN, & PENGALAMAN
+// 3. QUERY UTAMA ADMIN (DIPERBAIKI: TANPA JOIN PENDIDIKAN & PENGALAMAN)
 // =========================================================================
 try {
+    // Query ini dijamin bersih dan hanya menghasilkan 1 baris per lamaran pelamar
     $query_pelamar = "SELECT 
-                rl.id AS lamaran_id, p.id AS pelamar_id,
-                p.nama_lengkap AS nama_pendaftar, p.nik AS nik_pendaftar, p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.alamat, p.kota, p.provinsi, 
-                p.no_telepon, -- PERBAIKAN SINKRONISASI NO HP DARI p.telepon KE p.no_telepon
-                p.email,
-                p.status_sosial, p.foto AS foto_pelamar,
-                low.judul_lowongan AS nama_lowongan,
-                rl.created_at AS tanggal_daftar,
-                lt.status AS status_tahap,
-                pd.jenjang, pd.institusi, pd.jurusan, pd.ipk,
-                px.perusahaan, px.jabatan, px.mulai_kerja, px.selesai_kerja, px.alasan_keluar
-              FROM rekrutmen_lamaran rl
-              INNER JOIN pelamar p ON rl.pelamar_id = p.id
-              INNER JOIN rekrutmen_lowongan low ON rl.lowongan_id = low.id
-              LEFT JOIN lamaran_tahapan lt ON lt.lamaran_id = rl.id
-              LEFT JOIN pelamar_pendidikan pd ON pd.pelamar_id = p.id
-              LEFT JOIN pelamar_pengalaman px ON px.pelamar_id = p.id
-              ORDER BY rl.id DESC";
+        rl.id AS lamaran_id, p.id AS pelamar_id, p.nama_lengkap AS nama_pendaftar, p.nik AS nik_pendaftar, 
+        p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.alamat, p.kota, p.provinsi, 
+        p.no_telepon, p.email, p.status_sosial, p.foto AS foto_pelamar, 
+        low.judul_lowongan AS nama_lowongan, rl.created_at AS tanggal_daftar, 
+        lt.status AS status_tahap
+    FROM rekrutmen_lamaran rl
+    INNER JOIN pelamar p ON rl.pelamar_id = p.id
+    INNER JOIN rekrutmen_lowongan low ON rl.lowongan_id = low.id
+    LEFT JOIN lamaran_tahapan lt ON lt.lamaran_id = rl.id
+    ORDER BY rl.id DESC";
 
     $result_pelamar = mysqli_query($koneksi, $query_pelamar);
-    if (!$result_pelamar) { throw new Exception("Query utama gagal."); }
+    if (!$result_pelamar) {
+        throw new Exception("Query utama gagal.");
+    }
 } catch (Exception $e) {
     $query_backup = "SELECT 
-                rl.id AS lamaran_id, p.id AS pelamar_id,
-                p.nama_lengkap AS nama_pendaftar, p.nik AS nik_pendaftar, p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.alamat, p.kota, p.provinsi, 
-                p.no_telepon, -- PERBAIKAN SINKRONISASI NO HP DI QUERY BACKUP
-                p.email,
-                p.status_sosial, p.foto AS foto_pelamar,
-                'DOKTER UMUM' AS nama_lowongan,
-                rl.created_at AS tanggal_daftar,
-                lt.status AS status_tahap,
-                pd.jenjang, pd.institusi, pd.jurusan, pd.ipk,
-                px.perusahaan, px.jabatan, px.mulai_kerja, px.selesai_kerja, px.alasan_keluar
-              FROM rekrutmen_lamaran rl
-              INNER JOIN pelamar p ON rl.pelamar_id = p.id
-              LEFT JOIN lamaran_tahapan lt ON lt.lamaran_id = rl.id
-              LEFT JOIN pelamar_pendidikan pd ON pd.pelamar_id = p.id
-              LEFT JOIN pelamar_pengalaman px ON px.pelamar_id = p.id
-              ORDER BY rl.id DESC";
+        rl.id AS lamaran_id, p.id AS pelamar_id, p.nama_lengkap AS nama_pendaftar, p.nik AS nik_pendaftar, 
+        p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.alamat, p.kota, p.provinsi, 
+        p.no_telepon, p.email, p.status_sosial, p.foto AS foto_pelamar, 
+        'DOKTER UMUM' AS nama_lowongan, rl.created_at AS tanggal_daftar, 
+        lt.status AS status_tahap
+    FROM rekrutmen_lamaran rl
+    INNER JOIN pelamar p ON rl.pelamar_id = p.id
+    LEFT JOIN lamaran_tahapan lt ON lt.lamaran_id = rl.id
+    ORDER BY rl.id DESC";
+    
     $result_pelamar = mysqli_query($koneksi, $query_backup);
 }
 ?>
@@ -118,7 +108,8 @@ try {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daftar Pelamar Kerja - Admin</title>
-    <style>
+
+<style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #475569; }
         
@@ -131,21 +122,51 @@ try {
         .menu-item.active { background: #f5f3ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
         .menu-item:hover:not(.active) { background: #f8fafc; color: #1e293b; }
         
-        .main-content { flex: 1; background: #fbfbfd; padding: 40px 50px; display: flex; flex-direction: column; gap: 32px; overflow-y: auto; }
+        /* 1. MENGURANGI PADDING KANAN UTAMA AGAR KONTEN MELEBAR MASKSIMAL KE KANAN */
+        .main-content { flex: 1; background: #fbfbfd; padding: 40px 30px; display: flex; flex-direction: column; gap: 32px; overflow-y: auto; }
         .content-header h1 { font-size: 26px; font-weight: 800; color: #1e293b; letter-spacing: -0.5px; }
         .content-header p { font-size: 14px; color: #94a3b8; margin-top: 4px; }
         
-        .table-wrapper { background: #ffffff; border: 1px solid #f1f5f9; border-radius: 24px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.01); }
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
-        th { color: #94a3b8; padding-bottom: 16px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; }
-        td { padding: 18px 0; color: #475569; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
+        /* 2. MEMBUAT WRAPPER BERKEBANG MAKSIMAL */
+        .table-wrapper { background: #ffffff; border: 1px solid #f1f5f9; border-radius: 24px; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.01); width: 100%; }
+        
+        /* 3. SETTING FIXED LAYOUT AGAR DISTRIBUSI KOLOM PROPORSIONAL SAMPAI UJUNG KANAN */
+        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; table-layout: fixed; }
+        
+        /* 4. ATUR PERSENTASE LEBAR KOLOM AGAR MERENGGANG PROPORSIONAL */
+        table th:nth-child(1), table td:nth-child(1) { width: 28%; } /* Kolom Nama Pelamar */
+        table th:nth-child(2), table td:nth-child(2) { width: 20%; } /* Kolom Formasi Lowongan */
+        table th:nth-child(3), table td:nth-child(3) { width: 18%; } /* Kolom Tanggal Masuk */
+        table th:nth-child(4), table td:nth-child(4) { width: 16%; } /* Kolom Tahap Seleksi */
+        table th:nth-child(5), table td:nth-child(5) { width: 18%; } /* Kolom Aksi Kontrol */
+
+        /* 5. MENAMBAH PADDING HORIZONTAL SUPAYA TIDAK SALING BERDEMPETAN */
+        th { color: #94a3b8; padding: 0 10px 16px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; }
+        td { padding: 20px 10px; color: #475569; border-bottom: 1px solid #f8fafc; vertical-align: middle; word-wrap: break-word; }
+        
         .candidate-name { font-weight: 700; color: #1e293b; font-size: 14px; }
         
+        /* ========================================================================= */
+        /* PERBAIKAN WARNA STATUS PILL KONTROL */
+        /* ========================================================================= */
         .status-pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; padding: 6px 14px; border-radius: 20px; font-size: 12px; text-transform: uppercase; }
+        
+        /* Pending -> Kuning */
         .status-pending { background: #fef3c7; color: #d97706; }
-        .status-terima { background: #dcfce7; color: #15803d; }
+        
+        /* Lulus -> Hijau */
+        .status-lulus { background: #dcfce7; color: #15803d; }
+        
+        /* Tidak Lulus -> Merah */
         .status-tolak { background: #fee2e2; color: #b91c1c; }
         
+        /* Proses -> Diubah Menjadi Warna Biru */
+        .status-proses { background: #e0f2fe !important; color: #0369a1 !important; }
+        
+        /* Skip -> Hitam */
+        .status-skip { background: #1e293b; color: #ffffff; }
+        /* ========================================================================= */
+
         .btn-detail { background-color: #f1f5f9; color: #475569; border: none; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .btn-detail:hover { background-color: #e2e8f0; color: #1e293b; }
         .text-danger { color: #ef4444; font-weight: 600; text-decoration: none; font-size: 13px; }
@@ -164,7 +185,9 @@ try {
         .info-table-modal td { padding: 4px 0; color: #475569; vertical-align: top; }
         .btn-modal-close { background-color: #cbd5e1; color: #334155; border: none; padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; }
         .btn-modal-save { background-color: #4f46e5; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; }
-    </style>
+</style>
+
+
 </head>
 <body>
 
@@ -218,57 +241,65 @@ try {
                         <th style="text-align: center; width: 200px;">Aksi Kontrol</th>
                     </tr>
                 </thead>
-                 <tbody>
-                    <?php if ($result_pelamar && mysqli_num_rows($result_pelamar) > 0) : ?>
-                        <?php while ($row = mysqli_fetch_assoc($result_pelamar)) : ?>
-                            <?php 
-                                $status_badge = !empty($row['status_tahap']) ? $row['status_tahap'] : 'Pending'; 
-                                $class_badge = 'status-pending';
-                                if ($status_badge == 'Terima') $class_badge = 'status-terima';
-                                if ($status_badge == 'Tolak') $class_badge = 'status-tolak';
-                            ?>
-                            <tr>
-                                <td>
-                                    <div class="candidate-name"><?php echo htmlspecialchars($row['nama_pendaftar']); ?></div>
-                                    <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">NIK: <?php echo htmlspecialchars($row['nik_pendaftar']); ?></div>
-                                </td>
-                                <td><span style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($row['nama_lowongan']); ?></span></td>
-                                <td><?php echo date('d M Y', strtotime($row['tanggal_daftar'])); ?></td>
-                                <td><span class="status-pill <?php echo $class_badge; ?>">• <?php echo htmlspecialchars($status_badge); ?></span></td>
-                                <td style="text-align: center;">
-                                    <!-- PERBAIKAN: Mengganti $row['telepon'] menjadi $row['no_telepon'] dan menambahkan parameter ID Pelamar di baris pertama -->
-                                    <button type="button" class="btn-detail" onclick="bukaDetailModal(
-                                        '<?php echo $row['lamaran_id']; ?>', 
-                                        '<?php echo $row['pelamar_id']; ?>', 
-                                        '<?php echo addslashes(htmlspecialchars($row['nama_pendaftar'])); ?>', 
-                                        '<?php echo $row['nik_pendaftar']; ?>', 
-                                        '<?php echo $row['foto_pelamar']; ?>', 
-                                        '<?php echo $row['tempat_lahir'].', '.date('d/m/Y', strtotime($row['tanggal_lahir'])); ?>', 
-                                        '<?php echo $row['jenis_kelamin']; ?>', 
-                                        '<?php echo $row['agama']; ?>', 
-                                        '<?php echo $row['status_sosial']; ?>', 
-                                        '<?php echo $row['email']; ?>', 
-                                        '<?php echo $row['no_telepon']; ?>', 
-                                        '<?php echo $row['kota'].', '.$row['provinsi']; ?>', 
-                                        '<?php echo $row['alamat']; ?>', 
-                                        '<?php echo addslashes(htmlspecialchars($row['institusi'])); ?>', 
-                                        '<?php echo addslashes(htmlspecialchars($row['jurusan'])); ?>', 
-                                        '<?php echo $row['ipk']; ?>', 
-                                        '<?php echo $status_badge; ?>',
-                                        '<?php echo isset($row['perusahaan']) ? addslashes(htmlspecialchars($row['perusahaan'])) : ''; ?>',
-                                        '<?php echo isset($row['jabatan']) ? addslashes(htmlspecialchars($row['jabatan'])) : ''; ?>',
-                                        '<?php echo isset($row['mulai_kerja']) ? $row['mulai_kerja'] : ''; ?>',
-                                        '<?php echo isset($row['selesai_kerja']) ? $row['selesai_kerja'] : ''; ?>',
-                                        '<?php echo isset($row['alasan_keluar']) ? addslashes(htmlspecialchars($row['alasan_keluar'])) : ''; ?>'
-                                    )">Lihat Detail</button>
-                                    <a href="?action=hapus_lamaran&lamaran_id=<?php echo $row['lamaran_id']; ?>" class="text-danger" style="margin-left: 12px;" onclick="return confirm('Apakah Anda yakin ingin menghapus data lamaran pendaftar ini?')">Hapus</a>
-                                </td>
-                            </tr>
-                        <?php endwhile; ?>
-                    <?php else : ?>
-                        <tr><td colspan="5" style="text-align: center; color: #94a3b8; font-style: italic; padding: 40px 0;">Belum ada berkas pendaftaran pelamar yang masuk.</td></tr>
-                    <?php endif; ?>
-                </tbody>
+
+<tbody>
+    <!-- PERBAIKAN: Menambahkan kembali baris pengecekan if dan perulangan while yang hilang -->
+    <?php if ($result_pelamar && mysqli_num_rows($result_pelamar) > 0) : ?>
+        <?php while ($row = mysqli_fetch_assoc($result_pelamar)) : ?>
+            
+            <?php 
+                // Ambil status asli dari database, default ke 'Pending' jika kosong
+                $status_badge = !empty($row['status_tahap']) ? $row['status_tahap'] : 'Pending'; 
+                
+                // Logika penentuan class CSS berdasarkan status baru
+                $class_badge = 'status-pending'; // Default Kuning
+                if ($status_badge == 'Lulus') $class_badge = 'status-lulus';       // Hijau
+                if ($status_badge == 'Tidak Lulus') $class_badge = 'status-tolak';  // Merah
+                if ($status_badge == 'Proses') $class_badge = 'status-proses';     // Abu-abu
+                if ($status_badge == 'Skip') $class_badge = 'status-skip';         // Hitam
+            ?>
+
+            <tr>
+                <td>
+                    <div class="candidate-name"><?php echo htmlspecialchars($row['nama_pendaftar']); ?></div>
+                    <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">NIK: <?php echo htmlspecialchars($row['nik_pendaftar']); ?></div>
+                </td>
+                <td><span style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($row['nama_lowongan']); ?></span></td>
+                <td><?php echo date('d M Y', strtotime($row['tanggal_daftar'])); ?></td>
+                <td><span class="status-pill <?php echo $class_badge; ?>">• <?php echo htmlspecialchars($status_badge); ?></span></td>
+                <td style="text-align: center;">
+                    <button type="button" class="btn-detail" onclick="bukaDetailModal(
+                        '<?php echo $row['lamaran_id']; ?>', 
+                        '<?php echo $row['pelamar_id']; ?>', 
+                        '<?php echo addslashes(htmlspecialchars($row['nama_pendaftar'])); ?>', 
+                        '<?php echo $row['nik_pendaftar']; ?>', 
+                        '<?php echo $row['foto_pelamar'] ?? ''; ?>', 
+                        '<?php echo $row['tempat_lahir'].', '.date('d/m/Y', strtotime($row['tanggal_lahir'])); ?>', 
+                        '<?php echo $row['jenis_kelamin']; ?>', 
+                        '<?php echo $row['agama']; ?>', 
+                        '<?php echo $row['status_sosial']; ?>', 
+                        '<?php echo $row['email']; ?>', 
+                        '<?php echo $row['no_telepon']; ?>', 
+                        '<?php echo $row['kota'].', '.$row['provinsi']; ?>', 
+                        '<?php echo $row['alamat']; ?>', 
+                        '<?php echo addslashes(htmlspecialchars($row['institusi'] ?? '')); ?>', 
+                        '<?php echo addslashes(htmlspecialchars($row['jurusan'] ?? '')); ?>', 
+                        '<?php echo $row['ipk'] ?? ''; ?>', 
+                        '<?php echo $status_badge; ?>',
+                        '<?php echo addslashes(htmlspecialchars($row['perusahaan'] ?? '')); ?>',
+                        '<?php echo addslashes(htmlspecialchars($row['jabatan'] ?? '')); ?>',
+                        '<?php echo $row['mulai_kerja'] ?? ''; ?>',
+                        '<?php echo $row['selesai_kerja'] ?? ''; ?>',
+                        '<?php echo addslashes(htmlspecialchars($row['alasan_keluar'] ?? '')); ?>'
+                    )">Lihat Detail</button>
+                    <a href="?action=hapus_lamaran&lamaran_id=<?php echo $row['lamaran_id']; ?>" class="text-danger" style="margin-left: 12px;" onclick="return confirm('Apakah Anda yakin ingin menghapus data lamaran pendaftar ini?')">Hapus</a>
+                </td>
+            </tr>
+        <?php endwhile; ?>
+    <?php else : ?>
+        <tr><td colspan="5" style="text-align: center; color: #94a3b8; font-style: italic; padding: 40px 0;">Belum ada berkas pendaftaran pelamar yang masuk.</td></tr>
+    <?php endif; ?>
+</tbody>
             </table>
         </div>
     </div>
