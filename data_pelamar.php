@@ -335,25 +335,64 @@ try {
     </div>
 </div>
 
-                <!-- FORM UPDATE STATUS SELEKSI ADMIN (PERBAIKAN VISUAL DROPDOWN) -->
-        <form action="" method="POST">
-            <input type="hidden" name="lamaran_id" id="formLamaranId">
-            <div style="margin-top: 15px;">
-                <label style="display:block; font-size:12px; font-weight:700; color:#94a3b8; margin-bottom:8px; text-transform:uppercase;">UBAH TAHAP SELEKSI PELAMAR:</label>
-                <select name="status_aksi" id="formStatusAksi" style="width:100%; padding:12px; border:1px solid #cbd5e1; border-radius:12px; font-size:14px; font-weight:600; color:#475569; background-color: #fff;">
-                    <option value="Pending">🟡 Pending / Seleksi Berkas</option>
-                    <option value="Terima">🟢 Terima / Lolos Kualifikasi</option>
-                    <option value="Tolak">🔴 Tolak Lamaran</option>
-                </select>
-            </div>
+<!-- FORM UPDATE STATUS SELEKSI ADMIN (PERBAIKAN VISUAL DROPDOWN) -->
+<form action="" method="POST">
+    <input type="hidden" name="lamaran_id" id="formLamaranId">
+    
+    <div style="margin-top: 15px; font-family: system-ui, -apple-system, sans-serif;">
+        <label style="display:block; font-size:11px; font-weight:700; color:#94a3b8; margin-bottom:8px; text-transform:uppercase; letter-spacing: 0.5px;">
+            UBAH TAHAP SELEKSI PELAMAR:
+        </label>
+        
+        <div style="position: relative; width: 100%;">
+            <select name="status_aksi" id="formStatusAksi" style="
+                width: 100%; 
+                padding: 12px 40px 12px 14px; 
+                border: 1.5px solid #e2e8f0; 
+                border-radius: 12px; 
+                font-size: 14px; 
+                font-weight: 600; 
+                color: #334155; 
+                background-color: #ffffff;
+                cursor: pointer;
+                appearance: none;
+                -webkit-appearance: none;
+                -moz-appearance: none;
+                transition: all 0.2s ease;
+                box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            " onfocus="this.style.borderColor='#3b82f6'; this.style.boxShadow='0 0 0 3px rgba(59, 130, 246, 0.15)';" onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='0 1px 2px 0 rgba(0, 0, 0, 0.05)';">
+                <option value="Pending">🟡 Pending / Belum Diproses</option>
+                <option value="Proses">🔵 Sedang Diproses</option>
+                <option value="Lulus">🟢 Lulus Seleksi</option>
+                <option value="Tidak Lulus">🔴 Tidak Lulus</option>
+                <option value="Skip">⚫ Skip / Lewati</option>
+            </select>
             
-            <div class="modal-footer">
-                <button type="button" class="btn-modal-close" onclick="tutupDetailPelamar()">Batal</button>
-                <button type="submit" name="update_status_seleksi" class="btn-modal-save">Simpan Perubahan</button>
+            <!-- Kustom Ikon Panah Dropdown -->
+            <div style="
+                position: absolute; 
+                right: 14px; 
+                top: 50%;
+                transform: translateY(-50%);
+                pointer-events: none; 
+                display: flex; 
+                align-items: center;
+                color: #64748b;
+            ">
+                <svg xmlns="http://w3.org" fill="none" viewBox="0 0 24 24" stroke-width="2.5" stroke="currentColor" style="width: 16px; height: 16px;">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+                </svg>
             </div>
-        </form>
+        </div>
     </div>
-</div>
+    
+    <!-- Tombol Aksi Modal -->
+    <div class="modal-footer" style="margin-top: 20px;">
+        <button type="button" class="btn-modal-close" onclick="tutupDetailPelamar()">Batal</button>
+        <button type="submit" name="update_status_seleksi" class="btn-modal-save">Simpan Perubahan</button>
+    </div>
+</form>
+
 
 <!-- ==================== LOGIKA JAVASCRIPT SUNTIK MODAL ==================== -->
 <script>
