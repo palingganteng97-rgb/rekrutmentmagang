@@ -164,7 +164,7 @@ try {
         .status-proses { background: #e0f2fe !important; color: #0369a1 !important; }
         
         /* Skip -> Hitam */
-        .status-skip { background: #1e293b; color: #ffffff; }
+        .status-skip      { background: #1e293b !important; color: #ffffff !important; }
         /* ========================================================================= */
 
         .btn-detail { background-color: #f1f5f9; color: #475569; border: none; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
