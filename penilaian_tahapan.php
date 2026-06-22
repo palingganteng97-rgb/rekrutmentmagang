@@ -251,7 +251,7 @@ $data_nilai  = mysqli_fetch_assoc($query_nilai);
 
         <!-- INPUT NILAI KOMPETENSI -->
         <div class="form-group">
-            <label for="nilai">Nilai Kompetensi (0.00 - 100.00)</label>
+            <label for="nilai">Nilai Kompetensi (75.00 - 100.00)</label>
             <input type="number" name="nilai" id="nilai" step="0.01" min="0" max="100" class="form-control" placeholder="Contoh: 85.50" required value="<?= htmlspecialchars($data_nilai['nilai'] ?? ''); ?>">
         </div>
 
