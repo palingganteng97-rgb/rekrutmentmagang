@@ -431,11 +431,14 @@ if (!$query_progress) {
 <body>
 
     <div class="dashboard-container">
-        <!-- SIDEBAR MENU KIRI -->
-        <aside class="sidebar-left">
-            <div style="display: flex; flex-direction: column; gap: 6px;">
-                <div class="brand-logo"><span></span>impozitions</div>
-                <nav class="menu-list">
+
+       <!-- SIDEBAR MENU KIRI DENGAN CELAH & TOMBOL LOG OUT MERAH PRESISI -->
+<aside class="sidebar-left" style="display: flex; flex-direction: column; justify-content: space-between; min-height: 100vh; padding: 35px; background: #ffffff; border-right: 1px solid #f1f5f9; flex-shrink: 0; width: 280px;">
+    
+    <!-- GRUP ATAS: Navigasi Utama sampai Lowongan Tahapan -->
+    <div style="display: flex; flex-direction: column; gap: 6px;">
+        <div class="brand-logo" style="font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 45px; display: flex; align-items: center; gap: 10px;"><span style="width: 10px; height: 20px; background: #4f46e5; border-radius: 4px; display: inline-block;"></span>impozitions</div>
+        <nav class="menu-list">
                     <a href="dashboard.php" class="menu-item">Dashboard</a>
                     <a href="master_user.php" class="menu-item">Master User</a>
                     <a href="master_unit.php" class="menu-item">Master Unit</a>
@@ -443,16 +446,21 @@ if (!$query_progress) {
                     <a href="master_pendidikan.php" class="menu-item">Master Pendidikan</a>
                     <a href="master_lowongan.php" class="menu-item">Master Lowongan</a>
                     <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
+                    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>                    
                     <a href="data_pelamar.php" class="menu-item">Data Pelamar</a>
                     <a href="lamaran_tahapan.php" class="menu-item active">Lamaran Tahapan</a>
                     <a href="user.php" class="menu-item">Profil Pengguna</a>
-                </nav>
-            </div>
-            <div style="margin-top: auto; padding-top: 40px;">
-                <a href="logout.php" style="display: block; width: 100%; padding: 14px; background: #ef4444; color: #ffffff; text-align: center; border-radius: 16px; font-weight: 700; font-size: 14px; text-decoration: none;" onclick="return confirm('Apakah Anda yakin ingin keluar?')">Log Out</a>
-            </div>            
-        </aside>
+        </nav>
+    </div>
 
+    <!-- GRUP BAWAH: Menyisakan Celah Kosong di Tengah, Memuat Profil & Tombol Log Out Merah -->
+    <div style="margin-top: auto; display: flex; flex-direction: column; gap: 20px; padding-top: 40px;">
+        <nav class="menu-list">
+        </nav>               
+        <!-- TOMBOL LOG OUT DENGAN STYLE KOTAK MERAH ABSOLUT -->
+        <a href="logout.php" style="display: block; width: 100%; padding: 14px; background: #ef4444; color: #ffffff !important; text-align: center; border-radius: 16px; font-weight: 700; font-size: 14px; text-decoration: none; border: none; transition: background 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem Admin?')">Log Out</a>
+    </div>            
+</aside>
         <!-- AREA KONTEN UTAMA MID -->
         <main class="main-content">
             <div class="content-header">
