@@ -168,8 +168,6 @@ $data_nilai  = mysqli_fetch_assoc($query_nilai);
         .container { max-width: 650px; background: white; padding: 35px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05); margin: 0 auto; display: block; }
         
         h1 { font-size: 24px; font-weight: 800; color: #0f172a; margin: 0 0 4px 0; letter-spacing: -0.5px; }
-        
-        /* DIOPTIMALKAN: Mengurangi margin bawah sub-title agar elemen di bawahnya merapat naik */
         .sub-title { color: #64748b; font-size: 14px; margin-bottom: 12px; }
         
         form { display: flex; flex-direction: column; width: 100%; }
@@ -179,8 +177,7 @@ $data_nilai  = mysqli_fetch_assoc($query_nilai);
         .form-control { width: 100%; padding: 12px 16px; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; box-sizing: border-box; background-color: #f8fafc; outline: none; font-weight: 600; color: #1e293b; }
         .form-control:focus { border-color: #4f46e5; background-color: #fff; }
         
-        .chrome-tabs-container { display: flex; background-color: #e2e8f0; padding: 6px 6px 0 6px; border-radius: 12px 12px 0 0; gap: 4px; overflow-x: auto; margin-bottom: 15px; border-bottom: 1px solid #cbd5e1; width: 100%; box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; }
-        .chrome-tabs-container::-webkit-scrollbar { display: none; width: 0; height: 0; }
+        .chrome-tabs-container { display: flex; background-color: #e2e8f0; padding: 6px 6px 0 6px; border-radius: 12px 12px 0 0; gap: 4px; overflow-x: auto; margin-bottom: 15px; border-bottom: 1px solid #cbd5e1; width: 100%; box-sizing: border-box; }
         
         .chrome-tab { padding: 10px 18px; background-color: #f1f5f9; color: #475569; border-radius: 10px 10px 0 0; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: all 0.15s; border: 1px solid transparent; border-bottom: none; }
         .chrome-tab:hover { background-color: #f8fafc; color: #1e293b; }
@@ -194,29 +191,21 @@ $data_nilai  = mysqli_fetch_assoc($query_nilai);
         .alert-success { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
         .alert-error { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
 
-        .link-text-skip {
+        /* PERBAIKAN: Style tombol lewati dimatikan border bawaannya & dibuat hitam pekat rapat */
+        .btn-lewati {
+            color: #000000 !important;
+            font-weight: 800 !important;
             background: none !important;
-            background-color: transparent !important;
             border: none !important;
-            border-width: 0 !important;
-            outline: none !important;
-            box-shadow: none !important;
             padding: 0 !important;
-            margin: 0 0 -2px 0 !important;
-            color: #4f46e5; 
+            margin: 0 !important;
             font-size: 13px;
-            font-weight: 700;
-            cursor: pointer;
-            text-decoration: none;
-            font-family: inherit;
             display: inline-block;
-            transition: color 0.15s ease-in-out;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
+            cursor: pointer;
+            transition: color 0.2s;
         }
-        .link-text-skip:hover {
-            color: #4338ca !important;
+        .btn-lewati:hover {
+            color: #334155 !important;
             text-decoration: underline !important;
         }
     </style>
@@ -227,19 +216,26 @@ $data_nilai  = mysqli_fetch_assoc($query_nilai);
     <a href="lamaran_tahapan.php" class="btn-back">&larr; Kembali ke Daftar Progress</a>
     
     <h1>Input Penilaian Tahapan</h1>
-    <div class="sub-title">Nama Pelamar: <strong style="color: #4f46e5;"><?= htmlspecialchars($data_pelamar['nama_pendaftar'] ?? 'Kandidat Magang'); ?></strong></div>
+    
+    <!-- Bagian Nama Pelamar Berjarak Rapat -->
+    <div class="sub-title" style="margin-bottom: 2px !important; padding-bottom: 0 !important;">
+        Nama Pelamar: <strong style="color: #4f46e5;"><?= htmlspecialchars($data_pelamar['nama_pendaftar'] ?? 'Kandidat Magang'); ?></strong>
+    </div>
 
     <?php if (!empty($success_msg)): ?><div class="alert alert-success"><?= $success_msg; ?></div><?php endif; ?>
     <?php if (!empty($error_msg)): ?><div class="alert alert-error"><?= $error_msg; ?></div><?php endif; ?>
 
     <form action="" method="POST">
-        <!-- OPSI KLIK TEKS LEWATI MURNI -->
-        <div style="text-align: left; margin-bottom: 0;">
-            <button type="submit" name="action_lewati" value="1" onclick="return confirm('Apakah Anda yakin ingin melewati tahapan seleksi pelamar ini?')" class="link-text-skip">
+        <!-- Tombol Lewati Berwarna Hitam Pekat & Menempel Rapat ke Nama Pelamar -->
+        <div style="text-align: left; margin-top: 0px; margin-bottom: 25px;">
+            <button type="submit" name="action_lewati" value="1" 
+                    onclick="return confirm('Apakah Anda yakin ingin melewati tahapan seleksi pelamar ini?')" 
+                    class="btn-lewati">
                 Lewati Nama Ini &rarr;
             </button>
         </div>
 
+        <!-- PILIHAN TAHAPAN SELEKSI -->
         <div class="form-group">
             <label>Pilih Tahapan Seleksi</label>
             <div class="chrome-tabs-container">
@@ -253,11 +249,13 @@ $data_nilai  = mysqli_fetch_assoc($query_nilai);
             <input type="hidden" name="mst_tahapan_id" id="input_mst_tahapan_id" value="<?= $tab_default_aktif; ?>">
         </div>
 
+        <!-- INPUT NILAI KOMPETENSI -->
         <div class="form-group">
             <label for="nilai">Nilai Kompetensi (0.00 - 100.00)</label>
             <input type="number" name="nilai" id="nilai" step="0.01" min="0" max="100" class="form-control" placeholder="Contoh: 85.50" required value="<?= htmlspecialchars($data_nilai['nilai'] ?? ''); ?>">
         </div>
 
+        <!-- CATATAN PENILAI -->
         <div class="form-group">
             <label for="catatan">Catatan / Rekomendasi Penilai</label>
             <textarea name="catatan" id="catatan" class="form-control" rows="5" placeholder="Tuliskan feedback hasil evaluasi teknis..." required><?= htmlspecialchars($data_nilai['catatan'] ?? ''); ?></textarea>
@@ -267,44 +265,14 @@ $data_nilai  = mysqli_fetch_assoc($query_nilai);
     </form>
 </div>
 
+<!-- JavaScript pendukung fungsi tab -->
 <script>
-function pilihTabChrome(elemenTab, idMasterTahapan) {
-    var idMasterTahapanLama = document.getElementById('input_mst_tahapan_id').value;
-    var nilaiLama           = document.getElementById('nilai').value;
-    var catatanLama         = document.getElementById('catatan').value;
-    
-    if (nilaiLama !== "") {
-        var formData = new FormData();
-        formData.append('nilai', nilaiLama);
-        formData.append('catatan', catatanLama);
-        formData.append('mst_tahapan_id', idMasterTahapanLama);
-
-        fetch(window.location.href, {
-            method: 'POST',
-            body: formData
-        }).catch(error => console.error('Gagal Auto-Save:', error));
-    }
-
-    var semuaTab = document.getElementsByClassName('chrome-tab');
-    for (var i = 0; i < semuaTab.length; i++) {
-        semuaTab[i].classList.remove('active');
-    }
-    elemenTab.classList.add('active');
-    document.getElementById('input_mst_tahapan_id').value = idMasterTahapan;
-    
-    document.getElementById('nilai').value = "";
-    document.getElementById('catatan').value = "Memuat data...";
-
-    fetch('get_nilai_tahapan.php?id_lamaran=<?= $lamaran_tahapan_id; ?>&id_mst_tahapan=' + idMasterTahapan)
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('nilai').value = data.nilai;
-            document.getElementById('catatan').value = data.catatan;
-        })
-        .catch(error => {
-            document.getElementById('catatan').value = "";
-        });
+function pilihTabChrome(elemen, idTahapan) {
+    document.querySelectorAll('.chrome-tab').forEach(tab => tab.classList.remove('active'));
+    elemen.classList.add('active');
+    document.getElementById('input_mst_tahapan_id').value = idTahapan;
 }
 </script>
+
 </body>
 </html>
