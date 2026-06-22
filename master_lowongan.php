@@ -160,6 +160,9 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Master Lowongan - Rekrutmen Magang</title>
     <style>
+        /* =========================================================================
+           1. RESET GLOBAL & CORES STYLING
+           ========================================================================= */
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #475569; }
         
@@ -179,33 +182,86 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
         .btn-logout:hover { background: #b91c1c; }
 
         /* Area Konten Utama */
-        .main-content { flex: 1; background: #fbfbfd; padding: 40px 50px; display: flex; flex-direction: column; gap: 32px; overflow-y: auto; }
+        .main-content { 
+            flex: 1; 
+            background: #fbfbfd; 
+            padding: 40px 50px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 32px; 
+            overflow-y: auto; 
+            overflow-x: hidden !important; /* Mengunci konten luar agar tidak ikut bergeser miring */
+            min-width: 0; /* Solusi Flexbox Bug: Memaksa area mengalah terhadap scrollbar tabel di dalamnya */
+        }
         .content-header { display: flex; justify-content: space-between; align-items: center; }
         .content-header h1 { font-size: 26px; font-weight: 800; color: #1e293b; letter-spacing: -0.5px; }
         
         .btn-purple { background: #4f46e5; color: white; border-radius: 14px; font-weight: 700; padding: 14px 28px; border: none; cursor: pointer; font-size: 14px; transition: background 0.2s; }
         .btn-purple:hover { background: #3b33c7; }
 
-        /* CSS Tabel Horizontal Scrollbar Panjang */
-        .table-wrapper { background: #ffffff; border: 1px solid #f1f5f9; border-radius: 24px; padding: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.01); overflow-x: auto; width: 100%; }
-        table { width: 100%; min-width: 1600px; border-collapse: collapse; text-align: left; font-size: 13px; }
-/* LANJUTAN DI BARIS 192 KE BAWAH */
+        /* =========================================================================
+           2. PERBAIKAN TOTAL: MEMAKSA TABEL BISA DIGESER SECARA HORIZONTAL
+           ========================================================================= */
+        .table-wrapper { 
+            background: #ffffff; 
+            border: 1px solid #f1f5f9; 
+            border-radius: 24px; 
+            padding: 25px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.01); 
+            
+            /* MEMAKSA PEMBUNGKUS MEMUNCUKKAN SCROLLBAR HORIZONTAL */
+            overflow-x: auto !important; 
+            width: 100% !important;
+            display: block !important;
+        }
+
+        table { 
+            width: 100% !important; 
+            border-collapse: collapse; 
+            text-align: left; 
+            font-size: 14px; 
+            table-layout: auto !important; /* Menyetel pembagian lebar kolom adaptif mengikuti isi teks */
+            
+            /* MEMAKSA TABEL MELEBAR KE KANAN AGAR SELURUH DATA TERSEMBUNYI MUNCUL */
+            min-width: 1800px !important; 
+        }
+
+        /* MEMPERTEBAL TAMPILAN BATANG SCROLLBAR AGAR MUDAH DIGESER ADMIN */
+        .table-wrapper::-webkit-scrollbar {
+            height: 10px !important; /* Ketebalan batang scrollbar bawah */
+        }
+        .table-wrapper::-webkit-scrollbar-track {
+            background: #f1f5f9 !important;
+            border-radius: 10px !important;
+        }
+        .table-wrapper::-webkit-scrollbar-thumb {
+            background: #cbd5e1 !important;
+            border-radius: 10px !important;
+        }
+        .table-wrapper::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8 !important;
+        }
+
         th { color: #94a3b8; padding: 12px 15px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #f1f5f9; white-space: nowrap; }
-        td { padding: 16px 15px; color: #475569; border-bottom: 1px solid #f8fafc; white-space: nowrap; }
+        td { padding: 16px 15px; color: #475569; border-bottom: 1px solid #f8fafc; white-space: nowrap; vertical-align: middle; }
         .row-title { font-weight: 700; color: #1e293b; }
         
         /* Modal Popup Sederhana */
         .modal-popup { background: white; padding: 30px; border-radius: 20px; width: 600px; margin: 20px auto; border: 1px solid #e2e8f0; }
-        .form-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; }
-        .form-control { padding: 10px; border-radius: 8px; border: 1px solid #cbd5e1; width: 100%; font-size: 14px; }
+        .form-group { margin-bottom: 15px; display: flex; flex-direction: column; gap: 5px; text-align: left; }
+        .form-group label { font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 2px; }
+        .form-control { padding: 12px 16px; border-radius: 12px; border: 1px solid #cbd5e1; width: 100%; font-size: 14px; font-weight: 600; color: #1e293b; background-color: #f8fafc; outline: none; }
+        .form-control:focus { border-color: #4f46e5; }
         textarea.form-control { resize: vertical; min-height: 80px; }
     </style>
 </head>
 <body>
 
+
 <div class="dashboard-container">
     <!-- Sidebar -->
-            <!-- SIDEBAR MENU KIRI DENGAN JAMINAN TOMBOL LOGOUT DIPOSISI BAWAH -->
+
+        <!-- SIDEBAR MENU KIRI DENGAN JAMINAN TOMBOL LOGOUT DIPOSISI BAWAH -->
         <aside class="sidebar-left">
             <!-- Wadah Atas: Untuk Logo dan Menu Navigasi Utama -->
             <div>
@@ -218,14 +274,12 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
                     <a href="master_pendidikan.php" class="menu-item">Master Pendidikan</a>
                     <a href="master_lowongan.php" class="menu-item active">Master Lowongan</a>
                     <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
-                    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>
                     <a href="data_pelamar.php" class="menu-item">Data Pelamar</a>
                     <a href="lamaran_tahapan.php" class="menu-item">Lamaran Tahapan</a>
                     <a href="user.php" class="menu-item" style="margin-bottom: 8px;">Profil Pengguna</a>
-
                 </nav>
             </div>
-            <!-- Wadah Bawah: Otomatis Terdorong ke Bawah Mengikuti Aturan justify-content: space-between -->
+            <!-- Wadah Bawah: Otomatis Terdorong ke Bawah -->
             <div>
                 <nav class="menu-list">
                     <a href="logout.php" class="menu-item btn-sidebar-logout" style="background: #ef4444; color: white !important; text-align: center; border-radius: 12px; padding: 12px; font-weight: bold;" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem Admin?')">Log Out</a>
@@ -233,82 +287,88 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
             </div>
         </aside>
 
-    <!-- Main Content -->
-    <div class="main-content">
-        <div class="content-header">
-            <h1>Master Lowongan</h1>
-            <button class="btn-purple" onclick="window.location.href='master_lowongan.php?tambah_baru=1'">Tambah Lowongan</button>
-        </div>
+        <!-- PERBAIKAN UTAMA: WAJIB DIBUNGKUS KEDALAM MAIN-CONTENT AGAR BISA SCROLL -->
+        <div class="main-content">
+            <div class="content-header">
+                <h1>Master Lowongan</h1>
+                <button class="btn-purple" onclick="window.location.href='master_lowongan.php?tambah_baru=1'">Tambah Lowongan</button>
+            </div>
 
-        <!-- Panel Tabel Data -->
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th>NO</th>
-                        <th>KODE</th>
-                        <th>JABATAN</th>
-                        <th>UNIT</th>
-                        <th>DESKRIPSI</th>
-                        <th>KUALIFIKASI</th>
-                        <th>PERSYARATAN</th>
-                        <th>MULAI</th>
-                        <th>SELESAI</th>
-                        <th>KUOTA</th>
-                        <th>STATUS</th>
-                        <th>GAMBAR</th>
-                        <th>TIMESTAMPS</th>
-                        <th style="text-align: right;">AKSI</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php 
-                    $no = 1;
-                    while($row = mysqli_fetch_assoc($ambil_data)) { 
-                    ?>
-                    <tr>
-                        <td><?= $no++; ?></td>
-                        <td><span class="row-title"><?= $row['kode_lowongan']; ?></span></td>
-                        <td><?= $row['nama_jabatan'] ?? '-'; ?></td>
-                        <td><?= $row['nama_unit'] ?? '-'; ?></td>
-                        
-                        <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis;"><small><?= !empty($row['deskripsi']) ? $row['deskripsi'] : '-'; ?></small></td>
-                        <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis;"><small><?= !empty($row['kualifikasi']) ? $row['kualifikasi'] : '-'; ?></small></td>
-                        <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis;"><small><?= !empty($row['persyaratan']) ? $row['persyaratan'] : '-'; ?></small></td>
-                        
-                        <td><?= !empty($row['tanggal_mulai']) ? date('d/m/Y', strtotime($row['tanggal_mulai'])) : '-'; ?></td>
-                        <td><?= !empty($row['tanggal_selesai']) ? date('d/m/Y', strtotime($row['tanggal_selesai'])) : '-'; ?></td>
-                        <td><?= $row['jumlah_kebutuhan']; ?> Org</td>
-                        <td><span style="color: <?= $row['status'] == 'Aktif' ? '#10b981' : '#ef4444'; ?>; font-weight:700;"><?= $row['status']; ?></span></td>
-                        <td>
-                            <?php if (!empty($row['gambar']) && file_exists("uploads/" . $row['gambar'])): ?>
-                                <img src="uploads/<?= $row['gambar']; ?>" width="40" height="40" style="border-radius:6px; object-fit:cover;">
-                            <?php else: ?>
-                                <span style="color: #94a3b8; font-size:11px; font-style:italic;">No Image</span>
-                            <?php endif; ?>
-                        </td>
-                        <td>
-    <div style="font-size:11px; color:#94a3b8; line-height: 1.5;">
-        <!-- Menampilkan ID User Pembuat -->
-        By ID: <?= !empty($row['created_by']) ? $row['created_by'] : '<span style="color:#cbd5e1;">System</span>'; ?><br>
-        
-        <!-- Menampilkan Tanggal Dibuat -->
-        Buat: <?= !empty($row['created_at']) ? date('d/m/y H:i', strtotime($row['created_at'])) : '-'; ?><br>
-        
-        <!-- Menampilkan Tanggal Diubah -->
-        Ubah: <?= !empty($row['updated_at']) ? date('d/m/y H:i', strtotime($row['updated_at'])) : '-'; ?>
-    </div>
+            <!-- Panel Tabel Data -->
+            <div class="table-wrapper">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>NO</th>
+                            <th>KODE</th>
+                            <th>NAMA LOWONGAN</th>
+                            <th>JABATAN</th>
+                            <th>UNIT</th>
+                            <th>DESKRIPSI</th>
+                            <th>KUALIFIKASI</th>
+                            <th>PERSYARATAN</th>
+                            <th>MULAI</th>
+                            <th>SELESAI</th>
+                            <th>KUOTA</th>
+                            <th>STATUS</th>
+                            <th>GAMBAR</th>
+                            <th>TIMESTAMPS</th>
+                            <th style="text-align: center; width: 110px;">AKSI</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php 
+                        $no = 1;
+                        while($row = mysqli_fetch_assoc($ambil_data)) { 
+                        ?>
+                        <tr>
+                            <td><?= $no++; ?></td>
+                            <td><span class="row-title"><?= $row['kode_lowongan']; ?></span></td>
+                            <td style="font-weight: 700; color: #4f46e5;"><?= htmlspecialchars($row['judul_lowongan'] ?? 'Lowongan Tanpa Nama'); ?></td>
+                            <td><?= $row['nama_jabatan'] ?? '-'; ?></td>
+                            <td><?= $row['nama_unit'] ?? '-'; ?></td>
+                            
+                            <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis;"><small><?= !empty($row['deskripsi']) ? $row['deskripsi'] : '-'; ?></small></td>
+                            <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis;"><small><?= !empty($row['kualifikasi']) ? $row['kualifikasi'] : '-'; ?></small></td>
+                            <td style="max-width: 180px; overflow: hidden; text-overflow: ellipsis;"><small><?= !empty($row['persyaratan']) ? $row['persyaratan'] : '-'; ?></small></td>
+                            
+                            <td><?= !empty($row['tanggal_mulai']) ? date('d/m/Y', strtotime($row['tanggal_mulai'])) : '-'; ?></td>
+                            <td><?= !empty($row['tanggal_selesai']) ? date('d/m/Y', strtotime($row['tanggal_selesai'])) : '-'; ?></td>
+                            <td><?= $row['jumlah_kebutuhan']; ?> Org</td>
+                            <td><span style="color: <?= $row['status'] == 'Aktif' ? '#10b981' : '#ef4444'; ?>; font-weight:700;"><?= $row['status']; ?></span></td>
+                            <td>
+                                <?php if (!empty($row['gambar']) && file_exists("uploads/" . $row['gambar'])): ?>
+                                    <img src="uploads/<?= $row['gambar']; ?>" width="40" height="40" style="border-radius:6px; object-fit:cover;">
+                                <?php else: ?>
+                                    <span style="color: #94a3b8; font-size:11px; font-style:italic;">No Image</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <div style="font-size:11px; color:#94a3b8; line-height: 1.5;">
+                                    By ID: <?= !empty($row['created_by']) ? $row['created_by'] : '<span style="color:#cbd5e1;">System</span>'; ?><br>
+                                    Buat: <?= !empty($row['created_at']) ? date('d/m/y H:i', strtotime($row['created_at'])) : '-'; ?><br>
+                                    Ubah: <?= !empty($row['updated_at']) ? date('d/m/y H:i', strtotime($row['updated_at'])) : '-'; ?>
+                                </div>
+                            </td>
+
+<td style="text-align: center; white-space: nowrap;">
+    <!-- Tombol 1: Edit Data (Hijau Toska) -->
+    <a href="master_lowongan.php?id_edit=<?= $row['id']; ?>" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: #0ea5e9; color: white; text-decoration: none; border-radius: 10px; font-size: 14px; margin-right: 4px;" title="Ubah Data Lowongan">✏️</a>
+    
+    <!-- Tombol 2: Hapus Data (Merah) -->
+    <a href="master_lowongan.php?delete=<?= $row['id']; ?>" onclick="return confirm('Hapus data ini?')" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: #ef4444; color: white; text-decoration: none; border-radius: 10px; font-size: 14px; margin-right: 4px;" title="Hapus Data">🗑️</a>
+    
+    <!-- PERBAIKAN RUTE: Mengarahkan langsung ke halaman lowongan_tahapan.php -->
+    <a href="lowongan_tahapan.php?lowongan_id=<?= $row['id']; ?>" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: #4f46e5; color: white; text-decoration: none; border-radius: 10px; font-size: 14px;" title="Atur Alur Lowongan Tahapan">⚙️</a>
 </td>
 
-                        <td style="text-align: right;">
-                            <a href="master_lowongan.php?id_edit=<?= $row['id']; ?>" style="color: #4f46e5; text-decoration: none; font-weight: 700; margin-right: 12px;">Edit</a>
-                            <a href="master_lowongan.php?delete=<?= $row['id']; ?>" onclick="return confirm('Hapus data ini?')" style="color: #ef4444; text-decoration: none; font-weight: 700;">Hapus</a>
-                        </td>
-                    </tr>
-                    <?php } ?>
-                </tbody>
-            </table>
-        </div>
+
+                        </tr>
+                        <?php } ?>
+                    </tbody>
+                </table>
+            </div>
+        </div> <!-- PENUTUP MAIN-CONTENT -->
 
         <!-- FORM POPUP MODAL (TAMBAH / UBAH DATA) -->
         <?php if(isset($_GET['id_edit']) || isset($_GET['tambah_baru'])): ?>
