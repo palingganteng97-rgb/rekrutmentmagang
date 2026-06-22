@@ -28,6 +28,31 @@ if (!$pelamar_id) {
     echo "<script>alert('Anda harus login terlebih dahulu!'); window.location.href='login_pelamar.php';</script>";
     exit;
 }
+// =========================================================================
+// QUERY REAL-TIME: MENGAMBIL RIWAYAT LAMARAN SINKRON DENGAN TAHAPAN SELEKSI
+// =========================================================================
+$query_riwayat = mysqli_query($koneksi, "SELECT 
+                    rl.id,
+                    low.id AS id_lowongan,
+                    low.judul_lowongan AS nama_formasi,
+                    rl.created_at AS tanggal_melamar,
+                    -- COALESCE mengembalikan 'Pending' jika pelamar belum memiliki tahapan sama sekali
+                    COALESCE(lt_terbaru.status, 'Pending') AS status_seleksi
+                 FROM rekrutmen_lamaran rl
+                 INNER JOIN rekrutmen_lowongan low ON rl.lowongan_id = low.id
+                 LEFT JOIN (
+                    -- Subquery mengambil 1 status baris paling terakhir berdasarkan ID tahapan tertinggi
+                    SELECT lt1.lamaran_id, lt1.status 
+                    FROM lamaran_tahapan lt1
+                    WHERE lt1.id = (SELECT MAX(lt2.id) FROM lamaran_tahapan lt2 WHERE lt2.lamaran_id = lt1.lamaran_id)
+                 ) lt_terbaru ON rl.id = lt_terbaru.lamaran_id
+                 WHERE rl.pelamar_id = '$pelamar_id' 
+                 ORDER BY rl.id DESC");
+
+if (!$query_riwayat) {
+    die("Gagal memuat riwayat lamaran: " . mysqli_error($koneksi));
+}
+
 ?>
 
 <!DOCTYPE html>
@@ -50,7 +75,7 @@ if (!$pelamar_id) {
         
         /* Style Badge Status Enum */
         .badge { display: inline-block; padding: 5px 10px; border-radius: 20px; font-size: 12px; font-weight: bold; text-align: center; }
-        .badge-proses { background: #fef3c7; color: #d97706; }
+        .badge-pending { background: #fef3c7; color: #d97706; }
         .badge-diterima { background: #dcfce7; color: #15803d; }
         .badge-ditolak { background: #fee2e2; color: #b91c1c; }
         
@@ -81,10 +106,23 @@ if (!$pelamar_id) {
             <tbody>
                 <?php
                 $no = 1;
-                // PERBAIKAN UTAMA: Memastikan $koneksi dan $pelamar_id ditulis huruf kecil sesuai deklarasi atas
-                $query_riwayat = "SELECT l.id AS lamaran_id, l.created_at AS tanggal_kirim, l.status, lw.judul_lowongan, lw.kode_lowongan 
+                
+                // PERBAIKAN QUERY: Mengambil status paling baru dari tabel lamaran_tahapan secara real-time
+                $query_riwayat = "SELECT 
+                                    l.id AS lamaran_id, 
+                                    l.created_at AS tanggal_kirim, 
+                                    lw.judul_lowongan, 
+                                    lw.kode_lowongan,
+                                    -- COALESCE mengembalikan 'Pending' jika pelamar belum memiliki histori tahapan sama sekali
+                                    COALESCE(lt_terbaru.status, 'Pending') AS status_seleksi
                                   FROM rekrutmen_lamaran l
                                   LEFT JOIN rekrutmen_lowongan lw ON l.lowongan_id = lw.id
+                                  LEFT JOIN (
+                                     -- Subquery mengambil 1 baris status terakhir dari histori tahapan seleksi
+                                     SELECT lt1.lamaran_id, lt1.status 
+                                     FROM lamaran_tahapan lt1
+                                     WHERE lt1.id = (SELECT MAX(lt2.id) FROM lamaran_tahapan lt2 WHERE lt2.lamaran_id = lt1.lamaran_id)
+                                  ) lt_terbaru ON l.id = lt_terbaru.lamaran_id
                                   WHERE l.pelamar_id = $pelamar_id 
                                   ORDER BY l.id DESC";
                 
@@ -96,13 +134,18 @@ if (!$pelamar_id) {
                         $nama_lowongan_tampil = !empty($row['judul_lowongan']) ? $row['judul_lowongan'] : 'Lowongan Magang';
                         $kode_lowongan = !empty($row['kode_lowongan']) ? ' ('.$row['kode_lowongan'].')' : '';
 
-                        $status = $row['status'];
-                        $badge_class = 'badge-proses';
+                        // Mengambil status real-time hasil join tahapan
+                        $status = $row['status_seleksi']; 
                         
-                        if ($status == 'Diterima' || $status == 'TERIMA') { 
-                            $badge_class = 'badge-diterima'; 
-                        } elseif ($status == 'Ditolak' || $status == 'TOLAK') { 
-                            $badge_class = 'badge-ditolak'; 
+                        // PEMETAAN WARNA BADGE SESUAI 5 PILIHAN STATUS BARU ANDA
+                        $badge_class = 'badge-pending'; // Default jika 'Pending'
+                        
+                        if ($status == 'Proses') {
+                            $badge_class = 'badge-proses'; // Abu-abu
+                        } elseif ($status == 'Lulus' || $status == 'Terima' || $status == 'Diterima') { 
+                            $badge_class = 'badge-diterima'; // Hijau pastel
+                        } elseif ($status == 'Tidak Lulus' || $status == 'Tolak' || $status == 'Ditolak' || $status == 'Skip') { 
+                            $badge_class = 'badge-ditolak'; // Merah pastel
                         }
                         
                         $tanggal = !empty($row['tanggal_kirim']) ? date('d M Y - H:i', strtotime($row['tanggal_kirim'])) : 'Sedang diproses';
