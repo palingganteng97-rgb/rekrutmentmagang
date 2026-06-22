@@ -62,14 +62,17 @@ if (isset($_GET['delete'])) {
     }
 }
 
-// 5. AMBIL DATA UNTUK TABEL
-$query_tampil = "SELECT * FROM mst_tahapan_seleksi ORDER BY id DESC";
+// =========================================================================
+// 5. AMBIL DATA UNTUK TABEL (PERBAIKAN: URUT BERDASARKAN ABJAD NAMA A-Z)
+// =========================================================================
+$query_tampil = "SELECT * FROM mst_tahapan_seleksi ORDER BY nama_tahapan ASC";
 $ambil_data = mysqli_query($koneksi, $query_tampil);
 
 $id_edit = isset($_GET['id_edit']) ? intval($_GET['id_edit']) : 0;
 $query_edit = mysqli_query($koneksi, "SELECT * FROM mst_tahapan_seleksi WHERE id = $id_edit");
 $data_tahapan_edit = mysqli_fetch_assoc($query_edit);
 ?>
+
 
 <!DOCTYPE html>
 <html lang="id">
