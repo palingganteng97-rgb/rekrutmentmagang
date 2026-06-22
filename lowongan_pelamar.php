@@ -64,11 +64,24 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
     }
 
     $tanggal_masuk = date('Y-m-d H:i:s'); 
-    // PERBAIKAN: Mengubah 'Pending' menjadi 'Proses' agar sesuai dengan ENUM database
     $status_awal   = 'Proses'; 
     $lowongan_id   = isset($_POST['lowongan_id']) ? intval($_POST['lowongan_id']) : 0;
+    $tanggal_hari_ini = date('Y-m-d');
 
-    // Proteksi Duplikat Lamaran
+    // PROTEKSI 1: Validasi Batas Waktu Tanggal Selesai Lowongan Kerja (Anti-Tembak Sistem)
+    $cek_waktu = mysqli_query($koneksi, "SELECT tanggal_selesai FROM rekrutmen_lowongan WHERE id = $lowongan_id");
+    if ($cek_waktu && mysqli_num_rows($cek_waktu) > 0) {
+        $data_waktu = mysqli_fetch_assoc($cek_waktu);
+        $tanggal_selesai = $data_waktu['tanggal_selesai'];
+
+        // Jika hari ini sudah melewati batas pendaftaran lowongan
+        if ($tanggal_hari_ini > $tanggal_selesai) {
+            echo "<script>alert('⚠️ Maaf, batas waktu pendaftaran untuk posisi lowongan ini telah berakhir (Ditutup)!'); window.location.href='lowongan_pelamar.php';</script>";
+            exit;
+        }
+    }
+
+    // PROTEKSI 2: Validasi Duplikat Lamaran Berkas Pelamar
     $cek_duplikat = mysqli_query($koneksi, "SELECT id FROM rekrutmen_lamaran WHERE pelamar_id = $pelamar_id AND lowongan_id = $lowongan_id");
     if (mysqli_num_rows($cek_duplikat) > 0) {
         echo "<script>alert('⚠️ Anda sudah pernah mengirimkan berkas lamaran untuk lowongan ini!'); window.location.href='rekrutmen_lamaran.php';</script>";
@@ -93,6 +106,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
         echo "<script>alert('Gagal mengirim lamaran: " . mysqli_error($koneksi) . "');</script>";
     }
 }
+
 
 ?>
 <!DOCTYPE html>
