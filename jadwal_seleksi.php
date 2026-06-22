@@ -40,27 +40,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $lokasi      = mysqli_real_escape_string($conn, $_POST['lokasi']);
     $keterangan  = mysqli_real_escape_string($conn, $_POST['keterangan']);
 
-    // Validasi data lama
-    $cek_jadwal = mysqli_query($conn, "SELECT id FROM jadwal_seleksi WHERE lamaran_tahapan_id = '$tahapan_id'");
+    // KEAMANAN: Pastikan ID tahapan ini benar-benar ada di tabel lamaran_tahapan
+    // Jika tabel asli Anda adalah lowongan_tahapan, ganti nama tabel di bawah ini menjadi lowongan_tahapan
+    $nama_tabel_induk = "lamaran_tahapan"; 
     
-    if (mysqli_num_rows($cek_jadwal) > 0) {
-        $query_save = "UPDATE jadwal_seleksi SET 
-                        tanggal = '$tanggal', 
-                        jam_mulai = '$jam_mulai', 
-                        jam_selesai = '$jam_selesai', 
-                        lokasi = '$lokasi', 
-                        keterangan = '$keterangan',
-                        updated_at = NOW()
-                       WHERE lamaran_tahapan_id = '$tahapan_id'";
-    } else {
-        $query_save = "INSERT INTO jadwal_seleksi (lamaran_tahapan_id, tanggal, jam_mulai, jam_selesai, lokasi, keterangan, created_at) 
-                       VALUES ('$tahapan_id', '$tanggal', '$jam_mulai', '$jam_selesai', '$lokasi', '$keterangan', NOW())";
+    $cek_induk = mysqli_query($conn, "SELECT id FROM $nama_tabel_induk WHERE id = '$tahapan_id'");
+    
+    if (mysqli_num_rows($cek_induk) == 0) {
+        // Jika tidak ada di lamaran_tahapan, coba cek ke tabel lowongan_tahapan
+        $cek_lowongan_tahapan = mysqli_query($conn, "SELECT id FROM lowongan_tahapan WHERE id = '$tahapan_id'");
+        if (mysqli_num_rows($cek_lowongan_tahapan) > 0) {
+            $nama_tabel_induk = "lowongan_tahapan";
+        }
     }
 
-    if (mysqli_query($conn, $query_save)) {
-        $success_msg = "Jadwal seleksi berhasil diperbarui!";
+    if (mysqli_num_rows($cek_induk) == 0 && $nama_tabel_induk == "lamaran_tahapan") {
+        $error_msg = "Gagal menyimpan: ID Tahapan Seleksi ($tahapan_id) tidak terdaftar di sistem database induk ($nama_tabel_induk).";
     } else {
-        $error_msg = "Gagal memproses data: " . mysqli_error($conn);
+        // Jalankan pengecekan jadwal existing
+        $cek_jadwal = mysqli_query($conn, "SELECT id FROM jadwal_seleksi WHERE lamaran_tahapan_id = '$tahapan_id'");
+        
+        if (mysqli_num_rows($cek_jadwal) > 0) {
+            $query_save = "UPDATE jadwal_seleksi SET 
+                            tanggal = '$tanggal', 
+                            jam_mulai = '$jam_mulai', 
+                            jam_selesai = '$jam_selesai', 
+                            lokasi = '$lokasi', 
+                            keterangan = '$keterangan',
+                            updated_at = NOW()
+                           WHERE lamaran_tahapan_id = '$tahapan_id'";
+        } else {
+            $query_save = "INSERT INTO jadwal_seleksi (lamaran_tahapan_id, tanggal, jam_mulai, jam_selesai, lokasi, keterangan, created_at) 
+                           VALUES ('$tahapan_id', '$tanggal', '$jam_mulai', '$jam_selesai', '$lokasi', '$keterangan', NOW())";
+        }
+
+        if (mysqli_query($conn, $query_save)) {
+            $success_msg = "Jadwal seleksi berhasil diperbarui!";
+        } else {
+            $error_msg = "Gagal memproses data: " . mysqli_error($conn);
+        }
     }
 }
 
