@@ -444,21 +444,25 @@ if (!$query_progress) {
                                     <th style="text-align: center; width: 100px;">AKSI</th> <!-- TAMBAHKAN INI -->
                                 </tr>
                             </thead>
-                        <tbody>
 
-<?php if ($query_progress && mysqli_num_rows($query_progress) > 0) : ?>
+<tbody>
+<?php // KONDISIONAL PEMBUKA YANG DIKEMBALIKAN AGAR TIDAK SYNTAX ERROR
+if ($query_progress && mysqli_num_rows($query_progress) > 0) : ?>
     <?php while ($row = mysqli_fetch_assoc($query_progress)) : ?>
         <?php 
-            // 1. Ambil status dari database (Default: Pending)
-            $status_badge = !empty($row['status_tahap']) ? $row['status_tahap'] : 'Pending'; 
+            // 1. Ambil status dari database secara fleksibel dari kolom status_tahap atau status global
+            $status_badge = !empty($row['status_tahap']) ? $row['status_tahap'] : ($row['status'] ?? 'Pending'); 
             
-            // PERBAIKAN UTAMA: Jika isi database adalah 'Tolak', paksa tampilan menjadi 'Tidak Lulus'
-            if ($status_badge == 'Tolak' || $status_badge == 'Ditolak') {
+            // Standardisasi ke huruf besar untuk akurasi pengecekan class CSS
+            $status_cek = strtoupper($status_badge);
+
+            // Jika isi database adalah 'Tolak', paksa tampilan menjadi 'Tidak Lulus'
+            if ($status_cek == 'TOLAK' || $status_cek == 'DITOLAK') {
                 $status_badge = 'Tidak Lulus';
+                $status_cek   = 'TIDAK LULUS';
             }
 
-            // 2. Tentukan kelas warna badge berdasarkan status masing-masing (Case-Insensitive)
-            $status_cek = strtoupper($status_badge);
+            // 2. Tentukan kelas warna badge berdasarkan status masing-masing
             $class_badge = 'badge-pending'; // Default: Kuning
             
             if ($status_cek == 'PROSES') { 
@@ -467,46 +471,43 @@ if (!$query_progress) {
                 $class_badge = 'badge-diterima';   // Hijau
             } elseif ($status_cek == 'TIDAK LULUS') { 
                 $class_badge = 'badge-ditolak';    // Merah
-            } elseif ($status_cek == 'SKIP') { 
-                $class_badge = 'badge-skip';       // Hitam (Sesuai CSS .badge-skip)
+            } elseif ($status_cek == 'SKIP' || $status_cek == 'DILEWATI') { 
+                $class_badge = 'badge-skip';       // Mengaktifkan kelas CSS khusus tombol lewati Anda
+                $status_badge = 'SKIP';            // Memastikan teks tercetak huruf kapital sempurna
             }
             
-            // Ambil alias 'id_tahapan' dari query SQL Anda untuk tombol Nilai
             $id_lamaran_tahapan = $row['id_tahapan'] ?? ''; 
         ?>
-
-                                <tr>
-                                    <td>
-                                        <div class="candidate-name"><?php echo htmlspecialchars($row['nama_pendaftar']); ?></div>
-                                        <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">NIK: <?php echo htmlspecialchars($row['nik'] ?? '-'); ?></div>
-                                    </td>
-                                    <td><span style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($row['nama_lowongan']); ?></span></td>
-                                    <td><?php echo date('d M Y - H:i', strtotime($row['tanggal_update'])); ?> WIB</td>
-                                    <td>
-                                        <span class="badge <?php echo $class_badge; ?>"><?php echo htmlspecialchars($status_badge); ?></span>
-                                    </td>
-                            <!-- KOLOM AKSI: TOMBOL NILAI -->
-                            <td style="text-align: center; white-space: nowrap;">
-                                <?php $id_lamaran_tahapan = $row['id_tahapan'] ?? ''; ?>
-                                <a href="penilaian_tahapan.php?id=<?php echo urlencode($id_lamaran_tahapan); ?>" class="btn-score" title="Beri Nilai Pelamar" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 14px; background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; border-radius: 8px; font-weight: 700; font-size: 13px; text-decoration: none; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                                    <!-- PERBAIKAN: xmls sudah dinormalisasi ke w3.org/2000/svg -->
-                                    <svg xmlns="http://w3.org" width="14" height="14" fill="currentColor" class="bi bi-bookmark-star" viewBox="0 0 16 16" style="display: inline-block; vertical-align: middle;">
-                                        <path d="M7.84 4.1a.5.5 0 0 1 .32 0l1.353.362-.124.484L8 4.584l-1.39.362-.122-.484zM6.6 6.3a.5.5 0 0 0 .117-.168l1-2a.5.5 0 0 0-.834-.464l-1 2A.5.5 0 0 0 6.6 6.3"/>
-                                        <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.543a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/>
-                                    </svg>
-                                    <span style="line-height: 1;">Nilai</span>
-                                </a>
-                            </td>
-                                </tr>
-                            <?php endwhile; ?>
-                        <?php else : ?>
-                            <tr>
-                                <td colspan="5" class="text-empty" style="text-align: center; padding: 24px; color: #64748b;">
-                                    <?php echo !empty($filter_lowongan) ? "Belum ada pelamar yang mendaftar pada formasi lowongan " . htmlspecialchars($filter_lowongan) . "." : "Belum ada progress tahapan rekrutmen terbaru saat ini."; ?>
-                                </td>
-                            </tr>
-                        <?php endif; ?>
-                        </tbody>
+        <tr>
+            <td>
+                <div class="candidate-name"><?php echo htmlspecialchars($row['nama_pendaftar']); ?></div>
+                <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">NIK: <?php echo htmlspecialchars($row['nik'] ?? '-'); ?></div>
+            </td>
+            <td><span style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($row['nama_lowongan']); ?></span></td>
+            <td><?php echo !empty($row['tanggal_update']) ? date('d M Y - H:i', strtotime($row['tanggal_update'])) : date('d M Y - H:i'); ?> WIB</td>
+            <td>
+                <span class="badge <?php echo $class_badge; ?>"><?php echo htmlspecialchars($status_badge); ?></span>
+            </td>
+            <!-- KOLOM AKSI: TOMBOL NILAI -->
+            <td style="text-align: center; white-space: nowrap;">
+                <a href="penilaian_tahapan.php?id=<?php echo urlencode($id_lamaran_tahapan); ?>" class="btn-score" title="Beri Nilai Pelamar" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 14px; background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; border-radius: 8px; font-weight: 700; font-size: 13px; text-decoration: none; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                    <svg xmlns="http://w3.org" width="14" height="14" fill="currentColor" class="bi bi-bookmark-star" viewBox="0 0 16 16" style="display: inline-block; vertical-align: middle;">
+                        <path d="M7.84 4.1a.5.5 0 0 1 .32 0l1.353.362-.124.484L8 4.584l-1.39.362-.122-.484zM6.6 6.3a.5.5 0 0 0 .117-.168l1-2a.5.5 0 0 0-.834-.464l-1 2A.5.5 0 0 0 6.6 6.3"/>
+                        <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.543a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/>
+                    </svg>
+                    <span style="line-height: 1;">Nilai</span>
+                </a>
+            </td>
+        </tr>
+    <?php endwhile; ?>
+<?php else : ?>
+    <tr>
+        <td colspan="5" class="text-empty" style="text-align: center; padding: 24px; color: #64748b;">
+            <?php echo !empty($filter_lowongan) ? "Belum ada pelamar yang mendaftar pada formasi lowongan " . htmlspecialchars($filter_lowongan) . "." : "Belum ada progress tahapan rekrutmen terbaru saat ini."; ?>
+        </td>
+    </tr>
+<?php endif; ?>
+</tbody>
 
                     </table>
                 </div>

@@ -1,21 +1,49 @@
 <?php
 session_start();
-$conn = mysqli_connect("10.10.6.59", "root_host", "password", "magang_rekrutmen_rs");
+header('Content-Type: application/json');
 
-$id_lamaran = $_GET['id_lamaran'] ?? 0;
-$id_mst_thp = $_GET['id_mst_tahapan'] ?? 0;
+// 1. KONEKSI DATABASE (Sesuaikan dengan konfigurasi server pusat Anda)
+$host     = "10.10.6.59"; 
+$user_db  = "root_host";      
+$pass_db  = "password";          
+$nama_db  = "magang_rekrutmen_rs"; 
 
-$data_response = ['nilai' => '', 'catatan' => ''];
-
-if ($id_lamaran && $id_mst_thp) {
-    // SINKRON: Cari nilai berdasarkan lamaran_tahapan_id DAN tipe mst_tahapan_id nya masing-masing
-    $query = mysqli_query($conn, "SELECT nilai, catatan FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$id_lamaran' AND mst_tahapan_id = '$id_mst_thp' LIMIT 1");
-    if ($row = mysqli_fetch_assoc($query)) {
-        $data_response['nilai']   = $row['nilai'];
-        $data_response['catatan'] = $row['catatan'];
-    }
+$conn = mysqli_connect($host, $user_db, $pass_db, $nama_db);
+if (!$conn) {
+    echo json_encode(['nilai' => '', 'catatan' => 'Gagal koneksi database']);
+    exit;
 }
 
-header('Content-Type: application/json');
-echo json_encode($data_response);
+// 2. AMBIL PARAMETER DARI JAVASCRIPT FETCH
+$id_lamaran      = $_GET['id_lamaran'] ?? 0;
+$id_mst_tahapan  = $_GET['id_mst_tahapan'] ?? 0;
+
+if (!$id_lamaran || !$id_mst_tahapan) {
+    echo json_encode(['nilai' => '', 'catatan' => 'Parameter tidak valid']);
+    exit;
+}
+
+// 3. QUERY MENGAMBIL DATA NILAI YANG SUDAH TERSIMPAN
+$query = "SELECT nilai, catatan FROM penilaian_tahapan 
+          WHERE lamaran_tahapan_id = '$id_lamaran' 
+          AND mst_tahapan_id = '$id_mst_tahapan' 
+          LIMIT 1";
+
+$result = mysqli_query($conn, $query);
+
+if (mysqli_num_rows($result) > 0) {
+    $data = mysqli_fetch_assoc($result);
+    
+    // Format output JSON agar bisa dibaca oleh JavaScript
+    echo json_encode([
+        'nilai'   => $data['nilai'] !== null ? number_format($data['nilai'], 2, '.', '') : '',
+        'catatan' => $data['catatan'] ?? ''
+    ]);
+} else {
+    // Jika data belum pernah diinput di database, kirim string kosong
+    echo json_encode([
+        'nilai'   => '',
+        'catatan' => ''
+    ]);
+}
 exit;
