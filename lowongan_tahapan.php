@@ -330,61 +330,95 @@ td:last-child {
 </head>
 <body>
 
-    <!-- CONTAINER UTAMA -->
-    <div class="main-content-standalone">
-        <div class="content-header">
-            <div>
-                <h1>Alur Tahapan Seleksi</h1>
-                <p style="font-size: 14px; color: #64748b; margin-top: 6px;">Formasi Lowongan: <strong style="color: #4f46e5; font-weight: 700;"><?= htmlspecialchars($nama_lowongan_header); ?></strong></p>
-            </div>
-            <div class="btn-layout-flex">
-                <a href="master_lowongan.php" class="btn-back">&larr; Kembali</a>
-                <button class="btn-purple" onclick="bukaModalTambah()">+ Tambah Alur</button>
-            </div>
+<!-- CONTAINER UTAMA -->
+<div class="main-content-standalone">
+    <div class="content-header">
+        <div>
+            <h1>Alur Tahapan Seleksi</h1>
+            <p style="font-size: 14px; color: #64748b; margin-top: 6px;">Formasi Lowongan: <strong style="color: #4f46e5; font-weight: 700;"><?= htmlspecialchars($nama_lowongan_header ?? 'Perawat'); ?></strong></p>
         </div>
-
-        <!-- TABEL RENDER DATA -->
-        <div class="table-wrapper">
-            <table>
-                <thead>
-                    <tr>
-                        <th style="width: 60px; text-align: center;">No</th>
-                        <th>Nama Tahapan Seleksi</th>
-                        <th>Urutan Alur</th>
-                        <th>Minimal Nilai</th>
-                        <th>Aturan Kelulusan</th>
-                        <th style="text-align: center; width: 120px;">Aksi</th>
-                    </tr>
-                </thead>
-                <tbody>
-                <?php 
-                $no = 1;
-                if ($ambil_data && mysqli_num_rows($ambil_data) > 0) :
-                    while ($row = mysqli_fetch_assoc($ambil_data)) : 
-                        $badge_class = ($row['wajib_lulus'] == 1) ? 'badge-wajib' : 'badge-opsional';
-                        $badge_text  = ($row['wajib_lulus'] == 1) ? 'Ya (Wajib Lulus)' : 'Opsional';
-                ?>
-                    <tr>
-                        <td style="font-weight: bold; color: #94a3b8; text-align: center;"><?= $no++; ?></td>
-                        <td style="font-weight: 700; color: #0f172a;"><?= htmlspecialchars($row['nama_tahapan'] ?? 'Administrasi'); ?></td>
-                        <td style="font-weight: 700; color: #4f46e5;">Tahap Ke-<?= $row['urutan']; ?></td>
-                        <td><strong><?= number_format($row['minimal_nilai'], 2); ?></strong></td>
-                        <td><span class="badge <?= $badge_class; ?>"><?= $badge_text; ?></span></td>
-                        <td style="text-align: center;">
-                            <a href="javascript:void(0)" class="btn-icon edit" onclick="bukaModalEdit(<?= htmlspecialchars(json_encode($row)); ?>)" title="Edit">✏️</a>
-                            <a href="lowongan_tahapan.php?delete=<?= $row['id']; ?><?= $lowongan_id_filter > 0 ? '&lowongan_id='.$lowongan_id_filter : ''; ?>" class="btn-icon delete" onclick="return confirm('Hapus tahapan seleksi untuk posisi ini?')" title="Hapus">🗑️</a>
-                        </td>
-                    </tr>
-                <?php 
-                    endwhile;
-                else : 
-                ?>
-                    <tr><td colspan="6" class="text-empty">Belum ada alur tahapan seleksi yang dikonfigurasi untuk formasi ini.</td></tr>
-                <?php endif; ?>
-                </tbody>
-            </table>
+        <div class="btn-layout-flex">
+            <a href="master_lowongan.php" class="btn-back">&larr; Kembali</a>
+            <button class="btn-purple" onclick="bukaModalTambah()">+ Tambah Alur</button>
         </div>
     </div>
+<!-- TABEL RENDER DATA -->
+<div class="table-wrapper">
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 60px; text-align: center;">No</th>
+                <th>Nama Tahapan Seleksi</th>
+                <th>Urutan Alur</th>
+                <th>Minimal Nilai</th>
+                <th>Aturan Kelulusan</th>
+                <th style="text-align: center; width: 160px;">Aksi</th>
+            </tr>
+        </thead>
+                <tbody>
+<?php 
+$no = 1;
+if (isset($ambil_data) && $ambil_data && mysqli_num_rows($ambil_data) > 0) :
+    while ($row = mysqli_fetch_assoc($ambil_data)) : 
+        $badge_class = (isset($row['wajib_lulus']) && $row['wajib_lulus'] == 1) ? 'badge-wajib' : 'badge-opsional';
+        $badge_text  = (isset($row['wajib_lulus']) && $row['wajib_lulus'] == 1) ? 'Ya (Wajib Lulus)' : 'Opsional';
+        
+        $id_tahapan  = $row['id'] ?? ''; 
+        $id_lowongan = $_GET['lowongan_id'] ?? 6;
+        
+        // Menyiapkan data JSON agar bisa dilempar ke fungsi Javascript Edit Modal
+        $data_json = json_encode([
+            'id'            => $id_tahapan,
+            'lowongan_id'   => $id_lowongan, // Pastikan baris ini ada agar dibaca oleh fungsi JS Anda
+            'tahapan_id'    => $row['tahapan_id'] ?? '',
+            'urutan'        => $row['urutan'] ?? '',
+            'minimal_nilai' => $row['minimal_nilai'] ?? '',
+            'wajib_lulus'   => $row['wajib_lulus'] ?? '1'
+        ]);
+
+?>
+
+            <tr>
+                <td style="font-weight: bold; color: #94a3b8; text-align: center;"><?= $no++; ?></td>
+                <td style="font-weight: 700; color: #0f172a;"><?= htmlspecialchars($row['nama_tahapan'] ?? 'Administrasi'); ?></td>
+                <td style="font-weight: 700; color: #4f46e5;">Tahap Ke-<?= $row['urutan'] ?? ''; ?></td>
+                <td><strong><?= number_format($row['minimal_nilai'] ?? 0, 2); ?></strong></td>
+                <td><span class="badge <?= $badge_class; ?>"><?= $badge_text; ?></span></td>
+                <td style="text-align: center; white-space: nowrap;">
+                    <!-- Tombol Edit (Kini memicu Javascript bukaModalEdit, bukan pindah halaman) -->
+                    <button type="button" onclick='bukaModalEdit(<?= $data_json; ?>)' class="btn-action btn-edit" title="Edit" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background-color: #fef08a; border: none; border-radius: 6px; margin-right: 6px; cursor: pointer;">
+                        <svg xmlns="http://w3.org" width="16" height="16" fill="#a16207" viewBox="0 0 16 16">
+                            <path d="M12.146.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1 0 .708l-10 10a.5.5 0 0 1-.168.11l-5 2a.5.5 0 0 1-.65-.65l2-5a.5.5 0 0 1 .11-.168zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207zm1.586 3L10.5 3.207 4 9.707V10h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.293zm-9.761 5.175-.106.106-1.528 3.821 3.821-1.528.106-.106A.5.5 0 0 1 5 12.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.466-.316"/>
+                        </svg>
+                    </button>
+
+                    <!-- Tombol Hapus (Diubah menjadi parameter GET hapus pada file ini sendiri) -->
+                    <a href="lowongan_tahapan.php?lowongan_id=<?= $id_lowongan; ?>&action=delete&id=<?= $id_tahapan; ?>" class="btn-action btn-delete" onclick="return confirm('Apakah Anda yakin ingin menghapus tahapan ini?')" title="Hapus" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background-color: #fee2e2; border-radius: 6px; margin-right: 6px; text-decoration: none;">
+                        <svg xmlns="http://w3.org" width="16" height="16" fill="#b91c1c" viewBox="0 0 16 16">
+                            <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5m3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0z"/>
+                            <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1zM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4zM2.5 3h11V2h-11z"/>
+                        </svg>
+                    </a>
+
+                    <!-- Tombol Jadwal Seleksi (Arahkan ke jadwal_seleksi.php) -->
+<a href="jadwal_seleksi.php?lowongan_id=<?= $id_lowongan; ?>&tahapan_id=<?= $id_tahapan; ?>" class="btn-action btn-schedule" title="Jadwal Seleksi" style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; background-color: #dbeafe; border-radius: 6px; text-decoration: none;">
+    <svg xmlns="http://w3.org" width="16" height="16" fill="#1d4ed8" viewBox="0 0 16 16">
+        <path d="M14 0H2a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2M1 3.857C1 3.384 1.448 3 2 3h12c.552 0 1 .384 1 .857v10.286c0 .473-.448.857-1 .857H2c-.552 0-1-.384-1-.857z"/>
+        <path d="M6.5 7a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m-9 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m-9 3a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2m3 0a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/>
+    </svg>
+</a>
+                </td>
+            </tr>
+<?php 
+    endwhile;
+else : 
+?>
+            <tr><td colspan="6" class="text-empty" style="text-align: center; padding: 24px; color: #64748b;">Belum ada alur tahapan seleksi yang dikonfigurasi untuk formasi ini.</td></tr>
+<?php endif; ?>
+        </tbody>
+
+    </table>
+</div>
 
     <!-- WINDOW POP-UP SYSTEM FORM MODAL -->
     <div class="modal-overlay" id="modalLowonganTahapan">
