@@ -1,44 +1,80 @@
 <?php 
 session_start(); 
 
-// 1. PENGATURAN KONEKSI DATABASE SERVER
+// =========================================================================
+// SINKRONISASI KONEKSI: MENGGUNAKAN SERVER ASLI YANG SUDAH ADA DATABASENYA
+// =========================================================================
 $host     = "10.10.6.59"; 
 $user_db  = "root_host";      
 $pass_db  = "password";          
 $nama_db  = "magang_rekrutmen_rs"; 
 
 $koneksi = mysqli_connect($host, $user_db, $pass_db, $nama_db);
-
 if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
-// Target folder penyimpanan gambar
+// Target folder penyimpanan gambar banner
 $target_dir = "uploads/";
 if (!file_exists($target_dir)) {
     mkdir($target_dir, 0777, true);
 }
 
-// --- FITUR: PROSES HAPUS GAMBAR SAJA ---
-if (isset($_GET['delete_image'])) {
-    $id = intval($_GET['delete_image']);
+// =========================================================================
+// 2. [CRUD - CREATE / UPDATE] PROSES FORM & VALIDASI ANTI-DUPLIKAT
+// =========================================================================
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
+    $lowongan_id   = intval($_POST['lowongan_id']);
+    $tahapan_id    = intval($_POST['tahapan_id']); 
+    $urutan        = intval($_POST['urutan']);
+    $minimal_nilai = floatval($_POST['minimal_nilai']);
+    $wajib_lulus   = intval($_POST['wajib_lulus']); 
+    $waktu_sekarang = date('Y-m-d H:i:s');
     
-    $query_gambar = mysqli_query($koneksi, "SELECT gambar FROM rekrutmen_lowongan WHERE id = $id");
-    $data_gambar  = mysqli_fetch_assoc($query_gambar);
+    $action = $_POST['action'];
+    $id = isset($_POST['id']) ? intval($_POST['id']) : 0;
+
+    // VALIDASI A: Cek duplikasi Jenis Tahapan pada lowongan ini
+    $sql_cek_tahapan = "SELECT id FROM lowongan_tahapan WHERE lowongan_id = $lowongan_id AND tahapan_id = $tahapan_id";
+    if ($action == 'edit') { $sql_cek_tahapan .= " AND id != $id"; }
+    $cek_tahapan = mysqli_query($koneksi, $sql_cek_tahapan);
     
-    if (!empty($data_gambar['gambar'])) {
-        $file_path = "uploads/" . $data_gambar['gambar'];
-        if (file_exists($file_path)) {
-            unlink($file_path);
-        }
-        mysqli_query($koneksi, "UPDATE rekrutmen_lowongan SET gambar = NULL WHERE id = $id");
+    if (mysqli_num_rows($cek_tahapan) > 0) {
+        $_SESSION['error_msg'] = 'Jenis tahapan seleksi tersebut sudah terdaftar untuk formasi lowongan ini.';
+        header("Location: lowongan_tahapan.php?lowongan_id=" . $lowongan_id);
+        exit;
+    }
+
+    // VALIDASI B: Cek duplikasi Nomor Urutan Alur pada lowongan ini
+    $sql_cek_urutan = "SELECT id FROM lowongan_tahapan WHERE lowongan_id = $lowongan_id AND urutan = $urutan";
+    if ($action == 'edit') { $sql_cek_urutan .= " AND id != $id"; }
+    $cek_urutan = mysqli_query($koneksi, $sql_cek_urutan);
+    
+    if (mysqli_num_rows($cek_urutan) > 0) {
+        $_SESSION['error_msg'] = 'Nomor urutan alur tersebut (Tahap Ke-' . $urutan . ') sudah digunakan oleh tahapan lain.';
+        header("Location: lowongan_tahapan.php?lowongan_id=" . $lowongan_id);
+        exit;
+    }
+
+    // PROSES EKSEKUSI DATA JIKA LOLOS VALIDASI
+    if ($action == 'edit') {
+        $query_update = "UPDATE lowongan_tahapan 
+                         SET lowongan_id = $lowongan_id, tahapan_id = $tahapan_id, urutan = $urutan, minimal_nilai = $minimal_nilai, wajib_lulus = $wajib_lulus, updated_at = '$waktu_sekarang' 
+                         WHERE id = $id";
+        mysqli_query($koneksi, $query_update);
+    } else {
+        $query_insert = "INSERT INTO lowongan_tahapan (lowongan_id, tahapan_id, urutan, minimal_nilai, wajib_lulus, created_at, updated_at) 
+                         VALUES ($lowongan_id, $tahapan_id, $urutan, $minimal_nilai, $wajib_lulus, '$waktu_sekarang', '$waktu_sekarang')";
+        mysqli_query($koneksi, $query_insert);
     }
     
-    header("Location: master_lowongan.php");
+    header("Location: lowongan_tahapan.php?lowongan_id=" . $lowongan_id);
     exit;
 }
 
-// --- FITUR: PROSES FORM (TAMBAH & UBAH DATA) ---
+// =========================================================================
+// 3. [CRUD - CREATE / UPDATE] PROSES SIMPAN DATA FORM POP-UP MODAL
+// =========================================================================
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $judul_lowongan   = mysqli_real_escape_string($koneksi, $_POST['judul_lowongan']);
     $jumlah_kebutuhan = intval($_POST['jumlah_kebutuhan']);
@@ -72,7 +108,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             move_uploaded_file($tmp_file, $target_dir . $nama_gambar);
         }
 
-        // QUERY SESUAI STRUKTUR DATABASE KAMU
         $query_update = "UPDATE rekrutmen_lowongan 
                          SET jabatan_id = $jabatan_id, 
                              unit_id = $unit_id, 
@@ -106,7 +141,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             move_uploaded_file($tmp_file, $target_dir . $nama_gambar);
         }
 
-        // QUERY DIURUTKAN SESUAI STRUKTUR DATABASE GAMBAR KAMU
         $query_insert = "INSERT INTO rekrutmen_lowongan (kode_lowongan, jabatan_id, unit_id, judul_lowongan, jumlah_kebutuhan, deskripsi, kualifikasi, persyaratan, tanggal_mulai, tanggal_selesai, status, gambar, created_by, created_at) 
                          VALUES ('$kode_lowongan', $jabatan_id, $unit_id, '$judul_lowongan', $jumlah_kebutuhan, '$deskripsi', '$kualifikasi', '$persyaratan', $tanggal_mulai, $tanggal_selesai, '$status', '$nama_gambar', $created_by, '$waktu_sekarang')";
         
@@ -118,7 +152,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     exit;
 }
 
-// --- FITUR: PROSES HAPUS DATA (DELETE) ---
+// =========================================================================
+// 4. [CRUD - DELETE] PROSES HAPUS REKORD DATA
+// =========================================================================
 if (isset($_GET['delete'])) {
     $id = intval($_GET['delete']);
     
@@ -137,7 +173,9 @@ if (isset($_GET['delete'])) {
     }
 }
 
-// 5. AMBIL DATA UNTUK TABEL & DROPDOWN RELASI
+// =========================================================================
+// 5. [CRUD - READ] AMBIL DATA UTAMA UNTUK TABEL & DROPDOWN RELASI
+// =========================================================================
 $query_tampil = "SELECT rl.*, rj.nama_jabatan, ru.nama_unit
                  FROM rekrutmen_lowongan rl
                  LEFT JOIN mst_jabatan rj ON rl.jabatan_id = rj.id
@@ -160,6 +198,38 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Master Lowongan - Rekrutmen Magang</title>
     <style>
+
+        /* =========================================================================
+   GAYA TAMPILAN ALERT MODAL KUSTOM MODERN
+   ========================================================================= */
+.alert-overlay {
+    position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+    background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px);
+    display: flex; justify-content: center; align-items: center; z-index: 9999999;
+}
+.alert-box {
+    background: #ffffff; width: 90%; max-width: 400px; padding: 30px;
+    border-radius: 24px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.25);
+    animation: alertBounce 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+@keyframes alertBounce {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+.alert-icon {
+    width: 60px; height: 60px; background: #fee2e2; color: #ef4444;
+    border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-size: 30px; margin: 0 auto 16px auto; font-weight: bold;
+}
+.alert-title { font-size: 18px; font-weight: 800; color: #1e293b; margin-bottom: 8px; }
+.alert-text { font-size: 13px; color: #64748b; line-height: 1.6; margin-bottom: 24px; }
+.btn-alert-close {
+    width: 100%; padding: 12px; background: #4f46e5; color: #ffffff;
+    border: none; border-radius: 12px; font-weight: 700; font-size: 14px;
+    cursor: pointer; transition: background 0.2s;
+}
+.btn-alert-close:hover { background: #3b33c7; }
+
         /* =========================================================================
            1. RESET GLOBAL & CORES STYLING
            ========================================================================= */
@@ -350,19 +420,18 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
                                     Ubah: <?= !empty($row['updated_at']) ? date('d/m/y H:i', strtotime($row['updated_at'])) : '-'; ?>
                                 </div>
                             </td>
-
-<td style="text-align: center; white-space: nowrap;">
-    <!-- Tombol 1: Edit Data (Hijau Toska) -->
+<td style="text-align: center; white-space: nowrap; vertical-align: middle;">
+    <!-- Tombol 1: Edit Data (Kotak Ikon Biru) -->
     <a href="master_lowongan.php?id_edit=<?= $row['id']; ?>" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: #0ea5e9; color: white; text-decoration: none; border-radius: 10px; font-size: 14px; margin-right: 4px;" title="Ubah Data Lowongan">✏️</a>
     
-    <!-- Tombol 2: Hapus Data (Merah) -->
-    <a href="master_lowongan.php?delete=<?= $row['id']; ?>" onclick="return confirm('Hapus data ini?')" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: #ef4444; color: white; text-decoration: none; border-radius: 10px; font-size: 14px; margin-right: 4px;" title="Hapus Data">🗑️</a>
+    <!-- Tombol 2: Hapus Data (Kotak Ikon Merah) -->
+    <a href="master_lowongan.php?delete=<?= $row['id']; ?>" onclick="return confirm('Hapus data ini?')" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: #ef4444; color: white; text-decoration: none; border-radius: 10px; font-size: 14px; margin-right: 8px;" title="Hapus Data">🗑️</a>
     
-    <!-- PERBAIKAN RUTE: Mengarahkan langsung ke halaman lowongan_tahapan.php -->
-    <a href="lowongan_tahapan.php?lowongan_id=<?= $row['id']; ?>" style="display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; background: #4f46e5; color: white; text-decoration: none; border-radius: 10px; font-size: 14px;" title="Atur Alur Lowongan Tahapan">⚙️</a>
+    <!-- PERBAIKAN: Tombol Teks Panjang Kapsul Elegan -->
+    <a href="lowongan_tahapan.php?lowongan_id=<?= $row['id']; ?>" style="display: inline-inline-flex; align-items: center; padding: 8px 16px; background: #f5f3ff; color: #4f46e5; text-decoration: none; border-radius: 10px; font-size: 12px; font-weight: 700; border: 1px solid #e0e7ff; transition: all 0.2s;" onmouseover="this.style.background='#4f46e5'; this.style.color='#ffffff';" onmouseout="this.style.background='#f5f3ff'; this.style.color='#4f46e5';">
+        Lowongan Tahapan
+    </a>
 </td>
-
-
                         </tr>
                         <?php } ?>
                     </tbody>
@@ -475,7 +544,6 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
         <?php endif; ?>
 
     </div>
-</div>
 
 </body>
 </html>
