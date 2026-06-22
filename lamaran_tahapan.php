@@ -78,9 +78,12 @@ if ($q_lwn) {
 }
 
 // =========================================================================
-// [CRUD - READ] PERBAIKAN TOTAL: MENGHAPUS 'P.NAMA' PENYEBAB EROR DATABASE
+// [CRUD - READ] PERBAIKAN LOGIKA: FILTER INTERAKTIF BERDASARKAN KARTU KLIK
 // =========================================================================
-$query_progress = mysqli_query($koneksi, "SELECT 
+$filter_lowongan = isset($_GET['lowongan']) ? mysqli_real_escape_string($koneksi, $_GET['lowongan']) : '';
+
+// Query dasar membaca seluruh data lamaran
+$sql_progress = "SELECT 
                     lt.id AS id_tahapan,
                     rl.id AS id_lamaran,
                     COALESCE(p.nama_lengkap, 'Pelamar Otomatis') AS nama_pendaftar, 
@@ -91,8 +94,15 @@ $query_progress = mysqli_query($koneksi, "SELECT
                  FROM rekrutmen_lamaran rl
                  LEFT JOIN rekrutmen_lowongan low ON rl.lowongan_id = low.id
                  LEFT JOIN pelamar p ON rl.pelamar_id = p.id
-                 LEFT JOIN lamaran_tahapan lt ON lt.lamaran_id = rl.id
-                 ORDER BY rl.id DESC");
+                 LEFT JOIN lamaran_tahapan lt ON lt.lamaran_id = rl.id";
+
+// Jika admin mengklik kartu lowongan atas, tambahkan kondisi WHERE penyaring database
+if (!empty($filter_lowongan)) {
+    $sql_progress .= " WHERE low.judul_lowongan = '$filter_lowongan'";
+}
+
+$sql_progress .= " ORDER BY rl.id DESC";
+$query_progress = mysqli_query($koneksi, $sql_progress);
 
 if (!$query_progress) {
     die("Gagal memuat data progress: " . mysqli_error($koneksi));
@@ -449,22 +459,33 @@ if (!$query_progress) {
                 <h1>Lamaran Tahapan</h1>
             </div>
 
-            <!-- Bagian Lowongan Kerja -->
+            <!-- Bagian Lowongan Kerja (Kotak Kuota Master) -->
             <section>
                 <div class="section-header">
-                    <div class="section-title">Kuota Data Master Lowongan</div>
+                    <div class="section-title">Kuota Data Master Lowongan (Klik kartu untuk memfilter tabel)</div>
+                    <?php if (!empty($filter_lowongan)) : ?>
+                        <!-- Tombol untuk mengembalikan/menampilkan semua data lagi -->
+                        <a href="lamaran_tahapan.php" style="font-size: 13px; font-weight: 700; color: #4f46e5; text-decoration: none;">🔄 Tampilkan Semua</a>
+                    <?php endif; ?>
                 </div>
                 <div class="cards-grid">
                     <?php if (!empty($lowongan_kerja)) : ?>
                         <?php foreach ($lowongan_kerja as $lk) : ?>
-                            <div class="job-card">
-                                <div>
-                                    <div class="qty">NEW</div>
-                                    <div class="title">Posisi: <?php echo htmlspecialchars($lk['posisi'] ?? 'Lowongan'); ?></div>
-                                    <div class="desc"><?php echo htmlspecialchars($lk['deskripsi'] ?? '-'); ?></div>
+                            <?php 
+                                // Membuat link filter dinamis berdasarkan nama posisi lowongan
+                                $nama_posisi = $lk['posisi'] ?? ''; 
+                                $is_active_card = ($filter_lowongan === $nama_posisi) ? 'style="border-color: #4f46e5; background: #f5f3ff;"' : '';
+                            ?>
+                            <a href="lamaran_tahapan.php?lowongan=<?php echo urlencode($nama_posisi); ?>" style="text-decoration: none; color: inherit;">
+                                <div class="job-card" <?php echo $is_active_card; ?>>
+                                    <div>
+                                        <div class="qty">NEW</div>
+                                        <div class="title">Posisi: <?php echo htmlspecialchars($nama_posisi); ?></div>
+                                        <div class="desc"><?php echo htmlspecialchars($lk['deskripsi'] ?? '-'); ?></div>
+                                    </div>
+                                    <div class="percentage-ring">NEW</div>
                                 </div>
-                                <div class="percentage-ring">NEW</div>
-                            </div>
+                            </a>
                         <?php endforeach; ?>
                     <?php else : ?>
                         <p style="color:#94a3b8; font-style:italic; font-size: 14px; width: 100%;">Belum ada kuota data master lowongan aktif.</p>
@@ -475,7 +496,11 @@ if (!$query_progress) {
             <!-- TABEL PROGRESS SELEKSI -->
             <section>
                 <div class="section-header">
-                    <div class="section-title">Progress Rekrutmen Terbaru</div>
+                    <!-- Judul dinamis yang mengabarkan status filter aktif saat ini -->
+                    <div class="section-title">
+                        Progress Rekrutmen Terbaru 
+                        <?php echo !empty($filter_lowongan) ? " - Formasi " . htmlspecialchars($filter_lowongan) : ""; ?>
+                    </div>
                 </div>
                 <div class="table-wrapper">
                     <table>
@@ -512,21 +537,25 @@ if (!$query_progress) {
                                         <!-- Tombol Edit Status Pop-up Modal -->
                                         <a href="javascript:void(0)" class="btn-icon edit" onclick="bukaModalEdit('<?php echo $row['id_tahapan']; ?>', '<?php echo $row['id_lamaran']; ?>', '<?php echo $status_badge; ?>')" title="Edit Status">✏️</a>
                                         
-                                        <!-- Tombol Hapus: Sekarang selalu muncul untuk semua pelamar tanpa terkecuali -->
+                                        <!-- Tombol Hapus: Menghapus berantai di kedua halaman admin & pelamar -->
                                         <a href="lamaran_tahapan.php?action=hapus_tahapan&id_lamaran=<?php echo $row['id_lamaran']; ?>" class="btn-icon delete" onclick="return confirm('Apakah Anda yakin ingin menghapus data pelamar ini? Tindakan ini akan menghapus data di halaman Lamaran Tahapan dan Data Pelamar secara permanen.')" title="Hapus Data">🗑️</a>
                                     </td>
-
                                 </tr>
                             <?php endwhile; ?>
                         <?php else : ?>
-                            <tr><td colspan="5" class="text-empty">Belum ada progress tahapan rekrutmen terbaru saat ini.</td></tr>
+                            <tr>
+                                <!-- SINKRONISASI TEKS: Memberi tahu jika lowongan yang diklik belum punya pelamar -->
+                                <td colspan="5" class="text-empty">
+                                    <?php echo !empty($filter_lowongan) ? "Belum ada pelamar yang mendaftar pada formasi lowongan " . htmlspecialchars($filter_lowongan) . "." : "Belum ada progress tahapan rekrutmen terbaru saat ini."; ?>
+                                </td>
+                            </tr>
                         <?php endif; ?>
                         </tbody>
                     </table>
                 </div>
             </section>
         </main>
-    </div>
+    </div> <!-- Penutup dashboard-container -->
 
     <!-- STRUKTUR ELEMEN HTML MODAL BOX -->
     <div class="modal-overlay" id="modalEditStatus">
