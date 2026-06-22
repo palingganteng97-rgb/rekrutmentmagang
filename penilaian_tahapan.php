@@ -103,9 +103,50 @@ $data_nilai  = mysqli_fetch_assoc($query_nilai);
         label { display: block; font-weight: 600; margin-bottom: 8px; font-size: 14px; }
         .form-control { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
         
-        .chrome-tabs-container { display: flex; background-color: #e2e8f0; padding: 6px 6px 0 6px; border-radius: 12px 12px 0 0; gap: 4px; overflow-x: auto; margin-bottom: 20px; border-bottom: 1px solid #cbd5e1; }
-        .chrome-tab { padding: 10px 16px; background-color: #f1f5f9; color: #475569; border-radius: 10px 10px 0 0; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
-        .chrome-tab.active { background-color: #ffffff; color: #4f46e5; border: 1px solid #cbd5e1; border-bottom: none; position: relative; margin-bottom: -1px; padding-bottom: 11px; }
+.chrome-tabs-container { 
+    display: flex; 
+    background-color: #e2e8f0; 
+    padding: 6px 6px 0 6px; 
+    border-radius: 12px 12px 0 0; 
+    gap: 4px; 
+    overflow-x: auto; 
+    margin-bottom: 20px; 
+    border-bottom: 1px solid #cbd5e1; 
+    
+    /* Mematikan fitur scrollbar standar agar panah hilang di Firefox/IE */
+    scrollbar-width: none; 
+    -ms-overflow-style: none; 
+}
+
+/* Menyembunyikan total batang dan tombol panah scrollbar di Chrome, Safari, dan Edge */
+.chrome-tabs-container::-webkit-scrollbar { 
+    display: none; 
+    width: 0;
+    height: 0;
+}
+
+.chrome-tab { 
+    padding: 10px 16px; 
+    background-color: #f1f5f9; 
+    color: #475569; 
+    border-radius: 10px 10px 0 0; 
+    font-size: 12px; 
+    font-weight: 700; 
+    cursor: pointer; 
+    white-space: nowrap; 
+    transition: all 0.15s; 
+}
+
+.chrome-tab.active { 
+    background-color: #ffffff; 
+    color: #4f46e5; 
+    border: 1px solid #cbd5e1; 
+    border-bottom: none; 
+    position: relative; 
+    margin-bottom: -1px; 
+    padding-bottom: 11px; 
+}
+
 
         .btn-submit { background-color: #4f46e5; color: white; padding: 12px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; width: 100%; margin-top: 10px; font-size: 15px; }
         .btn-submit:hover { background-color: #4338ca; }
@@ -113,6 +154,19 @@ $data_nilai  = mysqli_fetch_assoc($query_nilai);
         .alert { padding: 12px; border-radius: 6px; font-size: 14px; margin-bottom: 20px; }
         .alert-success { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
         .alert-error { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+        /* Menghapus tombol panah naik-turun bawaan browser Chrome, Safari, Edge, dan Opera */
+input[type=number]::-webkit-inner-spin-button, 
+input[type=number]::-webkit-outer-spin-button { 
+    -webkit-appearance: none; 
+    margin: 0; 
+}
+
+/* Menghapus tombol panah naik-turun bawaan browser Firefox */
+input[type=number] {
+    -moz-appearance: textfield;
+}
+
     </style>
 </head>
 <body>
