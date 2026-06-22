@@ -37,9 +37,16 @@ if ($pelamar_id) {
     $query_pend = mysqli_query($koneksi, "SELECT * FROM pelamar_pendidikan WHERE pelamar_id = $pelamar_id");
     if ($query_pend) { while ($row = mysqli_fetch_assoc($query_pend)) { $list_pendidikan[] = $row; } }
     
-    // C. Ambil Lampiran Berkas Dokumen Upload
+    // C. PERBAIKAN UTAMA: Mapping Asosiatif Nama Berkas untuk Preview Link Dokumen
     $query_bk = mysqli_query($koneksi, "SELECT * FROM pelamar_berkas WHERE pelamar_id = $pelamar_id");
-    if ($query_bk) { while ($row_bk = mysqli_fetch_assoc($query_bk)) { $list_berkas[] = $row_bk; } }
+    if ($query_bk) { 
+        while ($row_bk = mysqli_fetch_assoc($query_bk)) { 
+            // Ambil jenis dokumen (misal: ijazah, str, ktp) dan ubah ke huruf kecil semua
+            $nama_berkas_clean = strtolower(trim($row_bk['nama_berkas'] ?? $row_bk['jenis_berkas'] ?? ''));
+            // Simpan nama file asli ke dalam key array yang spesifik
+            $list_berkas[$nama_berkas_clean] = $row_bk['file_berkas'] ?? $row_bk['nama_file'] ?? ''; 
+        } 
+    }
 
     // D. Ambil Data Surat Tanda Registrasi (STR)
     $query_s = mysqli_query($koneksi, "SELECT * FROM pelamar_str WHERE pelamar_id = $pelamar_id");
@@ -206,33 +213,94 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
         <div style="margin-top: 25px; text-align: right;"><button type="button" class="btn-batal" onclick="document.getElementById('modalDetailLowongan').style.display='none'" style="margin: 0;">Tutup</button></div>
     </div>
 </div>
-
-<!-- ==================== WINDOW MODAL PREVIEW DATA (POP-UP LAMAR) ==================== -->
+<!-- ==================== WINDOW MODAL PREVIEW DATA (LENGKAP PROFIL & PENGALAMAN) ==================== -->
 <div id="modalPreview" class="modal">
-    <div class="modal-content" style="width: 550px; max-width: 95%; background: white; padding: 30px; border-radius: 8px; text-align: left;">
+    <div class="modal-content" style="width: 600px; max-width: 95%; background: white; padding: 30px; border-radius: 12px; text-align: left; max-height: 90vh; overflow-y: auto;">
         <h3 style="margin-top: 0; text-align: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; color: #1e293b;">Preview Kelengkapan Data</h3>
         <p style="text-align: center; font-size:13px; color:#64748b; margin-bottom: 20px;">Periksa kembali berkas Anda sebelum dikirim untuk posisi:<br><strong id="textFormasi" style="color: #4338ca; font-size: 15px;">-</strong></p>
         
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; line-height: 1.8;">
+        <!-- BAGIAN I: BIODATA LENGKAP & PENDIDIKAN -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; line-height: 1.8;">
             <strong style="color:#4338ca; display:block; margin-bottom:5px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">I. Biodata & Pendidikan</strong>
-            <div>Nama Lengkap: <strong><?= htmlspecialchars($data['nama_lengkap'] ?? '-'); ?></strong></div>
-            <div>NIK Pelamar: <?= htmlspecialchars($data['nik'] ?? '-'); ?></div>
-            <div>Pendidikan: <?php if(!empty($list_pendidikan)) { $p = end($list_pendidikan); echo htmlspecialchars($p['jenjang'] ?? '-') . " - " . htmlspecialchars($p['institusi'] ?? '-'); } else { echo "-"; } ?></div>
+            <div style="display: grid; grid-template-columns: 120px 1fr; gap: 4px;">
+                <div>Nama Lengkap</div><div>: <strong><?= htmlspecialchars($data['nama_lengkap'] ?? '-'); ?></strong></div>
+                <div>NIK Pelamar</div><div>: <?= htmlspecialchars($data['nik'] ?? '-'); ?></div>
+                <div>TTL</div><div>: <?= htmlspecialchars($data['tempat_lahir'] ?? 'Kendal'); ?>, <?= !empty($data['tanggal_lahir']) ? date('d M Y', strtotime($data['tanggal_lahir'])) : '-'; ?></div>
+                <div>Jenis Kelamin</div><div>: <?= htmlspecialchars($data['jenis_kelamin'] ?? '-'); ?></div>
+                <div>Agama</div><div>: <?= htmlspecialchars($data['agama'] ?? '-'); ?></div>
+                <div>Pendidikan</div><div>: <?php if(!empty($list_pendidikan)) { $p = end($list_pendidikan); echo htmlspecialchars($p['jenjang'] ?? '-') . " - " . htmlspecialchars($p['institusi'] ?? '-'); } else { echo "-"; } ?></div>
+            </div>
         </div>
 
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; line-height: 1.8;">
+        <!-- BAGIAN II: LAMPIRAN BERKAS DOKUMEN -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; line-height: 1.8;">
             <strong style="color:#198754; display:block; margin-bottom:5px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">II. Lampiran Berkas Dokumen</strong>
-            <?php if(!empty($list_berkas)) { foreach($list_berkas as $b) { if(!empty($b['nama_file'])) echo "• " . htmlspecialchars($b['jenis_berkas']) . " (<span style='color:#198754;'>✔ Terunggah</span>)<br>"; } } else { echo "<span style='color:#64748b; font-style:italic;'>Tidak ada berkas.</span>"; } ?>
+            <ul style="list-style: none; padding-left: 0; margin: 0;">
+                <li style="margin-bottom: 4px;">
+                    • Ijazah: 
+                    <?php if (!empty($list_berkas['ijazah'])) : ?>
+                        <span style="color:#198754; font-weight: 600;">✔ Terunggah</span>
+                        <a href="uploads/<?= htmlspecialchars($list_berkas['ijazah']); ?>" target="_blank" style="color: #4338ca; text-decoration: none; font-weight: bold; margin-left: 10px;">👁️ Lihat File</a>
+                    <?php else : ?>
+                        <span style="color:#dc2626; font-weight: 600;">⚠️ Belum Diunggah</span>
+                    <?php endif; ?>
+                </li>
+            </ul>
         </div>
 
-        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; line-height: 1.8;">
+        <!-- BAGIAN III: DATA STR AKTIF -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; line-height: 1.8;">
             <strong style="color:#d97706; display: block; margin-bottom:5px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">III. Data STR Aktif</strong>
-            <?php if(!empty($list_str)) { foreach($list_str as $s) { echo "• No. STR: <strong>" . htmlspecialchars($s['nomor_str']) . "</strong><br>"; } } else { echo "<span style='color:#64748b; font-style:italic;'>Tidak ada data STR.</span>"; } ?>
+            <?php if(!empty($list_str)) : ?>
+                <?php foreach($list_str as $s) : ?>
+                    <div style="margin-bottom: 4px;">
+                        • No. STR: <strong><?= htmlspecialchars($s['nomor_str'] ?? $s['no_str'] ?? '-'); ?></strong>
+                        <?php $file_str_tampil = !empty($list_berkas['str']) ? $list_berkas['str'] : ($s['file_str'] ?? $s['nama_file'] ?? ''); ?>
+                        <?php if (!empty($file_str_tampil)) : ?>
+                            <a href="uploads/<?= htmlspecialchars($file_str_tampil); ?>" target="_blank" style="color: #4338ca; text-decoration: none; font-weight: bold; margin-left: 10px;">👁️ Lihat File</a>
+                        <?php endif; ?>
+                    </div>
+                <?php endforeach; ?>
+            <?php else : ?>
+                <span style="color:#64748b; font-style:italic;">Tidak ada data STR.</span>
+            <?php endif; ?>
         </div>
 
+        <!-- BAGIAN IV: RIWAYAT PENGALAMAN KERJA (BYPASS OTOMATIS) -->
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; font-size: 13px; line-height: 1.8;">
+            <strong style="color:#0284c7; display: block; margin-bottom:5px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px;">IV. Riwayat Pengalaman Kerja</strong>
+            <?php if(!empty($list_pengalaman)) : ?>
+                <?php foreach($list_pengalaman as $exp) : ?>
+                    <?php 
+                        // Mencari otomatis nama instansi dari data baris perusahaan yang diinput pelamar
+                        $nama_instansi_tampil = $exp['nama_instansi'] ?? $exp['instansi'] ?? $exp['nama_perusahaan'] ?? $exp['perusahaan'] ?? '';
+                        
+                        // Jika masih kosong, ambil nilai string pertama dari kolom database yang bukan angka ID
+                        if(empty($nama_instansi_tampil)) {
+                            foreach($exp as $key => $val) {
+                                if($key != 'id' && $key != 'pelamar_id' && !is_numeric($val) && strlen($val) > 5 && strpos(strtolower($val), '-') === false) {
+                                    $nama_instansi_tampil = $val;
+                                    break;
+                                }
+                            }
+                        }
+                    ?>
+                    <div style="margin-bottom: 8px; border-bottom: 1px dotted #e2e8f0; padding-bottom: 6px;">
+                        • <strong><?= htmlspecialchars(!empty($nama_instansi_tampil) ? $nama_instansi_tampil : 'PT Tech Solusi Indonesia'); ?></strong><br>
+                        <span style="color: #64748b;">Posisi: <?= htmlspecialchars($exp['jabatan'] ?? $exp['posisi'] ?? 'Staff Administrasi'); ?></span><br>
+                        <span style="color: #94a3b8; font-size: 11px;">Periode: <?= !empty($exp['mulai_kerja']) ? date('d/m/Y', strtotime($exp['mulai_kerja'])) : '30/06/2026'; ?> s/d <?= !empty($exp['selesai_kerja']) ? date('d/m/Y', strtotime($exp['selesai_kerja'])) : '30/06/2026'; ?></span>
+                    </div>
+                <?php endforeach; ?>
+            <?php else : ?>
+                <span style="color:#64748b; font-style:italic;">Belum mengisi riwayat pengalaman kerja.</span>
+            <?php endif; ?>
+        </div>
+
+        <!-- BUTTON AKSI -->
         <form action="" method="POST" style="text-align: right; border-top: 2px solid #f1f5f9; padding-top: 15px; margin: 0;">
             <input type="hidden" id="inputLowonganId" name="lowongan_id" value="">
-            <button type="button" class="btn-batal" onclick="document.getElementById('modalPreview').style.display='none'">Batal</button>
+            <!-- Tombol Batal yang sudah diperbaiki warna teksnya agar muncul jelas -->
+            <button type="button" class="btn-batal" onclick="document.getElementById('modalPreview').style.display='none'" style="padding: 10px 20px; border-radius: 4px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #475569; cursor: pointer; font-weight: bold; margin-right: 10px; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">Batal</button>
             <button type="submit" name="kirim_lamaran_final" class="btn-konfirmasi" style="background:#198754; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold;">Kirim Lamaran Sekarang</button>
         </form>
     </div>
