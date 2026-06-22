@@ -120,6 +120,13 @@ if (!$query_progress) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Lamaran Tahapan Seleksi</title>
     <style>
+
+        .btn-score:hover {
+    background-color: #4f46e5 !important;
+    color: white !important;
+    border-color: #4f46e5 !important;
+}
+
         /* =========================================================================
            1. RESET GLOBAL & BASE STYLE
            ========================================================================= */
@@ -335,42 +342,6 @@ if (!$query_progress) {
         .text-empty      { text-align: center; color: #64748b; font-style: italic; padding: 40px 0; }
 
         /* =========================================================================
-           5. BUTTON ACTION (SQUARE COMPACT ICON)
-           ========================================================================= */
-        .btn-icon { 
-            display: inline-flex; 
-            align-items: center; 
-            justify-content: center; 
-            width: 38px; 
-            height: 38px; 
-            border-radius: 12px; 
-            text-decoration: none; 
-            font-size: 16px; 
-            transition: all 0.2s ease; 
-            border: none; 
-            cursor: pointer; 
-        }
-        .btn-icon.edit { 
-            background-color: #0ea5e9; 
-            color: #ffffff; 
-            margin-right: 8px; 
-        }
-        .btn-icon.edit:hover { 
-            background-color: #0284c7; 
-            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3); 
-            transform: translateY(-1px); 
-        }
-        .btn-icon.delete { 
-            background-color: #ef4444; 
-            color: #ffffff; 
-        }
-        .btn-icon.delete:hover { 
-            background-color: #dc2626; 
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3); 
-            transform: translateY(-1px); 
-        }
-
-        /* =========================================================================
            6. FLOATING MODAL POP-UP LAYER
            ========================================================================= */
         .modal-overlay { 
@@ -460,6 +431,7 @@ if (!$query_progress) {
         <a href="logout.php" style="display: block; width: 100%; padding: 14px; background: #ef4444; color: #ffffff !important; text-align: center; border-radius: 16px; font-weight: 700; font-size: 14px; text-decoration: none; border: none; transition: background 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'" onclick="return confirm('Apakah Anda yakin ingin keluar dari sistem Admin?')">Log Out</a>
     </div>            
 </aside>
+
         <!-- AREA KONTEN UTAMA MID -->
         <main class="main-content">
             <div class="content-header">
@@ -511,53 +483,68 @@ if (!$query_progress) {
                 </div>
                 <div class="table-wrapper">
                     <table>
-                        <thead>
-                            <tr>
-                                <th>Nama Pelamar</th>
-                                <th>Formasi Lowongan</th>
-                                <th>Tanggal Update</th>
-                                <th>Status Tahap</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
+<thead>
+    <tr>
+        <th>NAMA PELAMAR</th>
+        <th>FORMASI LOWONGAN</th>
+        <th>TANGGAL UPDATE</th>
+        <th>STATUS TAHAP</th>
+        <th style="text-align: center; width: 100px;">AKSI</th> <!-- TAMBAHKAN INI -->
+    </tr>
+</thead>
+
                         <tbody>
                         <?php if ($query_progress && mysqli_num_rows($query_progress) > 0) : ?>
-                            <?php while ($row = mysqli_fetch_assoc($query_progress)) : ?>
-                                <?php 
-                                    $status_badge = !empty($row['status_tahap']) ? $row['status_tahap'] : 'Pending'; 
-                                    $class_badge = 'badge-pending';
-                                    if ($status_badge == 'Proses') { $class_badge = 'badge-proses'; }
-                                    elseif ($status_badge == 'Lulus' || $status_badge == 'Terima' || $status_badge == 'Diterima') { $class_badge = 'badge-diterima'; }
-                                    elseif ($status_badge == 'Tidak Lulus' || $status_badge == 'Tolak' || $status_badge == 'Ditolak' || $status_badge == 'Skip') { $class_badge = 'badge-ditolak'; }
-                                ?>
-                                <tr>
-                                    <td>
-                                        <div class="candidate-name"><?php echo htmlspecialchars($row['nama_pendaftar']); ?></div>
-                                        <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">NIK: <?php echo htmlspecialchars($row['nik'] ?? '-'); ?></div>
-                                    </td>
-                                    <td><span style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($row['nama_lowongan']); ?></span></td>
-                                    <td><?php echo date('d M Y - H:i', strtotime($row['tanggal_update'])); ?> WIB</td>
-                                    <td>
-                                        <span class="badge <?php echo $class_badge; ?>"><?php echo htmlspecialchars($status_badge); ?></span>
-                                    </td>
-                                    <td>
-                                        <!-- Tombol Edit Status Pop-up Modal -->
-                                        <a href="javascript:void(0)" class="btn-icon edit" onclick="bukaModalEdit('<?php echo $row['id_tahapan']; ?>', '<?php echo $row['id_lamaran']; ?>', '<?php echo $status_badge; ?>')" title="Edit Status">✏️</a>
-                                        
-                                        <!-- Tombol Hapus: Menghapus berantai di kedua halaman admin & pelamar -->
-                                        <a href="lamaran_tahapan.php?action=hapus_tahapan&id_lamaran=<?php echo $row['id_lamaran']; ?>" class="btn-icon delete" onclick="return confirm('Apakah Anda yakin ingin menghapus data pelamar ini? Tindakan ini akan menghapus data di halaman Lamaran Tahapan dan Data Pelamar secara permanen.')" title="Hapus Data">🗑️</a>
-                                    </td>
-                                </tr>
-                            <?php endwhile; ?>
+<?php while ($row = mysqli_fetch_assoc($query_progress)) : ?>
+    <?php 
+        $status_badge = !empty($row['status_tahap']) ? $row['status_tahap'] : 'Pending'; 
+        $class_badge  = 'badge-pending';
+        
+        if ($status_badge == 'Proses') { 
+            $class_badge = 'badge-proses'; 
+        } elseif ($status_badge == 'Lulus' || $status_badge == 'Terima' || $status_badge == 'Diterima') { 
+            $class_badge = 'badge-diterima'; 
+        } elseif ($status_badge == 'Tidak Lulus' || $status_badge == 'Tolak' || $status_badge == 'Ditolak' || $status_badge == 'Skip') { 
+            $class_badge = 'badge-ditolak'; 
+        }
+        
+        // PERBAIKAN BARIS INI: Ambil alias 'id_tahapan' dari query SQL Anda
+        $id_lamaran_tahapan = $row['id_tahapan'] ?? ''; 
+    ?>
+    <tr>
+        <td>
+            <div class="candidate-name"><?php echo htmlspecialchars($row['nama_pendaftar']); ?></div>
+            <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">NIK: <?php echo htmlspecialchars($row['nik'] ?? '-'); ?></div>
+        </td>
+        <td><span style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($row['nama_lowongan']); ?></span></td>
+        <td><?php echo date('d M Y - H:i', strtotime($row['tanggal_update'])); ?> WIB</td>
+        <td>
+            <span class="badge <?php echo $class_badge; ?>"><?php echo htmlspecialchars($status_badge); ?></span>
+        </td>
+<!-- KOLOM AKSI: TOMBOL NILAI -->
+<td style="text-align: center; white-space: nowrap;">
+    <?php $id_lamaran_tahapan = $row['id_tahapan'] ?? ''; ?>
+    <a href="penilaian_tahapan.php?id=<?php echo urlencode($id_lamaran_tahapan); ?>" class="btn-score" title="Beri Nilai Pelamar" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 14px; background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; border-radius: 8px; font-weight: 700; font-size: 13px; text-decoration: none; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+        <!-- PERBAIKAN: xmls sudah dinormalisasi ke w3.org/2000/svg -->
+        <svg xmlns="http://w3.org" width="14" height="14" fill="currentColor" class="bi bi-bookmark-star" viewBox="0 0 16 16" style="display: inline-block; vertical-align: middle;">
+            <path d="M7.84 4.1a.5.5 0 0 1 .32 0l1.353.362-.124.484L8 4.584l-1.39.362-.122-.484zM6.6 6.3a.5.5 0 0 0 .117-.168l1-2a.5.5 0 0 0-.834-.464l-1 2A.5.5 0 0 0 6.6 6.3"/>
+            <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.543a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/>
+        </svg>
+        <span style="line-height: 1;">Nilai</span>
+    </a>
+</td>
+    </tr>
+<?php endwhile; ?>
+
                         <?php else : ?>
                             <tr>
-                                <!-- SINKRONISASI TEKS: Memberi tahu jika lowongan yang diklik belum punya pelamar -->
-                                <td colspan="5" class="text-empty">
+                                <td colspan="5" class="text-empty" style="text-align: center; padding: 24px; color: #64748b;">
                                     <?php echo !empty($filter_lowongan) ? "Belum ada pelamar yang mendaftar pada formasi lowongan " . htmlspecialchars($filter_lowongan) . "." : "Belum ada progress tahapan rekrutmen terbaru saat ini."; ?>
                                 </td>
                             </tr>
                         <?php endif; ?>
                         </tbody>
+
                     </table>
                 </div>
             </section>
