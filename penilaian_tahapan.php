@@ -160,72 +160,73 @@ $error_msg   = "";
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $mst_tahapan_id = $_POST['mst_tahapan_id'] ?? $tab_default_aktif; 
     $tanggal        = date('Y-m-d H:i:s');
-    $status_individu = "Proses"; 
 
+    // -------------------------------------------------------------------------
+    // PERBAIKAN UTAMA: JIKA AKSI LEWATI DIKLIK -> LANGSUNG UPDATE SKIP & PULANG
+    // -------------------------------------------------------------------------
     if (isset($_POST['aksi_lewati'])) {
-        $nilai_db = "NULL"; 
         $status_individu = "Dilewati";
         $catatan = !empty($_POST['catatan']) ? "'" . mysqli_real_escape_string($conn, $_POST['catatan']) . "'" : "'Tahapan dilewati oleh penilai.'";
-    } else {
+
+        // 1. Simpan history dilewati ke tabel detail penilaian_tahapan (agar terekam)
+        $cek_existing = mysqli_query($conn, "SELECT id FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id'");
+        if (mysqli_num_rows($cek_existing) > 0) {
+            mysqli_query($conn, "UPDATE penilaian_tahapan SET penilai_id = '$penilai_id', nilai = NULL, status_tahap = '$status_individu', catatan = $catatan, tanggal = '$tanggal', updated_at = NOW() WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id'");
+        } else {
+            mysqli_query($conn, "INSERT INTO penilaian_tahapan (lamaran_tahapan_id, mst_tahapan_id, penilai_id, nilai, status_tahap, catatan, tanggal, created_at) VALUES ('$lamaran_tahapan_id', '$mst_tahapan_id', '$penilai_id', NULL, '$status_individu', $catatan, '$tanggal', NOW())");
+        }
+
+        // 2. TEMBAK LANGSUNG: Paksa status di tabel induk lamaran_tahapan menjadi 'Skip'
+        mysqli_query($conn, "UPDATE lamaran_tahapan SET status = 'Skip' WHERE id = '$lamaran_tahapan_id'");
+
+        // 3. ALIKHAN HALAMAN: Langsung pulangkan penilai ke halaman daftar progress utama
+        echo "<script>alert('⏭️ Tahapan berhasil dilewati! Status progress pelamar diubah menjadi SKIP.'); window.location.href='lamaran_tahapan.php';</script>";
+        exit;
+    } 
+    
+    // --- JALUR NORMAL: JIKA TOMBOL SIMPAN HASIL PENILAIAN DIKLIK ---
+    else {
         $nilai_input = floatval($_POST['nilai'] ?? 0);
         $nilai_db = "'" . number_format($nilai_input, 2, '.', '') . "'";
         $catatan = "'" . mysqli_real_escape_string($conn, $_POST['catatan'] ?? '') . "'";
         $status_individu = ($nilai_input >= 75.00) ? "Lulus" : "Tidak Lulus";
-    }
 
-    $cek_existing = mysqli_query($conn, "SELECT id FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id'");
+        $cek_existing = mysqli_query($conn, "SELECT id FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id'");
 
-    if (mysqli_num_rows($cek_existing) > 0) {
-        $query_save = "UPDATE penilaian_tahapan SET penilai_id = '$penilai_id', nilai = $nilai_db, status_tahap = '$status_individu', catatan = $catatan, tanggal = '$tanggal', updated_at = NOW() WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id'";
-    } else {
-        $query_save = "INSERT INTO penilaian_tahapan (lamaran_tahapan_id, mst_tahapan_id, penilai_id, nilai, status_tahap, catatan, tanggal, created_at) VALUES ('$lamaran_tahapan_id', '$mst_tahapan_id', '$penilai_id', $nilai_db, '$status_individu', $catatan, '$tanggal', NOW())";
-    }
-
-    // -------------------------------------------------------------------------
-    // MULAI DARI SINI DIGANTI DENGAN KALKULATOR SINKRONISASI STATUS BARU
-    // -------------------------------------------------------------------------
-    if (mysqli_query($conn, $query_save)) {
-        $success_msg = "Data penilaian tahapan berhasil disimpan dengan status: " . strtoupper($status_individu);
-
-        // Hitung total opsi tab tahapan seleksi master yang tersedia
-        $total_tahapan_wajib = count($list_tabs);
-
-        // Hitung berapa banyak tahapan yang sudah diisi nilai oleh penilai saat ini
-        $query_hitung_isi = mysqli_query($conn, "SELECT status_tahap FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id'");
-        $total_terisi = mysqli_num_rows($query_hitung_isi);
-
-        $ada_tidak_lulus = false;
-        $ada_skip        = false;
-
-        while ($cek_skor = mysqli_fetch_assoc($query_hitung_isi)) {
-            if ($cek_skor['status_tahap'] == 'Tidak Lulus') {
-                $ada_tidak_lulus = true;
-            }
-            if ($cek_skor['status_tahap'] == 'Dilewati') {
-                $ada_skip = true;
-            }
-        }
-
-        // Ambil keputusan status final untuk halaman dashboard depan
-        if ($total_terisi < $total_tahapan_wajib) {
-            // Jika penilai belum klik/isi semua opsi tab, siapkan status ke 'Pending'
-            $status_final_induk = "Pending";
+        if (mysqli_num_rows($cek_existing) > 0) {
+            $query_save = "UPDATE penilaian_tahapan SET penilai_id = '$penilai_id', nilai = $nilai_db, status_tahap = '$status_individu', catatan = $catatan, tanggal = '$tanggal', updated_at = NOW() WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id'";
         } else {
-            // Jika sudah diisi semua opsi tab tanpa terkecuali, lakukan evaluasi kelulusan
-            if ($ada_tidak_lulus) {
-                $status_final_induk = "Tidak Lulus";
-            } elseif ($ada_skip) {
-                $status_final_induk = "Skip";
-            } else {
-                $status_final_induk = "Lulus";
-            }
+            $query_save = "INSERT INTO penilaian_tahapan (lamaran_tahapan_id, mst_tahapan_id, penilai_id, nilai, status_tahap, catatan, tanggal, created_at) VALUES ('$lamaran_tahapan_id', '$mst_tahapan_id', '$penilai_id', $nilai_db, '$status_individu', $catatan, '$tanggal', NOW())";
         }
 
-        // Jalankan perintah update ke tabel induk utama
-        mysqli_query($conn, "UPDATE lamaran_tahapan SET status = '$status_final_induk' WHERE id = '$lamaran_tahapan_id'");
+        if (mysqli_query($conn, $query_save)) {
+            $success_msg = "Data penilaian tahapan berhasil disimpan dengan status: " . strtoupper($status_individu);
 
-    } else {
-        $error_msg = "Gagal menyimpan data penilaian: " . mysqli_error($conn);
+            // Hitung ulang status otomatis untuk halaman depan (Pending / Lulus / Tidak Lulus)
+            $total_tahapan_wajib = count($list_tabs);
+            $query_hitung_isi = mysqli_query($conn, "SELECT status_tahap FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id'");
+            $total_terisi = mysqli_num_rows($query_hitung_isi);
+
+            $ada_tidak_lulus = false;
+            $ada_skip        = false;
+
+            while ($cek_skor = mysqli_fetch_assoc($query_hitung_isi)) {
+                if ($cek_skor['status_tahap'] == 'Tidak Lulus') { $ada_tidak_lulus = true; }
+                if ($cek_skor['status_tahap'] == 'Dilewati') { $ada_skip = true; }
+            }
+
+            if ($total_terisi < $total_tahapan_wajib) {
+                $status_final_induk = "Pending";
+            } else {
+                if ($ada_tidak_lulus) { $status_final_induk = "Tidak Lulus"; }
+                elseif ($ada_skip) { $status_final_induk = "Skip"; }
+                else { $status_final_induk = "Lulus"; }
+            }
+
+            mysqli_query($conn, "UPDATE lamaran_tahapan SET status = '$status_final_induk' WHERE id = '$lamaran_tahapan_id'");
+        } else {
+            $error_msg = "Gagal menyimpan data penilaian: " . mysqli_error($conn);
+        }
     }
 }
 
