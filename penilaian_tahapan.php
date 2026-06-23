@@ -32,10 +32,10 @@ if (mysqli_num_rows($cek_penilai_db) > 0) {
 }
 
 // =========================================================================
-// 2. QUERY UTAMA: AMBIL DATA BIODATA LENGKAP PELAMAR
+// 2. QUERY UTAMA: AMBIL DATA BIODATA LENGKAP PELAMAR (VERSI TANPA JOIN LOWONGAN)
 // =========================================================================
-$query_pelamar = mysqli_query($conn, "SELECT lt.id AS id_tahapan, 
-                                             p.*, 
+$query_pelamar = mysqli_query($conn, "SELECT lt.id AS id_tahapan,
+                                             p.*,
                                              p.id AS id_pelamar_murni,
                                              p.nama_lengkap AS nama_pendaftar,
                                              rl.id AS id_lamaran_asli
@@ -43,19 +43,16 @@ $query_pelamar = mysqli_query($conn, "SELECT lt.id AS id_tahapan,
                                       JOIN rekrutmen_lamaran rl ON lt.lamaran_id = rl.id
                                       JOIN pelamar p ON rl.pelamar_id = p.id
                                       WHERE lt.id = '$lamaran_tahapan_id' LIMIT 1");
+
 $data_pelamar = mysqli_fetch_assoc($query_pelamar);
 
-// -------------------------------------------------------------------------
-// LOGIKA BARU: INTERSEPTOR PENUTUPAN TAB / NAVIGATOR BEACON
-// -------------------------------------------------------------------------
+
+
+// LOGIKA INTERSEPTOR PENUTUPAN TAB / NAVIGATOR BEACON
 if (isset($_POST['action_meninggalkan_halaman'])) {
     $id_target_tahap = intval($_POST['lamaran_tahapan_id']);
-    
-    // 1. Cek berapa jumlah opsi tab master seleksi yang ada
     $query_master_tahapan = mysqli_query($conn, "SELECT id FROM mst_tahapan_seleksi WHERE status = 'Aktif' OR status = 1");
     $total_tahapan_wajib = mysqli_num_rows($query_master_tahapan);
-
-    // 2. Cek berapa banyak data yang SUDAH TERSIMPAN BENAR-BENAR di database saat ini
     $query_hitung_isi = mysqli_query($conn, "SELECT status_tahap FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$id_target_tahap'");
     $total_terisi = mysqli_num_rows($query_hitung_isi);
 
@@ -63,11 +60,12 @@ if (isset($_POST['action_meninggalkan_halaman'])) {
     $ada_skip        = false;
 
     while ($cek_skor = mysqli_fetch_assoc($query_hitung_isi)) {
-        if ($cek_skor['status_tahap'] == 'Tidak Lulus') { $ada_tidak_lulus = true; }
-        if ($cek_skor['status_tahap'] == 'Dilewati') { $ada_skip = true; }
+        // PERBAIKAN: Menyamakan huruf kapital sesuai data input form dan ENUM database
+        $status_tahap_db = strtoupper($cek_skor['status_tahap']);
+        if ($status_tahap_db == 'TIDAK LULUS') { $ada_tidak_lulus = true; }
+        if ($status_tahap_db == 'DILEWATI') { $ada_skip = true; }
     }
 
-    // 3. Ambil keputusan status: Jika belum dinilai penuh semua opsi tab, kembalikan ke PENDING
     if ($total_terisi < $total_tahapan_wajib) {
         $status_pulang = "Pending";
     } else {
@@ -76,12 +74,10 @@ if (isset($_POST['action_meninggalkan_halaman'])) {
         else { $status_pulang = "Lulus"; }
     }
 
-    // 4. Update status ke database dan langsung matikan proses (Bypass render HTML)
     mysqli_query($conn, "UPDATE lamaran_tahapan SET status = '$status_pulang' WHERE id = '$id_target_tahap'");
-    exit; // Berhenti di sini karena ini request latar belakang dari Beacon API
+    exit;
 }
 
-// JALUR NORMAL: Jika halaman dibuka biasa oleh penilai, ubah status ke 'Proses'
 if ($data_pelamar) {
     mysqli_query($conn, "UPDATE lamaran_tahapan SET status = 'Proses' WHERE id = '$lamaran_tahapan_id'");
 }
@@ -95,23 +91,17 @@ $list_pengalaman = [];
 if ($data_pelamar && !empty($data_pelamar['id_pelamar_murni'])) {
     $id_pelamar_target = $data_pelamar['id_pelamar_murni'];
 
-    // Tarik File IJAZAH/STR dari tabel pelamar_berkas
     $query_berkas = mysqli_query($conn, "SELECT * FROM pelamar_berkas WHERE pelamar_id = '$id_pelamar_target'");
     if ($query_berkas && mysqli_num_rows($query_berkas) > 0) {
         while ($row_bk = mysqli_fetch_assoc($query_berkas)) {
             $jenis_clean = strtolower(trim($row_bk['nama_berkas'] ?? $row_bk['jenis_berkas'] ?? ''));
             $file_asli   = $row_bk['file_berkas'] ?? $row_bk['nama_file'] ?? $row_bk['file'] ?? '';
 
-            if (stripos($jenis_clean, 'ijazah') !== false) {
-                $list_berkas['ijazah'] = $file_asli;
-            }
-            if (stripos($jenis_clean, 'str') !== false) {
-                $list_berkas['str'] = $file_asli;
-            }
+            if (stripos($jenis_clean, 'ijazah') !== false) { $list_berkas['ijazah'] = $file_asli; }
+            if (stripos($jenis_clean, 'str') !== false) { $list_berkas['str'] = $file_asli; }
         }
     }
 
-    // Tarik File STR Cadangan dari tabel khusus pelamar_str
     if (empty($list_berkas['str'])) {
         $query_tabel_str = mysqli_query($conn, "SELECT * FROM pelamar_str WHERE pelamar_id = '$id_pelamar_target' LIMIT 1");
         if ($query_tabel_str && mysqli_num_rows($query_tabel_str) > 0) {
@@ -125,7 +115,6 @@ if ($data_pelamar && !empty($data_pelamar['id_pelamar_murni'])) {
         }
     }
 
-    // Tarik Riwayat Kerja dari tabel pelamar_pengalaman
     $query_kerja = mysqli_query($conn, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = '$id_pelamar_target' ORDER BY id DESC");
     if ($query_kerja && mysqli_num_rows($query_kerja) > 0) {
         while ($row_exp = mysqli_fetch_assoc($query_kerja)) {
@@ -137,7 +126,7 @@ if ($data_pelamar && !empty($data_pelamar['id_pelamar_murni'])) {
 }
 
 // =========================================================================
-// 4. MASTER KONTROL TAB SELEKSI & LOGIKA BERPINDAH OPSI (SINKRONISASI GET)
+// 4. MASTER KONTROL TAB SELEKSI & LOGIKA SINKRONISASI GET/POST
 // =========================================================================
 $query_master_tahapan = mysqli_query($conn, "SELECT id, nama_tahapan FROM mst_tahapan_seleksi WHERE status = 'Aktif' OR status = 1 ORDER BY id ASC");
 $list_tabs = [];
@@ -146,8 +135,6 @@ while ($t = mysqli_fetch_assoc($query_master_tahapan)) {
 }
 
 $tab_default_aktif = $list_tabs[0]['id'] ?? 0;
-
-// PERBAIKAN UTAMA: Mengutamakan GET dari URL agar tab visual ikut beralih aktif saat auto-save dijalankan
 $mst_tahapan_id_aktif = $_GET['tahapan_id'] ?? $_POST['mst_tahapan_id'] ?? $tab_default_aktif;
 $tab_default_aktif    = $mst_tahapan_id_aktif;
 
@@ -155,99 +142,202 @@ $success_msg = "";
 $error_msg   = "";
 
 // =========================================================================
-// 5. LOGIKA PROSES SIMPAN / UPDATE EVALUASI TAHAPAN (POST HANDLER)
+// 5. LOGIKA PROSES SIMPAN / UPDATE EVALUASI TAHAPAN & PENGIRIMAN API
 // =========================================================================
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $mst_tahapan_id = $_POST['mst_tahapan_id'] ?? $tab_default_aktif; 
-    $tanggal        = date('Y-m-d H:i:s');
+    $mst_tahapan_id = $_POST['mst_tahapan_id'] ?? $_GET['tahapan_id'] ?? $tab_default_aktif; 
+    $tanggal_sekarang = date('Y-m-d H:i:s');
 
-    // -------------------------------------------------------------------------
-    // PERBAIKAN UTAMA: JIKA AKSI LEWATI DIKLIK -> LANGSUNG UPDATE SKIP & PULANG
-    // -------------------------------------------------------------------------
-    if (isset($_POST['aksi_lewati'])) {
-        $status_individu = "Dilewati";
-        $catatan = !empty($_POST['catatan']) ? "'" . mysqli_real_escape_string($conn, $_POST['catatan']) . "'" : "'Tahapan dilewati oleh penilai.'";
+    // Menerima request dari tombol "Simpan" biasa maupun tombol "Kirim Notifikasi"
+    if (isset($_POST['nilai']) || isset($_POST['kirim_pemberitahuan']) || isset($_POST['simpan_nilai_saja'])) {
+        
+        $id_lamaran_induk = $data_pelamar['id_lamaran_asli'] ?? 0;
+        
+        $nilai_kompetensi = mysqli_real_escape_string($conn, $_POST['nilai']);
+        $catatan_penilai  = mysqli_real_escape_string($conn, $_POST['catatan']);
+        $jenis_media      = mysqli_real_escape_string($conn, $_POST['jenis'] ?? 'WhatsApp'); 
+        $tujuan_kirim     = mysqli_real_escape_string($conn, $_POST['tujuan'] ?? ''); 
 
-        // 1. Simpan history dilewati ke tabel detail penilaian_tahapan (agar terekam)
-        $cek_existing = mysqli_query($conn, "SELECT id FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id'");
-        if (mysqli_num_rows($cek_existing) > 0) {
-            mysqli_query($conn, "UPDATE penilaian_tahapan SET penilai_id = '$penilai_id', nilai = NULL, status_tahap = '$status_individu', catatan = $catatan, tanggal = '$tanggal', updated_at = NOW() WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id'");
-        } else {
-            mysqli_query($conn, "INSERT INTO penilaian_tahapan (lamaran_tahapan_id, mst_tahapan_id, penilai_id, nilai, status_tahap, catatan, tanggal, created_at) VALUES ('$lamaran_tahapan_id', '$mst_tahapan_id', '$penilai_id', NULL, '$status_individu', $catatan, '$tanggal', NOW())");
-        }
-
-        // 2. TEMBAK LANGSUNG: Paksa status di tabel induk lamaran_tahapan menjadi 'Skip'
-        mysqli_query($conn, "UPDATE lamaran_tahapan SET status = 'Skip' WHERE id = '$lamaran_tahapan_id'");
-
-        // 3. ALIKHAN HALAMAN: Langsung pulangkan penilai ke halaman daftar progress utama
-        echo "<script>alert('⏭️ Tahapan berhasil dilewati! Status progress pelamar diubah menjadi SKIP.'); window.location.href='lamaran_tahapan.php';</script>";
-        exit;
-    } 
-    
-    // --- JALUR NORMAL: JIKA TOMBOL SIMPAN HASIL PENILAIAN DIKLIK ---
-    else {
-        $nilai_input = floatval($_POST['nilai'] ?? 0);
-        $nilai_db = "'" . number_format($nilai_input, 2, '.', '') . "'";
-        $catatan = "'" . mysqli_real_escape_string($conn, $_POST['catatan'] ?? '') . "'";
-        $status_individu = ($nilai_input >= 75.00) ? "Lulus" : "Tidak Lulus";
-
-        $cek_existing = mysqli_query($conn, "SELECT id FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id'");
-
-        if (mysqli_num_rows($cek_existing) > 0) {
-            $query_save = "UPDATE penilaian_tahapan SET penilai_id = '$penilai_id', nilai = $nilai_db, status_tahap = '$status_individu', catatan = $catatan, tanggal = '$tanggal', updated_at = NOW() WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id'";
-        } else {
-            $query_save = "INSERT INTO penilaian_tahapan (lamaran_tahapan_id, mst_tahapan_id, penilai_id, nilai, status_tahap, catatan, tanggal, created_at) VALUES ('$lamaran_tahapan_id', '$mst_tahapan_id', '$penilai_id', $nilai_db, '$status_individu', $catatan, '$tanggal', NOW())";
-        }
-
-        if (mysqli_query($conn, $query_save)) {
-            $success_msg = "Data penilaian tahapan berhasil disimpan dengan status: " . strtoupper($status_individu);
-
-            // Hitung ulang status otomatis untuk halaman depan (Pending / Lulus / Tidak Lulus)
-            $total_tahapan_wajib = count($list_tabs);
-            $query_hitung_isi = mysqli_query($conn, "SELECT status_tahap FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id'");
-            $total_terisi = mysqli_num_rows($query_hitung_isi);
-
-            $ada_tidak_lulus = false;
-            $ada_skip        = false;
-
-            while ($cek_skor = mysqli_fetch_assoc($query_hitung_isi)) {
-                if ($cek_skor['status_tahap'] == 'Tidak Lulus') { $ada_tidak_lulus = true; }
-                if ($cek_skor['status_tahap'] == 'Dilewati') { $ada_skip = true; }
+        $nama_tahap_aktif = "Tahapan Seleksi";
+        foreach ($list_tabs as $t) {
+            if ($t['id'] == $mst_tahapan_id) {
+                $nama_tahap_aktif = $t['nama_tahapan'];
+                break;
             }
+        }
 
-            if ($total_terisi < $total_tahapan_wajib) {
-                $status_final_induk = "Pending";
+        $status_tahap = ($nilai_kompetensi >= 75) ? 'LULUS' : 'TIDAK LULUS';
+
+        // 3. PROSES SIMPAN / UPDATE DATA EVALUASI KE TABEL `penilaian_tahapan`
+        $cek_penilaian = mysqli_query($conn, "SELECT id FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id' LIMIT 1");
+        
+        if (mysqli_num_rows($cek_penilaian) > 0) {
+            $query_save = "UPDATE penilaian_tahapan 
+                           SET nilai = '$nilai_kompetensi', status_tahap = '$status_tahap', catatan = '$catatan_penilai', penilai_id = '$penilai_id', updated_at = '$tanggal_sekarang' 
+                           WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id'";
+        } else {
+            $query_save = "INSERT INTO penilaian_tahapan (lamaran_tahapan_id, mst_tahapan_id, penilai_id, nilai, status_tahap, catatan, created_at, updated_at) 
+                           VALUES ('$lamaran_tahapan_id', '$mst_tahapan_id', '$penilai_id', '$nilai_kompetensi', '$status_tahap', '$catatan_penilai', '$tanggal_sekarang', '$tanggal_sekarang')";
+        }
+        $simpan_nilai_sukses = mysqli_query($conn, $query_save);
+
+        // DEFAULT FEEDBACK ALERT JIKA HANYA SIMPAN NILAI (TOMBOL BIRU)
+        if ($simpan_nilai_sukses) {
+            $success_msg = "Skor hasil penilaian kompetensi berhasil disimpan ke database!";
+        }
+
+        // =========================================================================
+        // PERBAIKAN: LOGIKA WHATSAPP HANYA BERJALAN JIKA TOMBOL PEMBERITAHUAN DIKLIK
+        // =========================================================================
+        if (isset($_POST['kirim_pemberitahuan']) && $jenis_media === 'WhatsApp' && !empty($tujuan_kirim) && $simpan_nilai_sukses) {
+            
+            // 4. SUSUN STRUKTUR TEKS PESAN WHATSAPP KONTEKSTUAL & PROFESIONAL
+            $nama_kandidat = htmlspecialchars($data_pelamar['nama_pendaftar'] ?? 'Kandidat');
+            
+            $pesan_notif  = "Yth. *{$nama_kandidat}*,\n\n";
+            $pesan_notif .= "Terima kasih telah mengikuti rangkaian proses rekrutmen Magang Rumah Sakit.\n\n";
+            $pesan_notif .= "Berikut adalah rincian hasil evaluasi resmi Anda untuk tahap *[" . strtoupper($nama_tahap_aktif) . "]* :\n";
+            $pesan_notif .= "• Nilai Kompetensi : *{$nilai_kompetensi}*\n";
+            
+            if ($status_tahap === 'LULUS') {
+                $pesan_notif .= "• Status Hasil : *LULUS (MEMENUHI SYARAT)* 🟢\n\n";
+                $pesan_notif .= "Selamat! Anda dinyatakan berhak untuk melanjutkan ke tahapan seleksi berikutnya. Informasi jadwal akan diperbarui secara berkala pada sistem pendaftaran.\n";
             } else {
-                if ($ada_tidak_lulus) { $status_final_induk = "Tidak Lulus"; }
-                elseif ($ada_skip) { $status_final_induk = "Skip"; }
-                else { $status_final_induk = "Lulus"; }
+                $pesan_notif .= "• Status Hasil : *TIDAK LULUS* 🔴\n\n";
+                $pesan_notif .= "Mohon maaf, hasil evaluasi Anda pada tahapan ini belum memenuhi batas kelulusan minimum. Terima kasih atas partisipasi Anda dalam seleksi ini.\n";
+            }
+            
+            if (!empty($catatan_penilai) && strtolower($catatan_penilai) !== 'oke') {
+                $pesan_notif .= "\n*Catatan Tambahan Tim Penilai*:\n_\"{$catatan_penilai}\"_\n";
+            }
+            $pesan_notif .= "\n_Pesan ini dikirimkan otomatis oleh Sistem Rekrutmen Magang RS._";
+
+            $status_log = 'Pending';
+            
+        // =========================================================================
+        // 5. TEMBAK API CURL KE GATEWAY LOKAL JIKALAU TOMBOL KIRIM DIKLIK
+        // =========================================================================
+        if (isset($_POST['kirim_pemberitahuan']) && $jenis_media === 'WhatsApp' && !empty($tujuan_kirim) && $simpan_nilai_sukses) {
+            
+            // 4. SUSUN TEKS PESAN DINAMIS (SINKRON DENGAN KOLOM PESAN CUSTOM BARU)
+            $pesan_custom_penilai = mysqli_real_escape_string($conn, $_POST['pesan_custom'] ?? '');
+            $nama_kandidat = htmlspecialchars($data_pelamar['nama_pendaftar'] ?? 'Kandidat');
+            
+            $pesan_notif  = "Yth. *{$nama_kandidat}*,\n\n";
+            $pesan_notif .= "Terima kasih telah mengikuti rangkaian proses rekrutmen Magang Rumah Sakit.\n\n";
+            $pesan_notif .= "Berikut adalah rincian hasil evaluasi resmi Anda untuk tahap *[" . strtoupper($nama_tahap_aktif) . "]* :\n";
+            $pesan_notif .= "• Nilai Kompetensi : *{$nilai_kompetensi}*\n";
+            
+            if ($status_tahap === 'LULUS') {
+                $pesan_notif .= "• Status Hasil : *LULUS (MEMENUHI SYARAT)* 🟢\n\n";
+                $pesan_notif .= "Selamat! Anda dinyatakan berhak untuk melanjutkan ke tahapan seleksi berikutnya.\n";
+            } else {
+                $pesan_notif .= "• Status Hasil : *TIDAK LULUS* 🔴\n\n";
+                $pesan_notif .= "Mohon maaf, hasil evaluasi Anda pada tahapan ini belum memenuhi batas kelulusan minimum.\n";
+            }
+            
+            if (!empty($catatan_penilai) && strtolower($catatan_penilai) !== 'oke') {
+                $pesan_notif .= "\n*Catatan Tambahan Tim Penilai*:\n_\"{$catatan_penilai}\"_\n";
             }
 
-            mysqli_query($conn, "UPDATE lamaran_tahapan SET status = '$status_final_induk' WHERE id = '$lamaran_tahapan_id'");
-        } else {
-            $error_msg = "Gagal menyimpan data penilaian: " . mysqli_error($conn);
+            // Sisipkan pesan tambahan dari kolom baru ke dalam isi WhatsApp
+            if (!empty($pesan_custom_penilai)) {
+                $pesan_notif .= "\n*Informasi Tambahan dari Penilai*:\n_{$pesan_custom_penilai}_\n";
+            }
+            $pesan_notif .= "\n_Pesan ini dikirimkan otomatis oleh Sistem Rekrutmen Magang RS._";
+
+                $curl = curl_init();
+
+                curl_setopt_array($curl, array(
+                    CURLOPT_URL => 'http://10.10.6.17:8000/kirim-pesan',
+                    CURLOPT_RETURNTRANSFER => true,
+                    CURLOPT_ENCODING => '',
+                    CURLOPT_MAXREDIRS => 10,
+                    CURLOPT_TIMEOUT => 0,
+                    CURLOPT_FOLLOWLOCATION => true,
+                    CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                    CURLOPT_CUSTOMREQUEST => 'POST',
+                    CURLOPT_POSTFIELDS => 'number=' . urlencode($tujuan_kirim) .
+                                        '&message=' . urlencode($pesan_notif),
+                    CURLOPT_HTTPHEADER => array(
+                        'Content-Type: application/x-www-form-urlencoded'
+                    ),
+                ));
+
+                $response = curl_exec($curl);
+                $err = curl_error($curl);
+
+                curl_close($curl);  echo "<pre>";
+                                    echo "Nomor : ".$tujuan_kirim."\n";
+                                    echo "Response : ".$response."\n";
+                                    echo "Error : ".$err."\n";
+                                    echo "</pre>";
+                                    exit;
+
+
+            // Menganalisis respon balik dari API Gateway Anda
+            if (!$err) {
+                // Catatan: Jika API Anda mengembalikan JSON sukses seperti {"status": true}, maka:
+                $res_data = json_decode($response, true);
+                if (isset($res_data['status']) && ($res_data['status'] === false || $res_data['status'] === 'error')) {
+                    $status_log = 'Gagal';
+                } else {
+                    $status_log = 'Terkirim'; // Set Sukses jika tidak ada error
+                }
+            } else {
+                $status_log = 'Gagal';
+            }
+
+            // 6. CATAT RIWAYAT TRANSAKSI KE TABEL `notifikasi_rekrutmen`
+            $query_log = "INSERT INTO notifikasi_rekrutmen (lamaran_id, jenis, tujuan, pesan, status, tanggal_kirim, created_at, updated_at) 
+                          VALUES ('$id_lamaran_induk', '$jenis_media', '$tujuan_kirim', '$pesan_notif', '$status_log', '$tanggal_sekarang', '$tanggal_sekarang', '$tanggal_sekarang')";
+            mysqli_query($conn, $query_log);
         }
-    }
+
+            // 7. BERIKAN KOMUNIKASI ALERT FEEDBACK DI HALAMAN WEB
+            if ($status_log === 'Terkirim') {
+                $success_msg = "Penilaian disimpan! Pemberitahuan hasil resmi telah sukses dikirim via WhatsApp ke nomor " . htmlspecialchars($tujuan_kirim);
+                $error_msg = ""; // clear error jika ada
+            } else {
+                $error_msg = "Skor nilai berhasil disimpan, tetapi pesan WhatsApp <strong>Gagal Terkirim</strong>. Pastikan gateway di IP 10.10.6.17 port 8000 dalam keadaan aktif.";
+                $success_msg = ""; // clear success jika ada
+            }
+        }
+
+        // Ambil ulang record data nilai terbaru untuk me-render isian form input value kembali
+        $query_refresh = mysqli_query($conn, "SELECT * FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id' LIMIT 1");
+        $data_nilai = mysqli_fetch_assoc($query_refresh);
+    } 
 }
 
 // =========================================================================
-// 6. FIX TOTAL: AMBIL DATA NILAI INDIVIDU BERDASARKAN TAB SELEKSI AKTIF
 // =========================================================================
-$data_nilai = [
-    'nilai' => '',
-    'status_tahap' => '',
-    'catatan' => ''
-];
+// 7. KUERI FALLBACK DEFAULT (DI LUAR BLOK POST)
+// =========================================================================
+if (!isset($data_nilai)) {
+    $query_load_nilai = mysqli_query($conn, "SELECT * FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$tab_default_aktif' LIMIT 1");
+    $data_nilai = mysqli_fetch_assoc($query_load_nilai);
+}
 
-if (!empty($lamaran_tahapan_id) && !empty($mst_tahapan_id_aktif)) {
-    // Ambil data nilai yang BENAR-BENAR COCOK dengan ID tahapan yang sedang dibuka
-    $query_baca_nilai = mysqli_query($conn, "SELECT * FROM penilaian_tahapan 
-                                             WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' 
-                                             AND mst_tahapan_id = '$mst_tahapan_id_aktif' LIMIT 1");
-                                             
-    if ($query_baca_nilai && mysqli_num_rows($query_baca_nilai) > 0) {
-        $data_nilai = mysqli_fetch_assoc($query_baca_nilai);
-    }
+if (!$data_nilai) {
+    $data_nilai = [
+        'id'                 => '',
+        'lamaran_tahapan_id' => $lamaran_tahapan_id,
+        'mst_tahapan_id'     => $tab_default_aktif,
+        'penilai_id'         => $penilai_id,
+        'nilai'              => null, 
+        'status_tahap'       => '-',  
+        'catatan'            => ''    
+    ];
+}
+
+// =========================================================================
+// PERBAIKAN UTAMA: PAKSA RESET JIKA DATA ADA TAPI NILAI KOSONG
+// =========================================================================
+// Jika data ditemukan di DB tetapi kolom nilai ternyata kosong/null,
+// jangan biarkan status_tahap memunculkan kata "DILEWATI" dari masa lalu.
+if (isset($data_nilai['nilai']) && ($data_nilai['nilai'] === null || $data_nilai['nilai'] === '')) {
+    $data_nilai['status_tahap'] = '-';
 }
 
 ?>
@@ -386,12 +476,12 @@ input[type=number] { -moz-appearance: textfield; }
 <div class="main-wrapper">
 
 <!-- ================= SISI KIRI: DATA UTUH DOKUMEN LAMARAN KERJA PELAMAR (READ ONLY) ================= -->
-<div class="profile-panel">
+<!-- PERBAIKAN: Menambahkan padding vertikal dan height auto agar fleksibel mengisi ruang -->
+<div class="profile-panel" style="padding: 15px 20px; box-sizing: border-box; height: auto;">
     
     <!-- Bagian Foto & Nama Utama Pelamar -->
-    <div class="profile-header-box">
+    <div class="profile-header-box" style="margin-bottom: 25px;">
         <div class="profile-avatar-box">
-            <!-- PERBAIKAN: Menyertakan folder uploads/ agar gambar dari halaman profil pelamar terbaca murni -->
             <?php if(!empty($data_pelamar['foto'])): ?>
                 <img src="uploads/<?= $data_pelamar['foto']; ?>" alt="Foto Profil Pelamar">
             <?php elseif(!empty($data_pelamar['foto_pelamar'])): ?>
@@ -403,28 +493,29 @@ input[type=number] { -moz-appearance: textfield; }
             <?php endif; ?>
         </div>
 
-        <div class="profile-main-name"><?= htmlspecialchars($data_pelamar['nama_lengkap'] ?? '-'); ?></div>
-        <div class="profile-main-sub">Melamar Posisi: <strong><?= htmlspecialchars($data_pelamar['nama_lowongan'] ?? '-'); ?></strong></div>
+        <div class="profile-main-name" style="margin-top: 10px; font-weight: 700;"><?= htmlspecialchars($data_pelamar['nama_lengkap'] ?? '-'); ?></div>
+        <div class="profile-main-sub" style="margin-top: 4px;">Melamar Posisi: <strong><?= htmlspecialchars($data_pelamar['nama_lowongan'] ?? '-'); ?></strong></div>
     </div>
 
     <!-- SEKTOR 1: DATA IDENTITAS PRIBADI -->
-    <div class="info-section">
-        <div class="section-divider">I. Biodata Pribadi Pelamar</div>
+    <!-- PERBAIKAN: Menaikkan margin-bottom sektor menjadi 30px & margin-bottom baris menjadi 14px agar meregang proporsional -->
+    <div class="info-section" style="margin-bottom: 30px;">
+        <div class="section-divider" style="margin-bottom: 15px; font-weight: 700; color: #4f46e5;">I. Biodata Pribadi Pelamar</div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">Nama Lengkap</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Nama Lengkap</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
             <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b;"><?= htmlspecialchars($data_pelamar['nama_lengkap'] ?? '-'); ?></span>
         </div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">NIK (No. KTP)</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">NIK (No. KTP)</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
-            <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b;"><?= htmlspecialchars($data_pelamar['nik'] ?? '-'); ?></span>
+            <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b; font-family: monospace;"><?= htmlspecialchars($data_pelamar['nik'] ?? '-'); ?></span>
         </div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">Tempat, Tgl Lahir</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Tempat, Tgl Lahir</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
             <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b;">
                 <?= htmlspecialchars($data_pelamar['tempat_lahir'] ?? '-'); ?>, 
@@ -432,80 +523,75 @@ input[type=number] { -moz-appearance: textfield; }
             </span>
         </div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">Jenis Kelamin</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Jenis Kelamin</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
             <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b"><?= htmlspecialchars($data_pelamar['jenis_kelamin'] ?? '-'); ?></span>
         </div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">Agama</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Agama</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
             <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b;"><?= htmlspecialchars($data_pelamar['agama'] ?? '-'); ?></span>
         </div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">Status Perkawinan</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Status Perkawinan</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
             <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b;"><?= htmlspecialchars($data_pelamar['status_sosial'] ?? $data_pelamar['status_hubungan'] ?? '-'); ?></span>
         </div>
     </div>
 
     <!-- SEKTOR 2: DATA KONTAK & ALAMAT TINGGAL -->
-    <div class="info-section">
-        <div class="section-divider">II. Kontak & Alamat Domisili</div>
+    <div class="info-section" style="margin-bottom: 30px;">
+        <div class="section-divider" style="margin-bottom: 15px; font-weight: 700; color: #4f46e5;">II. Kontak & Alamat Domisili</div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">Nomor Telepon/WA</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Nomor Telepon/WA</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
-            <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b;"><?= htmlspecialchars($data_pelamar['no_telepon'] ?? '-'); ?></span>
+            <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b; font-family: monospace;"><?= htmlspecialchars($data_pelamar['no_telepon'] ?? '-'); ?></span>
         </div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">Alamat Email</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Alamat Email</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
             <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b; word-break: break-all;"><?= htmlspecialchars($data_pelamar['email'] ?? '-'); ?></span>
         </div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">Kota / Kabupaten</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Kota / Kabupaten</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
             <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b;"><?= htmlspecialchars($data_pelamar['kota'] ?? '-'); ?></span>
         </div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">Provinsi</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Provinsi</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
             <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b;"><?= htmlspecialchars($data_pelamar['provinsi'] ?? '-'); ?></span>
         </div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">Alamat Lengkap Rumah</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Alamat Lengkap Rumah</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
             <span class="data-value" style="flex: 1; text-align: left; line-height: 1.5; color: #475569; font-weight: 500; word-break: break-word;"><?= htmlspecialchars($data_pelamar['alamat'] ?? '-'); ?></span>
         </div>
     </div>
 
     <!-- SEKTOR 3: RIWAYAT PENDIDIKAN PELAMAR -->
-    <div class="info-section" style="margin-bottom: 0;">
-        <div class="section-divider">III. Kualifikasi Pendidikan</div>
+    <div class="info-section" style="margin-bottom: 30px;">
+        <div class="section-divider" style="margin-bottom: 15px; font-weight: 700; color: #4f46e5;">III. Kualifikasi Pendidikan</div>
         
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-            <span class="data-label" style="width: 200px; flex-shrink: 0;">Pendidikan Terakhir</span>
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Pendidikan Terakhir</span>
             <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
             <span class="data-value" style="flex: 1; text-align: left; color: #1e293b; font-weight: 700;"><?= htmlspecialchars($data_pelamar['pendidikan'] ?? '-'); ?></span>
         </div>
         
         <?php if(!empty($data_pelamar['institusi']) || !empty($data_pelamar['jurusan'])): ?>
-            <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-                <span class="data-label" style="width: 200px; flex-shrink: 0;">Nama Institusi</span>
+            <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+                <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Nama Institusi</span>
                 <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
-                <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b;"><?= htmlspecialchars($data_pelamar['institusi'] ?? '-'); ?></span>
-            </div>
-            <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 8px;">
-                <span class="data-label" style="width: 200px; flex-shrink: 0;">Jurusan / IPK</span>
-                <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
-                <span class="data-value" style="flex: 1; text-align: left; font-weight: 500; color: #1e293b;"><?= htmlspecialchars($data_pelamar['jurusan'] ?? '-'); ?> (IPK: <?= htmlspecialchars($data_pelamar['ipk'] ?? '-'); ?>)</span>
+                <span class="data-value" style="flex: 1; text-align: left; color: #1e293b;"><?= htmlspecialchars($data_pelamar['institusi'] ?? '-'); ?></span>
             </div>
         <?php endif; ?>
     </div>
@@ -587,181 +673,228 @@ input[type=number] { -moz-appearance: textfield; }
 
 </div>
     
-<!-- ================= SISI KANAN: FORM PENILAIAN (CLEAN & PROPORTIONAL) ================= -->
-<!-- PERBAIKAN UTAMA: Memotong padding-top kontainer kanan seminimal mungkin -->
-<div class="form-panel" style="padding: 5px 15px 15px 15px !important; box-sizing: border-box; height: auto !important; min-height: unset !important;">
-    
-    <!-- Judul Panel Kanan (Diberi padding & margin nol agar mepet ke atas) -->
-    <h1 style="font-size: 20px; font-weight: 700; margin-top: 0px !important; margin-bottom: 0px !important; padding-top: 0px !important; padding-bottom: 5px !important; color: #1e293b; border-bottom: 1px solid #f1f5f9; line-height: 1.2;">
-        Input Penilaian Tahapan
-    </h1>
+<!-- ================= SISI KANAN: PANEL PENILAIAN UTAMU (PROPROPIONAL & SIMETRIS) ================= -->
+<div style="display: flex; flex-direction: column; gap: 12px; width: 100%; box-sizing: border-box;">
 
-    <?php if (!empty($success_msg)): ?><div class="alert alert-success" style="margin-top: 5px; margin-bottom: 5px; padding: 6px; font-size: 13px;"><?= $success_msg; ?></div><?php endif; ?>
-    <?php if (!empty($error_msg)): ?><div class="alert alert-error" style="margin-top: 5px; margin-bottom: 5px; padding: 6px; font-size: 13px;"><?= $error_msg; ?></div><?php endif; ?>
-
-    <!-- PERBAIKAN: Mengembalikan margin menjadi NORMAL (0px) agar tidak bertabrakan, tapi pangkas paddingnya -->
-    <form action="" method="POST" id="formPenilaian" style="margin-top: 0px !important; padding-top: 5px !important;">
+    <!-- ==================== KOTAK 1: INPUT PENILAIAN CORE (LINIER KE BAWAH) ==================== -->
+    <div style="padding: 15px; background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; margin-bottom: 15px;">
         
-        <!-- Baris Pilihan Tahapan Seleksi (Diberi margin-top minimal agar pas di bawah garis) -->
-        <div class="form-group" style="margin-top: 5px !important; margin-bottom: 12px !important; padding-top: 0px !important;">
-            <label style="font-size: 13px; font-weight: 600; color: #475569; margin-top: 0px !important; margin-bottom: 4px !important; display: block;">Pilih Tahapan Seleksi</label>
-            <div class="chrome-tabs-container" style="margin-top: 0px !important; padding-top: 0px !important;">
+        <h1 style="font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 12px; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+            Input Penilaian Tahapan
+        </h1>
 
+        <!-- Alert Status Feedback -->
+        <?php if (!empty($success_msg)): ?>
+            <div class="alert alert-success" style="margin-bottom: 12px; padding: 8px; background-color: #d1fae5; color: #065f46; border-radius: 6px; font-size: 13px; font-weight: 600;"><?= $success_msg; ?></div>
+        <?php endif; ?>
+        <?php if (!empty($error_msg)): ?>
+            <div class="alert alert-error" style="margin-bottom: 12px; padding: 8px; background-color: #fee2e2; color: #991b1b; border-radius: 6px; font-size: 13px; font-weight: 600;"><?= $error_msg; ?></div>
+        <?php endif; ?>
 
-                <?php foreach ($list_tabs as $index => $tab) : ?>
-                    <div class="chrome-tab <?= $tab['id'] == $tab_default_aktif ? 'active' : ''; ?>" 
-                         id="tab-control-<?= $tab['id']; ?>"
-                         onclick="pilihTabChrome(this, '<?= $tab['id']; ?>')">
-                        <?= htmlspecialchars($tab['nama_tahapan']); ?>
-                    </div>
-                <?php endforeach; ?>
+        <!-- FORM UTAMA MEMBUNGKUS SELURUH KOTAK -->
+        <form action="" method="POST" id="formPenilaian" style="display: flex; flex-direction: column; gap: 12px;">
+            
+            <!-- 1. PILIHAN TAHAPAN SELEKSI (MELEBAR PENUH KE KANAN) -->
+            <div class="form-group" style="width: 100%;">
+                <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Pilih Tahapan Seleksi</label>
+                <div class="chrome-tabs-container" style="display: flex; gap: 6px; flex-wrap: wrap; width: 100%;">
+                    <?php foreach ($list_tabs as $index => $tab) : 
+                        $is_active = ($tab['id'] == $tab_default_aktif);
+                    ?>
+                        <div class="chrome-tab <?= $is_active ? 'active' : ''; ?>" 
+                             id="tab-control-<?= $tab['id']; ?>"
+                             onclick="location.href='?id=<?= $lamaran_tahapan_id; ?>&tahapan_id=<?= $tab['id']; ?>'"
+                             style="padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: all 0.2s;
+                                    background-color: <?= $is_active ? '#0284c7 !important' : '#e2e8f0'; ?>;
+                                    color: <?= $is_active ? '#ffffff !important' : '#475569'; ?>;
+                                    font-weight: <?= $is_active ? '700' : 'normal'; ?>;
+                                    border: 1px solid <?= $is_active ? '#0284c7' : '#cbd5e1'; ?>;">
+                            <?= htmlspecialchars($tab['nama_tahapan']); ?>
+                        </div>
+                    <?php endforeach; ?>
+                </div>
+                <input type="hidden" name="mst_tahapan_id" id="input_mst_tahapan_id" value="<?= $tab_default_aktif; ?>">
             </div>
-            <input type="hidden" name="mst_tahapan_id" id="input_mst_tahapan_id" value="<?= $tab_default_aktif; ?>">
-        </div>
 
-<!-- BARIS INPUT NILAI KOMPETENSI (INDIVIDU PER TAB) -->
-<div class="form-group" style="margin-top: 20px; margin-bottom: 15px;">
-    <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; display: block;">Nilai Kompetensi (0.00 - 100.00)</label>
-    <!-- PERBAIKAN: value dipaksa HANYA membaca variabel kueri database $data_nilai -->
-    <input type="number" 
-           name="nilai" 
-           id="input_nilai_kompetensi"
-           class="form-control" 
-           step="0.01" 
-           min="0" 
-           max="100" 
-           placeholder="Contoh: 85.50" 
-           value="<?= isset($data_nilai['nilai']) && $data_nilai['nilai'] !== null ? htmlspecialchars($data_nilai['nilai']) : ''; ?>" 
-           oninput="hitungStatusOtomatis(this.value)"
-           style="padding: 10px; font-size: 14px; width: 100%; box-sizing: border-box;"
-           required>
-</div>
+            <!-- ================= PERBAIKAN: STRUKTUR INPUT VERTIKAL BERURUTAN KE BAWAH ================= -->
+            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: 5px;">
+                
+                            <!-- 3. STATUS OTOMATIS (SEKARANG BERADA DI BAWAH NILAI) -->
+                <div class="form-group" style="display: flex; align-items: center; gap: 10px; background-color: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box; height: 38px;">
+                    <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 0;">Status Kelulusan Otomatis:</label>
+                    <span id="badge_status_otomatis" style="padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; background: #e2e8f0; color: #64748b; letter-spacing: 0.5px;">
+                        <?= !empty($data_nilai['status_tahap']) ? strtoupper($data_nilai['status_tahap']) : '-'; ?>
+                    </span>
+                </div>
 
-<!-- BARIS STATUS OTOMATIS -->
-<div class="form-group" style="margin-bottom: 15px; display: flex; align-items: center; gap: 10px;">
-    <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 0;">Status Otomatis:</label>
-    <span id="badge_status_otomatis" style="padding: 4px 12px; border-radius: 4px; font-size: 13px; font-weight: 700; background: #e2e8f0; color: #64748b;">
-        <?= !empty($data_nilai['status_tahap']) ? strtoupper($data_nilai['status_tahap']) : '-'; ?>
-    </span>
-</div>
+                <!-- 2. INPUT NILAI KOMPETENSI -->
+                <div class="form-group" style="width: 100%;">
+                    <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block;">Nilai Kompetensi (0.00 - 100.00)</label>
+                    <input type="number" 
+                           name="nilai" 
+                           id="input_nilai_kompetensi"
+                           class="form-control" 
+                           step="0.01" 
+                           min="0" 
+                           max="100" 
+                           placeholder="Contoh: 85.50" 
+                           value="<?= isset($data_nilai['nilai']) && $data_nilai['nilai'] !== null ? htmlspecialchars($data_nilai['nilai']) : ''; ?>" 
+                           oninput="hitungStatusOtomatis(this.value)"
+                           style="padding: 8px 12px; font-size: 13px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; height: 36px;"
+                           required>
+                </div>
 
-<!-- BARIS CATATAN REKOMENDASI PENILAI (INDIVIDU PER TAB) -->
-<div class="form-group" style="margin-bottom: 20px;">
-    <label style="font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px; display: block;">Catatan / Rekomendasi Penilai</label>
-    <!-- PERBAIKAN: Isi teks dipaksa HANYA membaca variabel kueri database $data_nilai -->
-    <textarea name="catatan" 
-              class="form-control" 
-              rows="4" 
-              placeholder="Tuliskan feedback hasil evaluasi teknis kandidat..." 
-              style="padding: 10px; font-size: 13px; width: 100%; box-sizing: border-box;" 
-              required><?= isset($data_nilai['catatan']) ? htmlspecialchars($data_nilai['catatan']) : ''; ?></textarea>
-</div>
+                <!-- 4. CATATAN REKOMENDASI PENILAI (SEKARANG BERADA DI BAWAH STATUS) -->
+                <div class="form-group" style="width: 100%;">
+                    <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block;">Catatan / Rekomendasi Penilai</label>
+                    <textarea name="catatan" 
+                              class="form-control" 
+                              rows="2" 
+                              placeholder="Tuliskan feedback hasil evaluasi teknis kandidat..." 
+                              style="padding: 8px 12px; font-size: 13px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; resize: vertical;" 
+                              required><?= isset($data_nilai['catatan']) ? htmlspecialchars($data_nilai['catatan']) : ''; ?></textarea>
+                </div>
 
-        <!-- ACTION BUTTONS: SIMPAN & LEWATI (FLEX LAYOUT) -->
-        <div style="display: flex; gap: 12px; margin-top: 10px;">
-            <button type="submit" 
-                    name="simpan_penilaian" 
-                    style="flex: 3; background-color: #4f46e5; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer;">
-                Simpan Hasil Penilaian
-            </button>
-            <button type="submit" 
-                    name="aksi_lewati" 
-                    style="flex: 1; background-color: #f59e0b; color: white; border: none; padding: 12px; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer;"
-                    formnovalidate>
-                Lewati Tahap
-            </button>
-        </div>
+                <!-- TOMBOL SIMPAN PENILAIAN (DI PALING BAWAH KOTAK 1) -->
+                <div style="width: 100%; margin-top: 4px;">
+                    <button type="submit" name="simpan_nilai_saja" style="width: 100%; background-color: #2563eb; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1); height: 38px; display: flex; align-items: center; justify-content: center;">
+                        Simpan Hasil Penilaian
+                    </button>
+                </div>
 
-    </form>
-</div> <!-- Tag penutup form-panel induk -->
+            </div>
+    </div> <!-- Batas akhir penutup Kotak 1 fisik -->
 
+    <!-- ==================== KOTAK 2: KHUSUS PENGATURAN & RIWAYAT NOTIFIKASI (VERTIKAL LINIER) ==================== -->
+    <div style="padding: 15px; background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
+        
+        <h2 style="font-size: 15px; font-weight: 700; color: #1e293b; margin-top: 0; margin-bottom: 12px; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+            Pengaturan Notifikasi Hasil Pendaftaran
+        </h2>
 
-<!-- ================= CONTROLLER JAVASCRIPT ================= -->
+        <!-- CONTAINER UTAMA KOTAK 2: Mengalir Tegak Lurus ke Bawah -->
+        <div style="display: flex; flex-direction: column; gap: 12px; width: 100%;">
+            
+            <!-- BARIS 1: Kirim Lewat (Kiri) & Tujuan Pengiriman (Kanan) -->
+            <div style="display: flex; gap: 10px; width: 100%;">
+                <div style="flex: 1;">
+                    <label style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 3px; display: block;">Kirim Lewat</label>
+                    <select name="jenis" id="select_jenis_notif" class="form-control" style="padding: 6px 8px; font-size: 12px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; background-color: #fff; height: 32px; cursor: pointer;" onchange="updateTujuanNotifikasi()" required>
+                        <option value="WhatsApp">WhatsApp</option>
+                        <option value="Email">Email</option>
+                        <option value="SMS">SMS</option>
+                    </select>
+                </div>
+                <div style="flex: 1.5;">
+                    <label style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 3px; display: block;">Tujuan Pengiriman</label>
+                    <input type="text" name="tujuan" id="input_tujuan_notif" class="form-control" style="padding: 6px 8px; font-size: 12px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; height: 32px;" required>
+                </div>
+            </div>
+
+            <!-- BARIS 2: Kolom Pesan Tambahan Penilai (Berada di Bawahnya) -->
+            <div class="form-group" style="width: 100%;">
+                <label style="font-size: 11px; font-weight: 600; color: #475569; margin-bottom: 3px; display: block;">Pesan Tambahan Penilai</label>
+                <textarea name="pesan_custom" 
+                          class="form-control" 
+                          rows="2" 
+                          placeholder="Tulis pesan tambahan resmi di sini jika ada..." 
+                          style="padding: 6px 8px; font-size: 12px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; resize: vertical; min-height: 45px;"></textarea>
+            </div>
+
+            <!-- BARIS 3: Riwayat Log Notifikasi Terakhir (Berada di Bawah Pesan) -->
+            <?php
+            $id_lamaran_induk = $data_pelamar['id_lamaran_asli'] ?? 0;
+            $query_cek_log = mysqli_query($conn, "SELECT jenis, tujuan, status, tanggal_kirim FROM notifikasi_rekrutmen WHERE lamaran_id = '$id_lamaran_induk' ORDER BY id DESC LIMIT 1");
+            
+            if (mysqli_num_rows($query_cek_log) > 0) : 
+                $log_notif = mysqli_fetch_assoc($query_cek_log);
+                $badge_color = '#e2e8f0'; $text_color = '#64748b';
+                if ($log_notif['status'] === 'Terkirim') { $badge_color = '#d1fae5'; $text_color = '#065f46'; }
+                if ($log_notif['status'] === 'Gagal') { $badge_color = '#fee2e2'; $text_color = '#991b1b'; }
+                if ($log_notif['status'] === 'Pending') { $badge_color = '#fef3c7'; $text_color = '#92400e'; }
+            ?>
+                <div style="background-color: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 11px; width: 100%; box-sizing: border-box;">
+                    <div style="font-weight: 700; color: #334155; margin-bottom: 3px; display: flex; justify-content: space-between; align-items: center;">
+                        <span>Status Terakhir:</span>
+                        <span style="padding: 1px 6px; border-radius: 4px; font-size: 10px; font-weight: 700; background-color: <?= $badge_color; ?>; color: <?= $text_color; ?>;">
+                            <?= strtoupper($log_notif['status']); ?>
+                        </span>
+                    </div>
+                    <div style="color: #64748b; line-height: 1.3; font-size: 10px;">
+                        • <?= htmlspecialchars($log_notif['jenis']); ?> (<?= htmlspecialchars($log_notif['tujuan']); ?>) | <em><?= date('d M Y H:i', strtotime($log_notif['tanggal_kirim'])); ?> WIB</em>
+                    </div>
+                </div>
+            <?php else : ?>
+                <div style="background-color: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 11px; color: #94a3b8; text-align: center; font-style: italic; width: 100%; box-sizing: border-box;">
+                    Belum ada riwayat notifikasi untuk kandidat ini.
+                </div>
+            <?php endif; ?>
+
+            <!-- BARIS 4: Tombol Kirim Notifikasi Hasil Pendaftaran (Di Paling Bawah) -->
+            <div style="width: 100%;">
+                <button type="submit" name="kirim_pemberitahuan" style="width: 100%; background-color: #059669; color: white; border: none; padding: 10px; border-radius: 4px; font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; box-shadow: 0 2px 4px rgba(5, 150, 105, 0.1); height: 38px; display: flex; align-items: center; justify-content: center;">
+                    Kirim Notifikasi Hasil Pendaftaran
+                </button>
+            </div>
+
+        </div> <!-- Penutup container vertikal Kotak 2 -->
+
+        <!-- ================= SINKRONISASI OTOMATIS DATA PELAMAR ================= -->
+<!-- Sistem akan otomatis mencoba mengambil kolom 'no_hp', 'telp', atau 'telepon' dari tabel pelamar Anda -->
+<input type="hidden" id="wa_pelamar"
+value="<?= htmlspecialchars(
+    $data_pelamar['no_telepon'] ??
+    $data_pelamar['no_hp'] ??
+    $data_pelamar['telp'] ??
+    $data_pelamar['telepon'] ??
+    $data_pelamar['whatsapp'] ??
+    ''
+); ?>">
+
+<input type="hidden" id="email_pelamar" value="<?= htmlspecialchars($data_pelamar['email'] ?? $data_pelamar['alamat_email'] ?? ''); ?>"> 
+
+        </form> <!-- FORM UTAMA DITUTUP DI SINI -->
+    </div>
+
+<!-- ================= SCRIPT JAVASCRIPT OTOMATISASI ================= -->
 <script>
-// Fungsi Klik Tab Seleksi: Auto-Save Data via AJAX lalu Berpindah Tab dengan Bersih
-function pilihTabChrome(elemen, tahapanId) {
-    const inputNilai = document.getElementById('input_nilai_kompetensi');
-    const inputCatatan = document.querySelector('textarea[name="catatan"]');
-    
-    // Ambil parameter ID Lamaran asli dari URL browser
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentId = urlParams.get('id');
-
-    // Jika kolom nilai kompetensi telah diisi angka, lakukan simpan otomatis di latar belakang (AJAX)
-    if (inputNilai && inputNilai.value.trim() !== '') {
-        // Persiapkan data form untuk dikirim secara asinkron
-        const formData = new FormData();
-        formData.append('mst_tahapan_id', document.getElementById('input_mst_tahapan_id').value); // ID tahapan LAMA yang mau disimpan
-        formData.append('nilai', inputNilai.value);
-        formData.append('catatan', inputCatatan ? inputCatatan.value : '');
-
-        // Kirim data nilai ke server menggunakan Fetch API (AJAX)
-        fetch(window.location.href, {
-            method: 'POST',
-            body: formData
-        })
-        .then(() => {
-            // Setelah database sukses mengunci nilai di latar belakang, langsung alihkan halaman ke opsi baru
-            window.location.href = `penilaian_tahapan.php?id=${currentId}&tahapan_id=${tahapanId}`;
-        })
-        .catch(error => {
-            console.error('Gagal menyimpan otomatis:', error);
-            // Tetap pindahkan halaman meskipun jaringan bermasalah
-            window.location.href = `penilaian_tahapan.php?id=${currentId}&tahapan_id=${tahapanId}`;
-        });
-    } else {
-        // Jika kolom nilai masih kosong, langsung pindah tab biasa tanpa memicu simpan data
-        window.location.href = `penilaian_tahapan.php?id=${currentId}&tahapan_id=${tahapanId}`;
-    }
-}
-
-// Fungsi Hitung Status Otomatis secara Real-Time saat Penilai Mengetik Nilai
 function hitungStatusOtomatis(nilai) {
     const badge = document.getElementById('badge_status_otomatis');
-    if (!nilai || nilai.trim() === '') {
+    if(nilai === '' || nilai === null) {
         badge.innerText = '-';
         badge.style.background = '#e2e8f0';
         badge.style.color = '#64748b';
         return;
     }
-    
-    const skor = parseFloat(nilai);
-    if (skor >= 75.00) {
+    if (parseFloat(nilai) >= 75) {
         badge.innerText = 'LULUS';
-        badge.style.background = '#dcfce7'; 
-        badge.style.color = '#15803d';      
+        badge.style.background = '#d1fae5';
+        badge.style.color = '#065f46';
     } else {
         badge.innerText = 'TIDAK LULUS';
-        badge.style.background = '#fee2e2'; 
-        badge.style.color = '#b91c1c';      
+        badge.style.background = '#fee2e2';
+        badge.style.color = '#991b1b';
     }
 }
 
-// Jalankan auto warna badge saat pertama kali halaman dimuat
-window.addEventListener('DOMContentLoaded', () => {
-    const inputNilai = document.getElementById('input_nilai_kompetensi');
-    if(inputNilai && inputNilai.value) {
-        hitungStatusOtomatis(inputNilai.value);
+function updateTujuanNotifikasi() {
+    const jenisMedia = document.getElementById('select_jenis_notif').value;
+    const inputTujuan = document.getElementById('input_tujuan_notif');
+    const waPelamar = document.getElementById('wa_pelamar').value;
+    const emailPelamar = document.getElementById('email_pelamar').value;
+
+    if (jenisMedia === 'WhatsApp' || jenisMedia === 'SMS') {
+        inputTujuan.value = waPelamar;
+    } else if (jenisMedia === 'Email') {
+        inputTujuan.value = emailPelamar;
     }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    updateTujuanNotifikasi();
+    const nilaiAwal = document.getElementById('input_nilai_kompetensi').value;
+    if(nilaiAwal !== '') { hitungStatusOtomatis(nilaiAwal); }
 });
 </script>
-
-<script>
-// DETEKSI OTOMATIS: Jika penilai menutup tab atau meninggalkan halaman tanpa klik simpan
-window.addEventListener('beforeunload', function (e) {
-    // Ambil parameter ID Lamaran dari URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const currentId = urlParams.get('id');
-    
-    // Siapkan data payload terkompresi
-    const data = new FormData();
-    data.append('action_meninggalkan_halaman', '1');
-    data.append('lamaran_tahapan_id', currentId);
-
-    // Kirim sinyal kilat ke server di latar belakang (tetap terkirim meskipun tab sudah hancur/ditutup)
-    navigator.sendBeacon('penilaian_tahapan.php?id=' + currentId, data);
-});
-</script>
-
 </body>
 </html>
