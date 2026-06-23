@@ -45,21 +45,45 @@ $query_pelamar = mysqli_query($conn, "SELECT lt.id AS id_tahapan,
                                       WHERE lt.id = '$lamaran_tahapan_id' LIMIT 1");
 $data_pelamar = mysqli_fetch_assoc($query_pelamar);
 
-// ⚡ TRIGER LOGIKA 1: Begitu halaman dibuka, paksa status utama di tabel lamaran_tahapan menjadi 'Proses'
-if ($data_pelamar) {
-    mysqli_query($conn, "UPDATE lamaran_tahapan SET status = 'Proses' WHERE id = '$lamaran_tahapan_id'");
+// -------------------------------------------------------------------------
+// LOGIKA BARU: INTERSEPTOR PENUTUPAN TAB / NAVIGATOR BEACON
+// -------------------------------------------------------------------------
+if (isset($_POST['action_meninggalkan_halaman'])) {
+    $id_target_tahap = intval($_POST['lamaran_tahapan_id']);
+    
+    // 1. Cek berapa jumlah opsi tab master seleksi yang ada
+    $query_master_tahapan = mysqli_query($conn, "SELECT id FROM mst_tahapan_seleksi WHERE status = 'Aktif' OR status = 1");
+    $total_tahapan_wajib = mysqli_num_rows($query_master_tahapan);
+
+    // 2. Cek berapa banyak data yang SUDAH TERSIMPAN BENAR-BENAR di database saat ini
+    $query_hitung_isi = mysqli_query($conn, "SELECT status_tahap FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$id_target_tahap'");
+    $total_terisi = mysqli_num_rows($query_hitung_isi);
+
+    $ada_tidak_lulus = false;
+    $ada_skip        = false;
+
+    while ($cek_skor = mysqli_fetch_assoc($query_hitung_isi)) {
+        if ($cek_skor['status_tahap'] == 'Tidak Lulus') { $ada_tidak_lulus = true; }
+        if ($cek_skor['status_tahap'] == 'Dilewati') { $ada_skip = true; }
+    }
+
+    // 3. Ambil keputusan status: Jika belum dinilai penuh semua opsi tab, kembalikan ke PENDING
+    if ($total_terisi < $total_tahapan_wajib) {
+        $status_pulang = "Pending";
+    } else {
+        if ($ada_tidak_lulus) { $status_pulang = "Tidak Lulus"; }
+        elseif ($ada_skip) { $status_pulang = "Skip"; }
+        else { $status_pulang = "Lulus"; }
+    }
+
+    // 4. Update status ke database dan langsung matikan proses (Bypass render HTML)
+    mysqli_query($conn, "UPDATE lamaran_tahapan SET status = '$status_pulang' WHERE id = '$id_target_tahap'");
+    exit; // Berhenti di sini karena ini request latar belakang dari Beacon API
 }
 
-// Menarik nama posisi lowongan jabatan pilihan pelamar secara aman
+// JALUR NORMAL: Jika halaman dibuka biasa oleh penilai, ubah status ke 'Proses'
 if ($data_pelamar) {
-    $id_lamaran_murni = $data_pelamar['id_lamaran_asli'] ?? 0;
-    $query_lowongan = mysqli_query($conn, "SELECT * FROM rekrutmen_lamaran WHERE id = '$id_lamaran_murni'");
-    if ($query_lowongan && mysqli_num_rows($query_lowongan) > 0) {
-        $data_lw = mysqli_fetch_assoc($query_lowongan);
-        $data_pelamar['nama_lowongan'] = $data_lw['nama_lowongan'] ?? $data_lw['lowongan'] ?? $data_lw['posisi'] ?? 'Posisi Pilihan';
-    } else {
-        $data_pelamar['nama_lowongan'] = 'Posisi Pilihan';
-    }
+    mysqli_query($conn, "UPDATE lamaran_tahapan SET status = 'Proses' WHERE id = '$lamaran_tahapan_id'");
 }
 
 // =========================================================================
@@ -718,6 +742,23 @@ window.addEventListener('DOMContentLoaded', () => {
     if(inputNilai && inputNilai.value) {
         hitungStatusOtomatis(inputNilai.value);
     }
+});
+</script>
+
+<script>
+// DETEKSI OTOMATIS: Jika penilai menutup tab atau meninggalkan halaman tanpa klik simpan
+window.addEventListener('beforeunload', function (e) {
+    // Ambil parameter ID Lamaran dari URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentId = urlParams.get('id');
+    
+    // Siapkan data payload terkompresi
+    const data = new FormData();
+    data.append('action_meninggalkan_halaman', '1');
+    data.append('lamaran_tahapan_id', currentId);
+
+    // Kirim sinyal kilat ke server di latar belakang (tetap terkirim meskipun tab sudah hancur/ditutup)
+    navigator.sendBeacon('penilaian_tahapan.php?id=' + currentId, data);
 });
 </script>
 
