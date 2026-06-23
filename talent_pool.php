@@ -7,31 +7,43 @@ $user_db  = "root_host";
 $pass_db  = "password";          
 $nama_db  = "magang_rekrutmen_rs"; 
 
+// Menggunakan variabel $koneksi sesuai konfigurasi sistem Anda
 $koneksi = mysqli_connect($host, $user_db, $pass_db, $nama_db);
 
 if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
-// 2. DATA ARRAY LOKAL (Bahasa Indonesia)
-$lowongan_kerja = [
-    ['qty' => '3', 'nama' => 'Desainer Konten', 'pendaftar' => '5 pendaftar', 'pct' => '75%', 'color' => 'indigo'],
-    ['qty' => '9', 'nama' => 'Pengembang Node.js', 'pendaftar' => '12 pendaftar', 'pct' => '25%', 'color' => 'rose'],
-    ['qty' => '1', 'nama' => 'Desainer UI Senior', 'pendaftar' => '0 pendaftar', 'pct' => '0%', 'color' => 'slate'],
-    ['qty' => '2', 'nama' => 'Manajer Pemasaran', 'pendaftar' => '10 pendaftar', 'pct' => '45%', 'color' => 'indigo']
-];
+// =========================================================================
+// 2. QUERY UTAMA: AMBIL DATA TALENT POOL & TRACKING ID TAHAPAN LAMARAN
+// =========================================================================
+$query_pool = mysqli_query($koneksi, "
+SELECT
+tp.*,
+p.*,
+p.nama_lengkap AS nama_pendaftar,
 
-// 3. AMBIL DATA USER SECARA DINAMIS BERDASARKAN SESSION LOGIN
-$nama_tampilan = "Administrator";
+```
+    (
+        SELECT MAX(lt.id)
+        FROM rekrutmen_lamaran rl
+        JOIN lamaran_tahapan lt
+            ON rl.id = lt.lamaran_id
+        WHERE rl.pelamar_id = p.id
+    ) AS id_lamaran_tahapan
 
-if (isset($_SESSION['username'])) {
-    $username_aktif = $_SESSION['username'];
-    $query = "SELECT nama FROM users WHERE username = '$username_aktif'";
-    $hasil = mysqli_query($koneksi, $query);
-    if ($hasil && mysqli_num_rows($hasil) > 0) {
-        $data_user = mysqli_fetch_assoc($hasil);
-        $nama_tampilan = $data_user['nama'];
-    }
+FROM talent_pool tp
+JOIN pelamar p
+    ON tp.pelamar_id = p.id
+
+ORDER BY tp.id DESC
+```
+
+");
+
+
+if (!$query_pool) {
+    die("Query Gagal: " . mysqli_error($koneksi));
 }
 ?>
 
@@ -100,7 +112,7 @@ if (isset($_SESSION['username'])) {
     <div style="display: flex; flex-direction: column; gap: 6px;">
         <div class="brand-logo" style="font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 45px; display: flex; align-items: center; gap: 10px;"><span style="width: 10px; height: 20px; background: #4f46e5; border-radius: 4px; display: inline-block;"></span>impozitions</div>
         <nav class="menu-list">
-                    <a href="dashboard.php" class="menu-item active">Dashboard</a>
+                    <a href="dashboard.php" class="menu-item">Dashboard</a>
                     <a href="master_user.php" class="menu-item">Master User</a>
                     <a href="master_unit.php" class="menu-item">Master Unit</a>
                     <a href="master_jabatan.php" class="menu-item">Master Jabatan</a>
@@ -109,7 +121,7 @@ if (isset($_SESSION['username'])) {
                     <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
                     <a href="data_pelamar.php" class="menu-item">Data Pelamar</a>
                     <a href="lamaran_tahapan.php" class="menu-item">Lamaran Tahapan</a>
-                    <a href="talent_pool.php" class="menu-item">Talent Pool</a>
+                    <a href="talent_pool.php" class="menu-item active">Talent Pool</a>
                     <a href="user.php" class="menu-item">Profil Pengguna</a>
         </nav>
     </div>
@@ -123,46 +135,88 @@ if (isset($_SESSION['username'])) {
     </div>            
 </aside>
 
-
-        <!-- AREA KONTEN UTAMA TENGAH -->
-        <main class="main-content">
-            <div class="content-header">
-                <h1>Dashboard</h1>
-            </div>
-
-            <!-- Banner Sambutan -->
-            <div class="welcome-banner">
-                <h2>Selamat Datang Kembali, <?php echo $nama_tampilan; ?>!</h2>
-                <p>Sistem Rekrutmen Magang ID siap digunakan. Seluruh modul dan data pelamar dapat Anda kelola sepenuhnya melalui panel navigasi sebelah kiri.</p>
-            </div>
-
-            <!-- Bagian Lowongan Kerja -->
-            <section>
-                <div class="section-header">
-                    <div class="section-title">You need to hire</div>
-                    <a href="#" class="see-all-link">see all</a>
-                </div>
-                <div class="cards-grid">
-                    <?php foreach($lowongan_kerja as $l): ?>
-                    <div class="job-card">
-                        <div>
-                            <div class="qty"><?= $l['qty'] ?></div>
-                            <div class="title"><?= $l['nama'] ?></div>
-                            <div class="desc">(<?= $l['pendaftar'] ?>)</div>
-                        </div>
-                        <div class="percentage-ring" style="border-top-color: #4f46e5;"><?= $l['pct'] ?></div>
-                    </div>
-                    <?php endforeach; ?>
-                </div>
-            </section>
-                            </td>
-                        </tr>
+<!-- ==================== AREA UTAMA KANAN ==================== -->
+<div class="main-content">
+    <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: #0f172a;">✨ Database Talent Pool Kandidat</h2>
+    <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">Menampilkan daftar seluruh kandidat potensial hasil evaluasi penilai rekrutmen Rumah Sakit.</p>
+    
+    <div class="table-container">
+        <table class="table-pool">
+            <thead>
+                <tr>
+                    <th style="width: 5%; text-align: center;">NO</th>
+                    <th style="width: 25%;">DATA PELAMAR</th>
+                    <th style="width: 20%;">KONTAK</th>
+                    <th style="width: 25%;">CATATAN REKOMENDASI</th>
+                    <th style="width: 15%;">TANGGAL MASUK</th>
+                    <th style="width: 10%; text-align: center;">STATUS</th>
+                    <th style="width: 10%; text-align: center;">AKSI</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php 
+                $no = 1; 
+                if (mysqli_num_rows($query_pool) > 0) {
+                    while ($row = mysqli_fetch_assoc($query_pool)) : 
+                        // Menentukan class warna badge sesuai isi ENUM database Anda
+                        $status_clean = strtolower($row['status']);
+                        $class_badge = 'badge-aktif';
+                        if ($status_clean == 'dihubungi') { $class_badge = 'badge-dihubungi'; }
+                        if ($status_clean == 'direkrut') { $class_badge = 'badge-direkrut'; }
+                        if ($status_clean == 'nonaktif') { $class_badge = 'badge-nonaktif'; }
+                ?>
+                <tr style="color: #1e293b;">
+                    <!-- Kolom Nomor -->
+                    <td style="text-align: center; font-weight: 600; color: #64748b;"><?= $no++; ?></td>
                     
-                    </tbody>
-                </table>
-            </div>
-        </main>
+                    <!-- Kolom Nama & NIK -->
+                    <td>
+                        <strong style="color: #0284c7; font-size: 14px;"><?= htmlspecialchars($row['nama_pendaftar']); ?></strong><br>
+                        <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">NIK: <?= htmlspecialchars($row['nik']); ?></span>
+                    </td>
+                    
+                    <!-- Kolom Kontak Pelamar Resmi -->
+                    <td style="line-height: 1.5; color: #1e293b; vertical-align: top;">
+                        📞 <strong style="color: #334155;"><?= htmlspecialchars($row['no_telepon'] ?? '-'); ?></strong><br>
+                        ✉️ <span style="color: #64748b;"><?= htmlspecialchars($row['email'] ?? '-'); ?></span>
+                    </td>
+                    
+                    <!-- Kolom Catatan Penilai -->
+                    <td style="color: #475569; font-style: italic; line-height: 1.4;">
+                        "<?= !empty($row['catatan']) ? htmlspecialchars($row['catatan']) : 'Tidak ada catatan khusus.'; ?>"
+                    </td>
+                    
+                    <!-- Kolom Tanggal Masuk Pool -->
+                    <td style="color: #475569; font-weight: 500;">
+                        <?= !empty($row['tanggal_masuk']) ? date('d M Y - H:i', strtotime($row['tanggal_masuk'])) : '-'; ?> WIB
+                    </td>
+                    
+                    <!-- Kolom Status ENUM -->
+                    <td style="text-align: center;">
+                        <span class="badge-status <?= $class_badge; ?>">
+                            <?= htmlspecialchars($row['status']); ?>
+                        </span>
+                    </td>
 
+                    <!-- Kolom Aksi -->
+                    <td style="text-align: center; vertical-align: middle;">
+                        <?php if (!empty($row['id_lamaran_tahapan'])): ?>
+                            <a href="penilaian_tahapan.php?id=<?= $row['id_lamaran_tahapan']; ?>" style="display: inline-block; background-color: #2563eb; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: 700; box-shadow: 0 1px 2px rgba(37, 99, 235, 0.2); transition: background-color 0.2s;">
+                                🔍 Detail
+                            </a>
+                        <?php else: ?>
+                            <span style="font-size: 11px; color: #94a3b8; font-style: italic;">No Ref ID</span>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php 
+                    endwhile; 
+                } else {
+                    // Colspan diubah menjadi 7 karena ada total 7 kolom di bagian thead
+                    echo "<tr><td colspan='7' style='padding: 30px; text-align: center; color: #94a3b8; font-style: italic; font-size: 13px;'>Belum ada data kandidat yang masuk ke dalam kategori talent pool.</td></tr>";
+                } 
+                ?>
+            </tbody>
+        </table>
     </div>
-</body>
-</html>
+</div>

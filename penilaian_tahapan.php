@@ -152,11 +152,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['nilai']) || isset($_POST['kirim_pemberitahuan']) || isset($_POST['simpan_nilai_saja'])) {
         
         $id_lamaran_induk = $data_pelamar['id_lamaran_asli'] ?? 0;
+        $id_pelamar_murni = $data_pelamar['id_pelamar_murni'] ?? 0; // Mengambil ID Pelamar asli dari query Langkah 2
         
         $nilai_kompetensi = mysqli_real_escape_string($conn, $_POST['nilai']);
         $catatan_penilai  = mysqli_real_escape_string($conn, $_POST['catatan']);
         $jenis_media      = mysqli_real_escape_string($conn, $_POST['jenis'] ?? 'WhatsApp'); 
         $tujuan_kirim     = mysqli_real_escape_string($conn, $_POST['tujuan'] ?? ''); 
+
+        // =========================================================================
+        // LOGIKA INTEGRASI BARU: SINKRONISASI KE TABEL `talent_pool`
+        // =========================================================================
+        if (!empty($id_pelamar_murni)) {
+            // Cek apakah penilai mencentang checkbox Talent Pool dari form HTML
+            $is_talent_pool_checked = isset($_POST['is_talent_pool']) ? 1 : 0;
+
+            // Periksa apakah pelamar ini sudah terdaftar sebelumnya di database tabel talent_pool
+            $cek_pool = mysqli_query($conn, "SELECT id FROM talent_pool WHERE pelamar_id = '$id_pelamar_murni' LIMIT 1");
+            $ada_di_pool = (mysqli_num_rows($cek_pool) > 0);
+
+            if ($is_talent_pool_checked) {
+                if (!$ada_di_pool) {
+                    // JIKA DICENTANG & BELUM ADA -> Masukkan data baru sebagai status 'Aktif'
+                    $query_insert_pool = "INSERT INTO talent_pool (pelamar_id, catatan, status, tanggal_masuk, created_at, updated_at) 
+                                          VALUES ('$id_pelamar_murni', '$catatan_penilai', 'Aktif', '$tanggal_sekarang', '$tanggal_sekarang', '$tanggal_sekarang')";
+                    mysqli_query($conn, $query_insert_pool);
+                } else {
+                    // JIKA DICENTANG & SUDAH ADA -> Perbarui kolom catatan penguji yang terbaru
+                    $query_update_pool = "UPDATE talent_pool 
+                                          SET catatan = '$catatan_penilai', updated_at = '$tanggal_sekarang' 
+                                          WHERE pelamar_id = '$id_pelamar_murni'";
+                    mysqli_query($conn, $query_update_pool);
+                }
+            } else {
+                // JIKA CENTANG DIHAPUS & DATA ADA DI DATABASE -> Bersihkan/Keluarkan pelamar dari talent_pool
+                if ($ada_di_pool) {
+                    mysqli_query($conn, "DELETE FROM talent_pool WHERE pelamar_id = '$id_pelamar_murni'");
+                }
+            }
+        }
+        // =========================================================================
 
         $nama_tahap_aktif = "Tahapan Seleksi";
         foreach ($list_tabs as $t) {
@@ -183,7 +217,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
         // DEFAULT FEEDBACK ALERT JIKA HANYA SIMPAN NILAI (TOMBOL BIRU)
         if ($simpan_nilai_sukses) {
-            $success_msg = "Skor hasil penilaian kompetensi berhasil disimpan ke database!";
+            $success_msg = "Skor hasil penilaian kompetensi serta status talent pool berhasil disinkronkan ke database!";
         }
 
         // Inisialisasi status log bawaan sebelum diubah oleh API gateway
@@ -331,6 +365,19 @@ if (!$data_nilai) {
 
 if (isset($data_nilai['nilai']) && ($data_nilai['nilai'] === null || $data_nilai['nilai'] === '')) {
     $data_nilai['status_tahap'] = '-';
+}
+
+// =========================================================================
+// PERBAIKAN UTAMA: CEK DATABASE AGAR CENTANG TALENT POOL TIDAK HILANG
+// =========================================================================
+$id_pelamar_murni_cek = $data_pelamar['id_pelamar_murni'] ?? 0;
+
+if (!empty($id_pelamar_murni_cek)) {
+    $cek_status_pool = mysqli_query($conn, "SELECT id FROM talent_pool WHERE pelamar_id = '$id_pelamar_murni_cek' LIMIT 1");
+    // Jika data ditemukan di database tabel talent_pool, set nilainya menjadi 1 (artinya menyalakan centang)
+    $data_nilai['is_talent_pool'] = (mysqli_num_rows($cek_status_pool) > 0) ? 1 : 0;
+} else {
+    $data_nilai['is_talent_pool'] = 0;
 }
 ?>
 
@@ -688,10 +735,10 @@ input[type=number] { -moz-appearance: textfield; }
 <!-- ================= SISI KANAN: PANEL PENILAIAN UTAMU (PROPROPIONAL & SIMETRIS) ================= -->
 <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; box-sizing: border-box;">
 
-    <!-- ==================== KOTAK 1: INPUT PENILAIAN CORE (LINIER KE BAWAH) ==================== -->
+    <!-- ==================== KOTAK 1: INPUT PENILAIAN CORE (COMPACT & UPDATED) ==================== -->
     <div style="padding: 15px; background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; margin-bottom: 15px;">
         
-        <h1 style="font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 12px; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
+        <h1 style="font-size: 18px; font-weight: 700; margin-top: 0; margin-bottom: 15px; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px;">
             Input Penilaian Tahapan
         </h1>
 
@@ -703,20 +750,26 @@ input[type=number] { -moz-appearance: textfield; }
             <div class="alert alert-error" style="margin-bottom: 12px; padding: 8px; background-color: #fee2e2; color: #991b1b; border-radius: 6px; font-size: 13px; font-weight: 600;"><?= $error_msg; ?></div>
         <?php endif; ?>
 
-        <!-- FORM UTAMA MEMBUNGKUS SELURUH KOTAK -->
-        <form action="" method="POST" id="formPenilaian" style="display: flex; flex-direction: column; gap: 12px;">
+        <form action="" method="POST" id="formPenilaian" style="display: flex; flex-direction: column; gap: 10px;">
             
-            <!-- 1. PILIHAN TAHAPAN SELEKSI (MELEBAR PENUH KE KANAN) -->
-            <div class="form-group" style="width: 100%;">
-                <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 6px; display: block;">Pilih Tahapan Seleksi</label>
-                <div class="chrome-tabs-container" style="display: flex; gap: 6px; flex-wrap: wrap; width: 100%;">
+            <!-- BARIS BARU BARU: OPSI TALENT POOL DI PALING ATAS -->
+            <div class="form-group" style="background-color: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px dashed #3b82f6; display: flex; align-items: center; gap: 8px; margin-bottom: 5px;">
+                <input type="checkbox" name="is_talent_pool" id="check_talent_pool" value="1" style="width: 16px; height: 16px; cursor: pointer;"<?= isset($data_nilai['is_talent_pool']) && $data_nilai['is_talent_pool'] == 1 ? 'checked' : ''; ?>>
+                <label for="check_talent_pool" style="font-size: 13px; font-weight: 700; color: #1e3a8a; cursor: pointer; user-select: none;">✨ Masukkan kandidat ke talent pool
+                </label>
+            </div>
+
+            <!-- 1. PILIHAN TAHAPAN SELEKSI -->
+            <div class="form-group" style="margin-bottom: 2px !important;">
+                <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block;">Pilih Tahapan Seleksi</label>
+                <div class="chrome-tabs-container" style="display: flex; gap: 4px; flex-wrap: wrap; width: 100%;">
                     <?php foreach ($list_tabs as $index => $tab) : 
                         $is_active = ($tab['id'] == $tab_default_aktif);
                     ?>
                         <div class="chrome-tab <?= $is_active ? 'active' : ''; ?>" 
                              id="tab-control-<?= $tab['id']; ?>"
                              onclick="location.href='?id=<?= $lamaran_tahapan_id; ?>&tahapan_id=<?= $tab['id']; ?>'"
-                             style="padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: all 0.2s;
+                             style="padding: 5px 10px; border-radius: 4px; font-size: 12px; cursor: pointer; transition: all 0.2s;
                                     background-color: <?= $is_active ? '#0284c7 !important' : '#e2e8f0'; ?>;
                                     color: <?= $is_active ? '#ffffff !important' : '#475569'; ?>;
                                     font-weight: <?= $is_active ? '700' : 'normal'; ?>;
@@ -728,54 +781,50 @@ input[type=number] { -moz-appearance: textfield; }
                 <input type="hidden" name="mst_tahapan_id" id="input_mst_tahapan_id" value="<?= $tab_default_aktif; ?>">
             </div>
 
-            <!-- ================= PERBAIKAN: STRUKTUR INPUT VERTIKAL BERURUTAN KE BAWAH ================= -->
-            <div style="display: flex; flex-direction: column; gap: 12px; width: 100%; margin-top: 5px;">
-                
-                            <!-- 3. STATUS OTOMATIS (SEKARANG BERADA DI BAWAH NILAI) -->
-                <div class="form-group" style="display: flex; align-items: center; gap: 10px; background-color: #f8fafc; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box; height: 38px;">
-                    <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 0;">Status Kelulusan Otomatis:</label>
-                    <span id="badge_status_otomatis" style="padding: 3px 10px; border-radius: 4px; font-size: 12px; font-weight: 700; background: #e2e8f0; color: #64748b; letter-spacing: 0.5px;">
-                        <?= !empty($data_nilai['status_tahap']) ? strtoupper($data_nilai['status_tahap']) : '-'; ?>
-                    </span>
-                </div>
-
-                <!-- 2. INPUT NILAI KOMPETENSI -->
-                <div class="form-group" style="width: 100%;">
-                    <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block;">Nilai Kompetensi (0.00 - 100.00)</label>
-                    <input type="number" 
-                           name="nilai" 
-                           id="input_nilai_kompetensi"
-                           class="form-control" 
-                           step="0.01" 
-                           min="0" 
-                           max="100" 
-                           placeholder="Contoh: 85.50" 
-                           value="<?= isset($data_nilai['nilai']) && $data_nilai['nilai'] !== null ? htmlspecialchars($data_nilai['nilai']) : ''; ?>" 
-                           oninput="hitungStatusOtomatis(this.value)"
-                           style="padding: 8px 12px; font-size: 13px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; height: 36px;"
-                           required>
-                </div>
-
-                <!-- 4. CATATAN REKOMENDASI PENILAI (SEKARANG BERADA DI BAWAH STATUS) -->
-                <div class="form-group" style="width: 100%;">
-                    <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block;">Catatan / Rekomendasi Penilai</label>
-                    <textarea name="catatan" 
-                              class="form-control" 
-                              rows="2" 
-                              placeholder="Tuliskan feedback hasil evaluasi teknis kandidat..." 
-                              style="padding: 8px 12px; font-size: 13px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; resize: vertical;" 
-                              required><?= isset($data_nilai['catatan']) ? htmlspecialchars($data_nilai['catatan']) : ''; ?></textarea>
-                </div>
-
-                <!-- TOMBOL SIMPAN PENILAIAN (DI PALING BAWAH KOTAK 1) -->
-                <div style="width: 100%; margin-top: 4px;">
-                    <button type="submit" name="simpan_nilai_saja" style="width: 100%; background-color: #2563eb; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1); height: 38px; display: flex; align-items: center; justify-content: center;">
-                        Simpan Hasil Penilaian
-                    </button>
-                </div>
-
+            <!-- 2. STATUS OTOMATIS (JARAKNYA SEKARANG SANGAT RAPAT DENGAN TAB DI ATAS) -->
+            <div class="form-group" style="display: flex; align-items: center; gap: 8px; background-color: #f8fafc; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; width: 100%; box-sizing: border-box; height: 34px; margin-top: 0px !important;">
+                <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 0;">Status Kelulusan Otomatis:</label>
+                <span id="badge_status_otomatis" style="padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; background: #e2e8f0; color: #64748b; letter-spacing: 0.5px;">
+                    <?= !empty($data_nilai['status_tahap']) ? strtoupper($data_nilai['status_tahap']) : '-'; ?>
+                </span>
             </div>
-    </div> <!-- Batas akhir penutup Kotak 1 fisik -->
+
+            <!-- 3. INPUT NILAI KOMPETENSI -->
+            <div class="form-group">
+                <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block;">Nilai Kompetensi (0.00 - 100.00)</label>
+                <input type="number" 
+                       name="nilai" 
+                       id="input_nilai_kompetensi"
+                       class="form-control" 
+                       step="0.01" 
+                       min="0" 
+                       max="100" 
+                       placeholder="Contoh: 85.50" 
+                       value="<?= isset($data_nilai['nilai']) && $data_nilai['nilai'] !== null ? htmlspecialchars($data_nilai['nilai']) : ''; ?>" 
+                       oninput="hitungStatusOtomatis(this.value)"
+                       style="padding: 8px 12px; font-size: 13px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; height: 36px;"
+                       required>
+            </div>
+
+            <!-- 4. CATATAN REKOMENDASI PENILAI -->
+            <div class="form-group">
+                <label style="font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 4px; display: block;">Catatan / Rekomendasi Penilai</label>
+                <textarea name="catatan" 
+                          class="form-control" 
+                          rows="2" 
+                          placeholder="Tuliskan feedback hasil evaluasi teknis kandidat..." 
+                          style="padding: 8px 12px; font-size: 13px; width: 100%; box-sizing: border-box; border: 1px solid #cbd5e1; border-radius: 6px; resize: vertical;" 
+                          required><?= isset($data_nilai['catatan']) ? htmlspecialchars($data_nilai['catatan']) : ''; ?></textarea>
+            </div>
+
+            <!-- 5. TOMBOL SIMPAN PENILAIAN -->
+            <div style="width: 100%; margin-top: 4px;">
+                <button type="submit" name="simpan_nilai_saja" style="width: 100%; background-color: #2563eb; color: white; border: none; padding: 10px; border-radius: 6px; font-weight: 700; font-size: 13px; cursor: pointer; text-align: center; box-shadow: 0 2px 4px rgba(37, 99, 235, 0.1); height: 38px; display: flex; align-items: center; justify-content: center;">
+                    Simpan Hasil Penilaian
+                </button>
+            </div>
+
+    </div> <!-- Batas akhir penutup Kotak 1 -->
 
     <!-- ==================== KOTAK 2: KHUSUS PENGATURAN & RIWAYAT NOTIFIKASI (VERTIKAL LINIER) ==================== -->
     <div style="padding: 15px; background: #ffffff; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); border: 1px solid #e2e8f0;">
