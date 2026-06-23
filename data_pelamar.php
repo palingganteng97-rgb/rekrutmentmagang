@@ -122,51 +122,81 @@ try {
         .menu-item.active { background: #f5f3ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
         .menu-item:hover:not(.active) { background: #f8fafc; color: #1e293b; }
         
-        /* 1. MENGURANGI PADDING KANAN UTAMA AGAR KONTEN MELEBAR MASKSIMAL KE KANAN */
         .main-content { flex: 1; background: #fbfbfd; padding: 40px 30px; display: flex; flex-direction: column; gap: 32px; overflow-y: auto; }
         .content-header h1 { font-size: 26px; font-weight: 800; color: #1e293b; letter-spacing: -0.5px; }
         .content-header p { font-size: 14px; color: #94a3b8; margin-top: 4px; }
         
-        /* 2. MEMBUAT WRAPPER BERKEBANG MAKSIMAL */
-        .table-wrapper { background: #ffffff; border: 1px solid #f1f5f9; border-radius: 24px; padding: 30px; box-shadow: 0 4px 10px rgba(0,0,0,0.01); width: 100%; }
-        
-        /* 3. SETTING FIXED LAYOUT AGAR DISTRIBUSI KOLOM PROPORSIONAL SAMPAI UJUNG KANAN */
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; table-layout: fixed; }
-        
-        /* 4. ATUR PERSENTASE LEBAR KOLOM AGAR MERENGGANG PROPORSIONAL */
-        table th:nth-child(1), table td:nth-child(1) { width: 28%; } /* Kolom Nama Pelamar */
-        table th:nth-child(2), table td:nth-child(2) { width: 20%; } /* Kolom Formasi Lowongan */
-        table th:nth-child(3), table td:nth-child(3) { width: 18%; } /* Kolom Tanggal Masuk */
-        table th:nth-child(4), table td:nth-child(4) { width: 16%; } /* Kolom Tahap Seleksi */
-        table th:nth-child(5), table td:nth-child(5) { width: 18%; } /* Kolom Aksi Kontrol */
+        .table-wrapper {
+            width: 100%;             
+            overflow-x: auto;        
+            -webkit-overflow-scrolling: touch; 
+        }
 
-        /* 5. MENAMBAH PADDING HORIZONTAL SUPAYA TIDAK SALING BERDEMPETAN */
+        table {
+            width: 100%;             
+            min-width: 1050px;        /* Dinaikkan agar tabel memiliki ruang horizontal yang lega */
+            border-collapse: collapse;
+        }
+        
+        /* ATUR LEBAR PROPORSIONAL UNTUK KOLOM 1 SAMPAI 4 */
+        table th:nth-child(1), table td:nth-child(1) { width: 28%; } 
+        table th:nth-child(2), table td:nth-child(2) { width: 20%; } 
+        table th:nth-child(3), table td:nth-child(3) { width: 18%; } 
+        table th:nth-child(4), table td:nth-child(4) { width: 16%; } 
+        
+        /* PERBAIKAN UTAMA: MENGUNCI LEBAR KOLOM KE-5 (AKSI) AGAR TIDAK LEPAS */
+        table th:nth-child(5), table td:nth-child(5) { 
+            width: 180px !important; 
+            text-align: center; 
+        }
+
         th { color: #94a3b8; padding: 0 10px 16px 10px; font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #f1f5f9; }
-        td { padding: 20px 10px; color: #475569; border-bottom: 1px solid #f8fafc; vertical-align: middle; word-wrap: break-word; }
+        
+        /* MODIFIKASI TD: Menghilangkan word-wrap pada kolom aksi agar teks tombol tidak pecah ke bawah */
+        td { padding: 20px 10px; color: #475569; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
+        table td:not(:last-child) { word-wrap: break-word; }
         
         .candidate-name { font-weight: 700; color: #1e293b; font-size: 14px; }
         
-        /* ========================================================================= */
-        /* PERBAIKAN WARNA STATUS PILL KONTROL */
-        /* ========================================================================= */
-        .status-pill { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; padding: 6px 14px; border-radius: 20px; font-size: 12px; text-transform: uppercase; }
+        /* MEMAKSA TOMBOL DI KOLOM AKSI BERJEJER SEJAJAR KE SAMPING */
+        table td:nth-child(5) {
+            display: flex !important;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;           /* Jarak ideal antar tombol */
+            white-space: nowrap; /* Tombol Hapus dilarang turun ke bawah */
+        }
         
-        /* Pending -> Kuning */
-        .status-pending { background: #fef3c7; color: #d97706; }
-        
-        /* Lulus -> Hijau */
-        .status-lulus { background: #dcfce7; color: #15803d; }
-        
-        /* Tidak Lulus -> Merah */
-        .status-tolak { background: #fee2e2; color: #b91c1c; }
-        
-        /* Proses -> Diubah Menjadi Warna Biru */
-        .status-proses { background: #e0f2fe !important; color: #0369a1 !important; }
-        
-        /* Skip -> Hitam */
-        .status-skip      { background: #1e293b !important; color: #ffffff !important; }
-        /* ========================================================================= */
+        table td:nth-child(5) a {
+            margin-left: 0 !important; 
+            text-decoration: none;
+        }
 
+        /* ========================================================================= */
+        /* WARNA STATUS PILL KONTROL */
+        /* ========================================================================= */
+        .status-pill { 
+            display: inline-flex; 
+            align-items: center; 
+            justify-content: center;   
+            font-weight: 700; 
+            padding: 6px 14px; 
+            border-radius: 20px; 
+            font-size: 11px; 
+            text-transform: uppercase; 
+            width: 130px;              
+            box-sizing: border-box;    
+        }
+        
+        .status-pending { background: #fef3c7; color: #d97706; }
+        .status-lulus { background: #dcfce7; color: #15803d; }
+        .status-tolak { background: #fee2e2; color: #b91c1c; }
+        .status-proses { background: #e0f2fe !important; color: #0369a1 !important; }
+        .status-skip { background: #1e293b !important; color: #ffffff !important; }
+
+        /* ========================================================================= */
+        /* TOMBOL & MODAL DETAIL */
+        /* ========================================================================= */
         .btn-detail { background-color: #f1f5f9; color: #475569; border: none; padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
         .btn-detail:hover { background-color: #e2e8f0; color: #1e293b; }
         .text-danger { color: #ef4444; font-weight: 600; text-decoration: none; font-size: 13px; }
@@ -186,8 +216,6 @@ try {
         .btn-modal-close { background-color: #cbd5e1; color: #334155; border: none; padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; }
         .btn-modal-save { background-color: #4f46e5; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-size: 14px; font-weight: bold; cursor: pointer; }
 </style>
-
-
 </head>
 <body>
 
@@ -232,15 +260,17 @@ try {
 
         <div class="table-wrapper">
             <table>
-                <thead>
-                    <tr>
-                        <th style="width: 250px;">Nama Pelamar</th>
-                        <th>Formasi Lowongan</th>
-                        <th>Tanggal Masuk</th>
-                        <th>Tahap Seleksi</th>
-                        <th style="text-align: center; width: 200px;">Aksi Kontrol</th>
-                    </tr>
-                </thead>
+
+        <thead>
+            <tr>
+                <th style="width: 250px;">Nama Pelamar</th>
+                <th style="width: 180px;">Formasi Lowongan</th>
+                <th style="width: 150px;">Tanggal Masuk</th>
+                <th style="width: 160px; text-align: center;">Tahap Seleksi</th> <!-- Kunci lebar di sini -->
+                <th style="text-align: center; width: 200px;">Aksi Kontrol</th>
+            </tr>
+        </thead>
+
 
 <tbody>
     <!-- PERBAIKAN: Menambahkan kembali baris pengecekan if dan perulangan while yang hilang -->
