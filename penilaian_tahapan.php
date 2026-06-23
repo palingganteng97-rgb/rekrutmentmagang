@@ -148,7 +148,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $mst_tahapan_id = $_POST['mst_tahapan_id'] ?? $_GET['tahapan_id'] ?? $tab_default_aktif; 
     $tanggal_sekarang = date('Y-m-d H:i:s');
 
-    // Menerima request dari tombol "Simpan" biasa maupun tombol "Kirim Notifikasi"
+    // Menerima request baik dari tombol "Simpan" biasa maupun tombol "Kirim Notifikasi"
     if (isset($_POST['nilai']) || isset($_POST['kirim_pemberitahuan']) || isset($_POST['simpan_nilai_saja'])) {
         
         $id_lamaran_induk = $data_pelamar['id_lamaran_asli'] ?? 0;
@@ -186,65 +186,60 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $success_msg = "Skor hasil penilaian kompetensi berhasil disimpan ke database!";
         }
 
+        // Inisialisasi status log bawaan sebelum diubah oleh API gateway
+        $status_log = 'Pending';
+
         // =========================================================================
-        // PERBAIKAN: LOGIKA WHATSAPP HANYA BERJALAN JIKA TOMBOL PEMBERITAHUAN DIKLIK
+        // LOGIKA WHATSAPP HANYA BERJALAN JIKA TOMBOL PEMBERITAHUAN DIKLIK
         // =========================================================================
         if (isset($_POST['kirim_pemberitahuan']) && $jenis_media === 'WhatsApp' && !empty($tujuan_kirim) && $simpan_nilai_sukses) {
             
-            // 4. SUSUN STRUKTUR TEKS PESAN WHATSAPP KONTEKSTUAL & PROFESIONAL
-            $nama_kandidat = htmlspecialchars($data_pelamar['nama_pendaftar'] ?? 'Kandidat');
-            
-            $pesan_notif  = "Yth. *{$nama_kandidat}*,\n\n";
-            $pesan_notif .= "Terima kasih telah mengikuti rangkaian proses rekrutmen Magang Rumah Sakit.\n\n";
-            $pesan_notif .= "Berikut adalah rincian hasil evaluasi resmi Anda untuk tahap *[" . strtoupper($nama_tahap_aktif) . "]* :\n";
-            $pesan_notif .= "• Nilai Kompetensi : *{$nilai_kompetensi}*\n";
-            
-            if ($status_tahap === 'LULUS') {
-                $pesan_notif .= "• Status Hasil : *LULUS (MEMENUHI SYARAT)* 🟢\n\n";
-                $pesan_notif .= "Selamat! Anda dinyatakan berhak untuk melanjutkan ke tahapan seleksi berikutnya. Informasi jadwal akan diperbarui secara berkala pada sistem pendaftaran.\n";
-            } else {
-                $pesan_notif .= "• Status Hasil : *TIDAK LULUS* 🔴\n\n";
-                $pesan_notif .= "Mohon maaf, hasil evaluasi Anda pada tahapan ini belum memenuhi batas kelulusan minimum. Terima kasih atas partisipasi Anda dalam seleksi ini.\n";
-            }
-            
-            if (!empty($catatan_penilai) && strtolower($catatan_penilai) !== 'oke') {
-                $pesan_notif .= "\n*Catatan Tambahan Tim Penilai*:\n_\"{$catatan_penilai}\"_\n";
-            }
-            $pesan_notif .= "\n_Pesan ini dikirimkan otomatis oleh Sistem Rekrutmen Magang RS._";
+            // 4. SUSUN STRUKTUR PESAN WHATSAPP HASIL PENILAIAN
 
-            $status_log = 'Pending';
-            
-        // =========================================================================
-        // 5. TEMBAK API CURL KE GATEWAY LOKAL JIKALAU TOMBOL KIRIM DIKLIK
-        // =========================================================================
-        if (isset($_POST['kirim_pemberitahuan']) && $jenis_media === 'WhatsApp' && !empty($tujuan_kirim) && $simpan_nilai_sukses) {
-            
-            // 4. SUSUN TEKS PESAN DINAMIS (SINKRON DENGAN KOLOM PESAN CUSTOM BARU)
-            $pesan_custom_penilai = mysqli_real_escape_string($conn, $_POST['pesan_custom'] ?? '');
-            $nama_kandidat = htmlspecialchars($data_pelamar['nama_pendaftar'] ?? 'Kandidat');
-            
-            $pesan_notif  = "Yth. *{$nama_kandidat}*,\n\n";
-            $pesan_notif .= "Terima kasih telah mengikuti rangkaian proses rekrutmen Magang Rumah Sakit.\n\n";
-            $pesan_notif .= "Berikut adalah rincian hasil evaluasi resmi Anda untuk tahap *[" . strtoupper($nama_tahap_aktif) . "]* :\n";
-            $pesan_notif .= "• Nilai Kompetensi : *{$nilai_kompetensi}*\n";
-            
-            if ($status_tahap === 'LULUS') {
-                $pesan_notif .= "• Status Hasil : *LULUS (MEMENUHI SYARAT)* 🟢\n\n";
-                $pesan_notif .= "Selamat! Anda dinyatakan berhak untuk melanjutkan ke tahapan seleksi berikutnya.\n";
-            } else {
-                $pesan_notif .= "• Status Hasil : *TIDAK LULUS* 🔴\n\n";
-                $pesan_notif .= "Mohon maaf, hasil evaluasi Anda pada tahapan ini belum memenuhi batas kelulusan minimum.\n";
-            }
-            
-            if (!empty($catatan_penilai) && strtolower($catatan_penilai) !== 'oke') {
-                $pesan_notif .= "\n*Catatan Tambahan Tim Penilai*:\n_\"{$catatan_penilai}\"_\n";
-            }
+$pesan_custom_penilai = trim($_POST['pesan_custom'] ?? '');
+$nama_kandidat = htmlspecialchars($data_pelamar['nama_pendaftar'] ?? 'Kandidat');
 
-            // Sisipkan pesan tambahan dari kolom baru ke dalam isi WhatsApp
-            if (!empty($pesan_custom_penilai)) {
-                $pesan_notif .= "\n*Informasi Tambahan dari Penilai*:\n_{$pesan_custom_penilai}_\n";
-            }
-            $pesan_notif .= "\n_Pesan ini dikirimkan otomatis oleh Sistem Rekrutmen Magang RS._";
+$pesan_notif  = "Yth. *{$nama_kandidat}*,\n\n";
+$pesan_notif .= "Terima kasih telah mengikuti proses seleksi rekrutmen yang diselenggarakan oleh Rumah Sakit.\n\n";
+
+if ($status_tahap === 'LULUS') {
+
+    $pesan_notif .= "📋 *HASIL EVALUASI TAHAPAN*\n";
+    $pesan_notif .= "Status : *LULUS (MEMENUHI SYARAT)* ✅\n\n";
+
+    $pesan_notif .= "Selamat, Anda dinyatakan memenuhi kriteria pada tahapan seleksi ini dan berhak melanjutkan ke tahapan berikutnya.\n";
+    $pesan_notif .= "Informasi jadwal, lokasi, serta ketentuan lanjutan akan disampaikan melalui sistem rekrutmen.\n";
+
+} else {
+
+    $pesan_notif .= "📋 *HASIL EVALUASI TAHAPAN*\n";
+    $pesan_notif .= "Status : *TIDAK LULUS* ❌\n\n";
+
+    $pesan_notif .= "Terima kasih atas partisipasi dan waktu yang telah Anda berikan dalam proses seleksi ini.\n";
+    $pesan_notif .= "Berdasarkan hasil evaluasi, Anda belum dapat melanjutkan ke tahapan berikutnya.\n";
+}
+
+if (!empty($catatan_penilai) && strtolower(trim($catatan_penilai)) != 'oke') {
+    $pesan_notif .= "\n📝 *Catatan Tim Penilai*\n";
+    $pesan_notif .= $catatan_penilai . "\n";
+}
+
+if (!empty($pesan_custom_penilai)) {
+    $pesan_notif .= "\n📌 *Informasi Tambahan*\n";
+    $pesan_notif .= $pesan_custom_penilai . "\n";
+}
+
+$pesan_notif .= "\n-----------------------------------";
+$pesan_notif .= "\nPesan ini dikirim otomatis oleh";
+$pesan_notif .= "\n*Sistem Rekrutmen Rumah Sakit*";
+$pesan_notif .= "\nMohon tidak membalas pesan ini.";
+
+                // 5. TEMBAK API CURL KE GATEWAY LOKAL
+
+                $tujuan_kirim = preg_replace('/[^0-9]/', '', $tujuan_kirim);
+
+                // BIARKAN FORMAT ASLI (0838xxxx)
+                // Jangan ubah ke 62 dulu sebelum yakin gateway membutuhkannya
 
                 $curl = curl_init();
 
@@ -252,55 +247,59 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     CURLOPT_URL => 'http://10.10.6.17:8000/kirim-pesan',
                     CURLOPT_RETURNTRANSFER => true,
                     CURLOPT_ENCODING => '',
-                    CURLOPT_MAXREDIRS => 10,
-                    CURLOPT_TIMEOUT => 0,
+                    CURLOPT_MAXREDIRS => 5,
+                    CURLOPT_TIMEOUT => 10,
+                    CURLOPT_CONNECTTIMEOUT => 5,
                     CURLOPT_FOLLOWLOCATION => true,
                     CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
                     CURLOPT_CUSTOMREQUEST => 'POST',
-                    CURLOPT_POSTFIELDS => 'number=' . urlencode($tujuan_kirim) .
-                                        '&message=' . urlencode($pesan_notif),
-                    CURLOPT_HTTPHEADER => array(
+                    CURLOPT_POSTFIELDS => http_build_query([
+                        'number'  => $tujuan_kirim,
+                        'message' => $pesan_notif
+                    ]),
+                    CURLOPT_HTTPHEADER => [
                         'Content-Type: application/x-www-form-urlencoded'
-                    ),
+                    ]
                 ));
 
                 $response = curl_exec($curl);
                 $err = curl_error($curl);
+                $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
-                curl_close($curl);  echo "<pre>";
-                                    echo "Nomor : ".$tujuan_kirim."\n";
-                                    echo "Response : ".$response."\n";
-                                    echo "Error : ".$err."\n";
-                                    echo "</pre>";
-                                    exit;
+                curl_close($curl);
 
+                // PENENTUAN STATUS
+                if (!$err) {
+                    $res_data = json_decode($response, true);
 
-            // Menganalisis respon balik dari API Gateway Anda
-            if (!$err) {
-                // Catatan: Jika API Anda mengembalikan JSON sukses seperti {"status": true}, maka:
-                $res_data = json_decode($response, true);
-                if (isset($res_data['status']) && ($res_data['status'] === false || $res_data['status'] === 'error')) {
-                    $status_log = 'Gagal';
+                    if (
+                        isset($res_data['status']) &&
+                        (
+                            $res_data['status'] === true ||
+                            $res_data['status'] === 'true' ||
+                            $res_data['status'] === 'success'
+                        )
+                    ) {
+                        $status_log = 'Terkirim';
+                    } else {
+                        $status_log = 'Gagal';
+                    }
                 } else {
-                    $status_log = 'Terkirim'; // Set Sukses jika tidak ada error
+                    $status_log = 'Gagal';
                 }
-            } else {
-                $status_log = 'Gagal';
-            }
 
             // 6. CATAT RIWAYAT TRANSAKSI KE TABEL `notifikasi_rekrutmen`
             $query_log = "INSERT INTO notifikasi_rekrutmen (lamaran_id, jenis, tujuan, pesan, status, tanggal_kirim, created_at, updated_at) 
                           VALUES ('$id_lamaran_induk', '$jenis_media', '$tujuan_kirim', '$pesan_notif', '$status_log', '$tanggal_sekarang', '$tanggal_sekarang', '$tanggal_sekarang')";
             mysqli_query($conn, $query_log);
-        }
 
             // 7. BERIKAN KOMUNIKASI ALERT FEEDBACK DI HALAMAN WEB
             if ($status_log === 'Terkirim') {
                 $success_msg = "Penilaian disimpan! Pemberitahuan hasil resmi telah sukses dikirim via WhatsApp ke nomor " . htmlspecialchars($tujuan_kirim);
-                $error_msg = ""; // clear error jika ada
+                $error_msg = ""; 
             } else {
                 $error_msg = "Skor nilai berhasil disimpan, tetapi pesan WhatsApp <strong>Gagal Terkirim</strong>. Pastikan gateway di IP 10.10.6.17 port 8000 dalam keadaan aktif.";
-                $success_msg = ""; // clear success jika ada
+                $success_msg = ""; 
             }
         }
 
@@ -308,9 +307,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $query_refresh = mysqli_query($conn, "SELECT * FROM penilaian_tahapan WHERE lamaran_tahapan_id = '$lamaran_tahapan_id' AND mst_tahapan_id = '$mst_tahapan_id' LIMIT 1");
         $data_nilai = mysqli_fetch_assoc($query_refresh);
     } 
-}
+} 
 
-// =========================================================================
 // =========================================================================
 // 7. KUERI FALLBACK DEFAULT (DI LUAR BLOK POST)
 // =========================================================================
@@ -331,16 +329,11 @@ if (!$data_nilai) {
     ];
 }
 
-// =========================================================================
-// PERBAIKAN UTAMA: PAKSA RESET JIKA DATA ADA TAPI NILAI KOSONG
-// =========================================================================
-// Jika data ditemukan di DB tetapi kolom nilai ternyata kosong/null,
-// jangan biarkan status_tahap memunculkan kata "DILEWATI" dari masa lalu.
 if (isset($data_nilai['nilai']) && ($data_nilai['nilai'] === null || $data_nilai['nilai'] === '')) {
     $data_nilai['status_tahap'] = '-';
 }
-
 ?>
+
 
 <!DOCTYPE html>
 <html lang="id">
@@ -577,24 +570,43 @@ input[type=number] { -moz-appearance: textfield; }
         </div>
     </div>
 
-    <!-- SEKTOR 3: RIWAYAT PENDIDIKAN PELAMAR -->
-    <div class="info-section" style="margin-bottom: 30px;">
-        <div class="section-divider" style="margin-bottom: 15px; font-weight: 700; color: #4f46e5;">III. Kualifikasi Pendidikan</div>
-        
-        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
-            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Pendidikan Terakhir</span>
-            <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
-            <span class="data-value" style="flex: 1; text-align: left; color: #1e293b; font-weight: 700;"><?= htmlspecialchars($data_pelamar['pendidikan'] ?? '-'); ?></span>
-        </div>
-        
-        <?php if(!empty($data_pelamar['institusi']) || !empty($data_pelamar['jurusan'])): ?>
-            <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
-                <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">Nama Institusi</span>
-                <span style="width: 15px; color: #94a3b8; text-align: center;">:</span>
-                <span class="data-value" style="flex: 1; text-align: left; color: #1e293b;"><?= htmlspecialchars($data_pelamar['institusi'] ?? '-'); ?></span>
-            </div>
-        <?php endif; ?>
+<!-- SEKTOR 3: RIWAYAT PENDIDIKAN PELAMAR -->
+<div class="info-section" style="margin-bottom: 30px;">
+    <div class="section-divider" style="margin-bottom: 15px; font-weight: 700; color: #4f46e5;">
+        III. Kualifikasi Pendidikan
     </div>
+
+    <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+        <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">
+            Pendidikan Terakhir
+        </span>
+
+        <span style="width: 15px; color: #94a3b8; text-align: center;">
+            :
+        </span>
+
+        <span class="data-value" style="flex: 1; text-align: left; color: #1e293b; font-weight: 700;">
+            <?= htmlspecialchars($data_pelamar['pendidikan'] ?? '-'); ?>    </div>
+        <?php if(!empty($data_pelamar['institusi']) || !empty($data_pelamar['jurusan'])): ?>
+
+        <div class="data-row" style="display: flex; align-items: flex-start; margin-bottom: 14px;">
+            <span class="data-label" style="width: 160px; flex-shrink: 0; color: #64748b;">
+                Nama Institusi
+            </span>
+
+            <span style="width: 15px; color: #94a3b8; text-align: center;">
+                :
+            </span>
+
+            <span class="data-value" style="flex: 1; text-align: left; color: #1e293b;">
+                <?= htmlspecialchars($data_pelamar['institusi'] ?? '-'); ?>
+            </span>
+        </div>
+
+    <?php endif; ?>
+
+</div>
+
     <!-- =========================================================================
          SEKTOR 4: DOKUMEN PENDUKUNG (IJAZAH & STR)
          ========================================================================= -->
