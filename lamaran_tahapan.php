@@ -488,9 +488,14 @@ if ($query_progress && mysqli_num_rows($query_progress) > 0) : ?>
             <td>
                 <span class="badge <?php echo $class_badge; ?>"><?php echo htmlspecialchars($status_badge); ?></span>
             </td>
-            <!-- KOLOM AKSI: TOMBOL NILAI -->
+
+            <!-- KOLOM AKSI: TOMBOL NILAI (SAMP PAGE / SINGLE TAB ONLY) -->
             <td style="text-align: center; white-space: nowrap;">
-                <a href="penilaian_tahapan.php?id=<?php echo urlencode($id_lamaran_tahapan); ?>" class="btn-score" title="Beri Nilai Pelamar" style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 14px; background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; border-radius: 8px; font-weight: 700; font-size: 13px; text-decoration: none; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+                <!-- PERBAIKAN: Menghapus target="_blank" agar tidak membuka tab baru terus-menerus -->
+                <a href="penilaian_tahapan.php?id=<?php echo urlencode($id_lamaran_tahapan); ?>" 
+                class="btn-score" 
+                title="Beri Nilai Pelamar" 
+                style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 14px; background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; border-radius: 8px; font-weight: 700; font-size: 13px; text-decoration: none; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
                     <svg xmlns="http://w3.org" width="14" height="14" fill="currentColor" class="bi bi-bookmark-star" viewBox="0 0 16 16" style="display: inline-block; vertical-align: middle;">
                         <path d="M7.84 4.1a.5.5 0 0 1 .32 0l1.353.362-.124.484L8 4.584l-1.39.362-.122-.484zM6.6 6.3a.5.5 0 0 0 .117-.168l1-2a.5.5 0 0 0-.834-.464l-1 2A.5.5 0 0 0 6.6 6.3"/>
                         <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.543a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/>
@@ -567,5 +572,13 @@ if ($query_progress && mysqli_num_rows($query_progress) > 0) : ?>
             if (event.target == g_modal) { tutupModalEdit(); }
         }
     </script>
+
+    <script>
+// Otomatis memuat ulang tabel dashboard saat admin kembali ke tab halaman ini
+window.addEventListener('focus', () => {
+    window.location.reload();
+});
+</script>
+
 </body>
 </html>

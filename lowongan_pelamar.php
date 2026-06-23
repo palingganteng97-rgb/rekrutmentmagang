@@ -27,6 +27,7 @@ $list_berkas      = [];
 $list_str         = [];
 $list_pengalaman  = [];
 $data             = null; 
+$profil_lengkap   = false; // Variabel penentu status kelengkapan profil
 
 if ($pelamar_id) {
     // A. Ambil Biodata Utama Pelamar
@@ -41,9 +42,7 @@ if ($pelamar_id) {
     $query_bk = mysqli_query($koneksi, "SELECT * FROM pelamar_berkas WHERE pelamar_id = $pelamar_id");
     if ($query_bk) { 
         while ($row_bk = mysqli_fetch_assoc($query_bk)) { 
-            // Ambil jenis dokumen (misal: ijazah, str, ktp) dan ubah ke huruf kecil semua
             $nama_berkas_clean = strtolower(trim($row_bk['nama_berkas'] ?? $row_bk['jenis_berkas'] ?? ''));
-            // Simpan nama file asli ke dalam key array yang spesifik
             $list_berkas[$nama_berkas_clean] = $row_bk['file_berkas'] ?? $row_bk['nama_file'] ?? ''; 
         } 
     }
@@ -59,6 +58,22 @@ if ($pelamar_id) {
     // F. Kumpulkan ID Lowongan yang Sudah Pernah Dilamar User Ini
     $query_l_dilamar = mysqli_query($koneksi, "SELECT lowongan_id FROM rekrutmen_lamaran WHERE pelamar_id = $pelamar_id");
     if ($query_l_dilamar) { while ($row_ld = mysqli_fetch_assoc($query_l_dilamar)) { $lowongan_dilamar[] = $row_ld['lowongan_id']; } }
+
+    // =========================================================================
+    // VALIDASI LOGIKAL: MENENTUKAN APAKAH USER SUDAH MENGISI PROFIL SECARA PENUH
+    // =========================================================================
+    if ($data) {
+        // Cek kolom wajib biodata di tabel pelamar (nik, tempat_lahir, alamat, no_telepon)
+        $biodata_isi = (!empty($data['nik']) && !empty($data['tempat_lahir']) && !empty($data['alamat']) && !empty($data['no_telepon']));
+        
+        // Cek apakah sudah mengisi minimal 1 data pendidikan di riwayat pendidikan
+        $pendidikan_isi = (count($list_pendidikan) > 0);
+
+        // Jika biodata utama dan riwayat pendidikan sudah terisi, set true
+        if ($biodata_isi && $pendidikan_isi) {
+            $profil_lengkap = true;
+        }
+    }
 }
 
 // =========================================================================
@@ -70,18 +85,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
         exit;
     }
 
+    // INTERSPSI PROTEKSI BARU: Cek Kelengkapan Profil di Sisi Server (Anti-Tembak)
+    if (!$profil_lengkap) {
+        echo "<script>alert('❌ Gagal Mengirim Lamaran: Silakan lengkapi biodata profil utama dan minimal satu riwayat pendidikan Anda terlebih dahulu!'); window.location.href='profil_pelamar.php';</script>";
+        exit;
+    }
+
     $tanggal_masuk = date('Y-m-d H:i:s'); 
     $status_awal   = 'Proses'; 
     $lowongan_id   = isset($_POST['lowongan_id']) ? intval($_POST['lowongan_id']) : 0;
     $tanggal_hari_ini = date('Y-m-d');
 
-    // PROTEKSI 1: Validasi Batas Waktu Tanggal Selesai Lowongan Kerja (Anti-Tembak Sistem)
+    // PROTEKSI 1: Validasi Batas Waktu Tanggal Selesai Lowongan Kerja
     $cek_waktu = mysqli_query($koneksi, "SELECT tanggal_selesai FROM rekrutmen_lowongan WHERE id = $lowongan_id");
     if ($cek_waktu && mysqli_num_rows($cek_waktu) > 0) {
         $data_waktu = mysqli_fetch_assoc($cek_waktu);
         $tanggal_selesai = $data_waktu['tanggal_selesai'];
 
-        // Jika hari ini sudah melewati batas pendaftaran lowongan
         if ($tanggal_hari_ini > $tanggal_selesai) {
             echo "<script>alert('⚠️ Maaf, batas waktu pendaftaran untuk posisi lowongan ini telah berakhir (Ditutup)!'); window.location.href='lowongan_pelamar.php';</script>";
             exit;
@@ -100,7 +120,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
                     VALUES ($pelamar_id, $lowongan_id, '$tanggal_masuk', 1, '$status_awal', '$tanggal_masuk', '$tanggal_masuk')";
 
     if (mysqli_query($koneksi, $query_kirim)) {
-        // Menangkap ID lamaran yang baru saja sukses terinput
         $lamaran_id_baru = mysqli_insert_id($koneksi);
         
         // B. Input baris histori awal ke lamaran_tahapan dengan status 'Proses'
@@ -113,9 +132,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
         echo "<script>alert('Gagal mengirim lamaran: " . mysqli_error($koneksi) . "');</script>";
     }
 }
-
-
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
