@@ -62,6 +62,43 @@ while($r=mysqli_fetch_assoc($q)){
     $jabatan_label[]=$r['nama_jabatan'];
     $jabatan_data[]=(int)$r['jumlah'];
 }
+
+$unit_label = [];
+$unit_data  = [];
+
+$q_unit = mysqli_query($conn,"
+SELECT mu.nama_unit, COUNT(rl.id) jumlah
+FROM mst_unit mu
+LEFT JOIN rekrutmen_lowongan rw ON rw.unit_id = mu.id
+LEFT JOIN rekrutmen_lamaran rl ON rl.lowongan_id = rw.id
+GROUP BY mu.id
+ORDER BY jumlah DESC
+");
+
+while($r = mysqli_fetch_assoc($q_unit)){
+    $unit_label[] = $r['nama_unit'];
+    $unit_data[]  = (int)$r['jumlah'];
+}
+
+$bulan_label = [];
+$bulan_data  = [];
+
+$q_bulan = mysqli_query($conn,"
+SELECT
+YEAR(created_at) AS tahun,
+MONTH(created_at) AS bulan_angka,
+DATE_FORMAT(MIN(created_at),'%M %Y') AS bulan,
+COUNT(*) AS jumlah
+FROM rekrutmen_lamaran
+GROUP BY YEAR(created_at), MONTH(created_at)
+ORDER BY tahun, bulan_angka
+");
+
+while($r=mysqli_fetch_assoc($q_bulan)){
+    $bulan_label[] = $r['bulan'];
+    $bulan_data[]  = (int)$r['jumlah'];
+}
+
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -237,19 +274,29 @@ while($r=mysqli_fetch_assoc($q)){
 
     </div>
 
-    <div class="charts-grid">
+<div class="charts-grid">
 
-        <div class="chart-box">
-            <h3>Pelamar per Jabatan</h3>
-            <canvas id="chartJabatan"></canvas>
-        </div>
-
-        <div class="chart-box">
-            <h3>Status Seleksi</h3>
-            <canvas id="chartStatus"></canvas>
-        </div>
-
+    <div class="chart-box">
+        <h3>Pelamar per Jabatan</h3>
+        <canvas id="chartJabatan"></canvas>
     </div>
+
+    <div class="chart-box">
+        <h3>Status Seleksi</h3>
+        <canvas id="chartStatus"></canvas>
+    </div>
+
+    <div class="chart-box">
+        <h3>Pelamar per Unit</h3>
+        <canvas id="chartUnit"></canvas>
+    </div>
+
+    <div class="chart-box">
+        <h3>Rekrutmen per Bulan</h3>
+        <canvas id="chartBulan"></canvas>
+    </div>
+
+</div>
 
 </main>
 
@@ -299,7 +346,41 @@ new Chart(document.getElementById('chartStatus'),{
         maintainAspectRatio:false
     }
 });
-</script>
 
+new Chart(document.getElementById('chartUnit'),{
+    type:'bar',
+    data:{
+        labels: <?=json_encode($unit_label)?>,
+        datasets:[{
+            label:'Jumlah Pelamar',
+            data: <?=json_encode($unit_data)?>,
+            backgroundColor:'#10b981'
+        }]
+    },
+    options:{
+        responsive:true,
+        maintainAspectRatio:false
+    }
+});
+
+new Chart(document.getElementById('chartBulan'),{
+    type:'line',
+    data:{
+        labels: <?=json_encode($bulan_label)?>,
+        datasets:[{
+            label:'Jumlah Pelamar',
+            data: <?=json_encode($bulan_data)?>,
+            borderColor:'#4f46e5',
+            backgroundColor:'rgba(79,70,229,0.15)',
+            fill:true,
+            tension:0.3
+        }]
+    },
+    options:{
+        responsive:true,
+        maintainAspectRatio:false
+    }
+});
+</script>
 </body>
 </html>
