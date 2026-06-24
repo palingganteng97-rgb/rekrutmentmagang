@@ -32,21 +32,21 @@ if (mysqli_num_rows($cek_penilai_db) > 0) {
 }
 
 // =========================================================================
-// 2. QUERY UTAMA: AMBIL DATA BIODATA LENGKAP PELAMAR (VERSI TANPA JOIN LOWONGAN)
+// 2. QUERY UTAMA: AMBIL DATA BIODATA LENGKAP PELAMAR (DENGAN JOIN LOWONGAN)
 // =========================================================================
 $query_pelamar = mysqli_query($conn, "SELECT lt.id AS id_tahapan,
                                              p.*,
                                              p.id AS id_pelamar_murni,
                                              p.nama_lengkap AS nama_pendaftar,
-                                             rl.id AS id_lamaran_asli
+                                             rl.id AS id_lamaran_asli,
+                                             rlow.judul_lowongan AS posisi_dilamar -- Mengambil judul lowongan
                                       FROM lamaran_tahapan lt
                                       JOIN rekrutmen_lamaran rl ON lt.lamaran_id = rl.id
                                       JOIN pelamar p ON rl.pelamar_id = p.id
+                                      LEFT JOIN rekrutmen_lowongan rlow ON rl.lowongan_id = rlow.id -- Join ke tabel lowongan
                                       WHERE lt.id = '$lamaran_tahapan_id' LIMIT 1");
 
 $data_pelamar = mysqli_fetch_assoc($query_pelamar);
-
-
 
 // LOGIKA INTERSEPTOR PENUTUPAN TAB / NAVIGATOR BEACON
 if (isset($_POST['action_meninggalkan_halaman'])) {
@@ -534,7 +534,7 @@ input[type=number] { -moz-appearance: textfield; }
         </div>
 
         <div class="profile-main-name" style="margin-top: 10px; font-weight: 700;"><?= htmlspecialchars($data_pelamar['nama_lengkap'] ?? '-'); ?></div>
-        <div class="profile-main-sub" style="margin-top: 4px;">Melamar Posisi: <strong><?= htmlspecialchars($data_pelamar['nama_lowongan'] ?? '-'); ?></strong></div>
+        <div class="profile-main-sub" style="margin-top: 4px;">Melamar Posisi: <strong><?= htmlspecialchars($data_pelamar['posisi_dilamar'] ?? '-'); ?></strong></div>
     </div>
 
     <!-- SEKTOR 1: DATA IDENTITAS PRIBADI -->

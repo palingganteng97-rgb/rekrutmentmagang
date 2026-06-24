@@ -391,37 +391,53 @@ if (!$query_progress) {
                 <h1>Lamaran Tahapan</h1>
             </div>
 
-            <!-- Bagian Lowongan Kerja (Kotak Kuota Master) -->
+            <!-- Bagian Lowongan Kerja (Kotak Kuota Master - VERSI TABEL FILTER) -->
             <section>
                 <div class="section-header">
-                    <div class="section-title">Kuota Data Master Lowongan (Klik kartu untuk memfilter tabel)</div>
+                    <div class="section-title">Kuota Data Master Lowongan (Klik baris tabel untuk memfilter)</div>
                     <?php if (!empty($filter_lowongan)) : ?>
                         <!-- Tombol untuk mengembalikan/menampilkan semua data lagi -->
-                        <a href="lamaran_tahapan.php" style="font-size: 13px; font-weight: 700; color: #4f46e5; text-decoration: none;">🔄 Tampilkan Semua</a>
+                        <a href="lamaran_tahapan.php" style="font-size: 13px; font-weight: 700; color: #4f46e5; text-decoration: none;">🔄 Tampilkan Semua Formasi</a>
                     <?php endif; ?>
                 </div>
-                <div class="cards-grid">
-                    <?php if (!empty($lowongan_kerja)) : ?>
-                        <?php foreach ($lowongan_kerja as $lk) : ?>
-                            <?php 
-                                // Membuat link filter dinamis berdasarkan nama posisi lowongan
-                                $nama_posisi = $lk['posisi'] ?? ''; 
-                                $is_active_card = ($filter_lowongan === $nama_posisi) ? 'style="border-color: #4f46e5; background: #f5f3ff;"' : '';
-                            ?>
-                            <a href="lamaran_tahapan.php?lowongan=<?php echo urlencode($nama_posisi); ?>" style="text-decoration: none; color: inherit;">
-                                <div class="job-card" <?php echo $is_active_card; ?>>
-                                    <div>
-                                        <div class="qty">NEW</div>
-                                        <div class="title">Posisi: <?php echo htmlspecialchars($nama_posisi); ?></div>
-                                        <div class="desc"><?php echo htmlspecialchars($lk['deskripsi'] ?? '-'); ?></div>
-                                    </div>
-                                    <div class="percentage-ring">NEW</div>
-                                </div>
-                            </a>
-                        <?php endforeach; ?>
-                    <?php else : ?>
-                        <p style="color:#94a3b8; font-style:italic; font-size: 14px; width: 100%;">Belum ada kuota data master lowongan aktif.</p>
-                    <?php endif; ?>
+
+                <div class="table-wrapper" style="margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 700;">STATUS</th>
+                                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 700;">POSISI / FORMASI LOWONGAN</th>
+                                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 700;">DESKRIPSI SINGKAT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($lowongan_kerja)) : ?>
+                                <?php foreach ($lowongan_kerja as $lk) : ?>
+                                    <?php 
+                                        $nama_posisi = $lk['posisi'] ?? ''; 
+                                        // Cek apakah baris lowongan ini sedang aktif difilter untuk mengubah background-nya
+                                        $is_active_row = ($filter_lowongan === $nama_posisi) ? 'style="background-color: #f5f3ff; cursor: pointer; font-weight: 600;"' : 'style="cursor: pointer;"';
+                                    ?>
+                                    <!-- Menjadikan satu baris tabel sebagai tautan filter -->
+                                    <tr <?php echo $is_active_row; ?> onclick="window.location.href='lamaran_tahapan.php?lowongan=<?php echo urlencode($nama_posisi); ?>';" onmouseover="this.style.backgroundColor='#f1f5f9'" onmouseout="this.style.backgroundColor='<?php echo ($filter_lowongan === $nama_posisi) ? '#f5f3ff' : 'transparent'; ?>'">
+                                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
+                                            <span style="background-color: #e0e7ff; color: #4338ca; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">NEW</span>
+                                        </td>
+                                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #1e293b;">
+                                            <strong>Posisi: <?php echo htmlspecialchars($nama_posisi); ?></strong>
+                                        </td>
+                                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">
+                                            <?php echo htmlspecialchars($lk['deskripsi'] ?? '-'); ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else : ?>
+                                <tr>
+                                    <td colspan="3" style="text-align: center; padding: 20px; color:#94a3b8; font-style:italic; font-size: 14px;">Belum ada kuota data master lowongan aktif.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
                 </div>
             </section>
 

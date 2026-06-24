@@ -68,6 +68,7 @@ if (isset($_POST['simpan_jabatan_baru'])) {
 // Ambil data unit untuk kebutuhan Dropdown Pilihan di Modal Form
 $list_unit = mysqli_query($koneksi, "SELECT id, nama_unit FROM mst_unit WHERE status='Aktif' ORDER BY nama_unit ASC");
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -75,37 +76,70 @@ $list_unit = mysqli_query($koneksi, "SELECT id, nama_unit FROM mst_unit WHERE st
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Master Jabatan - Magang ID</title>
     <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #475569; }
-        .dashboard-container { width: 100%; max-width: 1440px; background: #ffffff; border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.04); display: flex; min-height: 850px; overflow: hidden; }
-        .sidebar-left { width: 280px; background: #ffffff; border-right: 1px solid #f1f5f9; padding: 35px; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
-        .brand-logo { font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 45px; display: flex; align-items: center; gap: 10px; }
-        .brand-logo span { width: 10px; height: 20px; background: #4f46e5; border-radius: 4px; display: inline-block; }
-        .menu-list { display: flex; flex-direction: column; gap: 6px; }
-        .menu-item { display: block; padding: 14px 18px; color: #94a3b8; text-decoration: none; border-radius: 16px; font-size: 14px; font-weight: 600; transition: all 0.2s; }
-        .menu-item.active { background: #f5f3ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
-        .menu-item:hover:not(.active) { background: #f8fafc; color: #1e293b; }
-        .support-card { background: #fff5f5; border: 1px solid #fee2e2; padding: 16px; border-radius: 20px; text-align: center; margin-top: 20px; }
-        .support-card a { display: block; width: 100%; background: #dc2626; color: white; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); }
-        .main-content { flex: 1; background: #fbfbfd; padding: 40px 50px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; }
-        .content-header h1 { font-size: 26px; font-weight: 800; color: #212529; }
-        .content-header p { font-size: 14px; color: #6c757d; margin-top: 4px; }
-        .control-bar { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-top: 10px; }
-        .search-box { display: flex; gap: 8px; flex: 1; max-width: 450px; }
-        .input-search { width: 100%; padding: 10px 16px; border: 1px solid #ced4da; border-radius: 6px; font-size: 14px; color: #495057; outline: none; background: #ffffff; }
-        .btn-search { background: #3182ce; color: white; border: none; padding: 0 24px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
-        .action-right { display: flex; gap: 10px; }
-        .btn-add { background: #2ecc71; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-size: 14px; font-weight: 700; cursor: pointer; }
-        .table-wrapper { background: #ffffff; border: 1px solid #dee2e6; border-radius: 8px; overflow: hidden; box-shadow: 0 4px 6px rgba(0,0,0,0.01); }
-        table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
-        th { background: #f8fafc; color: #212529; padding: 16px 12px; font-weight: 700; border-bottom: 2px solid #dee2e6; text-align: center; }
-        td { padding: 16px 12px; color: #495057; border-bottom: 1px solid #dee2e6; vertical-align: middle; text-align: center; }
-        .action-container { display: flex; gap: 6px; justify-content: center; }
-        .btn-action { width: 34px; height: 34px; border-radius: 8px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; color: white; text-decoration: none; font-size: 14px; }
-        .btn-edit { background: #00a896; }   
-        .btn-delete { background: #e74c3c; } 
-        .table-input { width: 100%; padding: 10px; border: 1px solid #ced4da; border-radius: 6px; color: #1e293b; background: #ffffff; outline: none; }
-    </style>
+    /* =========================================================================
+       1. GLOBAL & BASE LAYOUT SYSTEM
+       ========================================================================= */
+    * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+    body { background-color: #f0f2f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; color: #475569; }
+    .dashboard-container { width: 100%; max-width: 1440px; background: #ffffff; border-radius: 32px; box-shadow: 0 20px 40px rgba(0,0,0,0.04); display: flex; min-height: 850px; overflow: hidden; }
+    .sidebar-left { width: 280px; background: #ffffff; border-right: 1px solid #f1f5f9; padding: 35px; display: flex; flex-direction: column; justify-content: space-between; flex-shrink: 0; }
+    .brand-logo { font-size: 22px; font-weight: 800; color: #1e293b; margin-bottom: 45px; display: flex; align-items: center; gap: 10px; }
+    .brand-logo span { width: 10px; height: 20px; background: #4f46e5; border-radius: 4px; display: inline-block; }
+    .menu-list { display: flex; flex-direction: column; gap: 6px; }
+    .menu-item { display: block; padding: 14px 18px; color: #94a3b8; text-decoration: none; border-radius: 16px; font-size: 14px; font-weight: 600; transition: all 0.2s; }
+    .menu-item.active { background: #f5f3ff; color: #4f46e5; border-right: 4px solid #4f46e5; font-weight: 700; }
+    .menu-item:hover:not(.active) { background: #f8fafc; color: #1e293b; }
+    .support-card { background: #fff5f5; border: 1px solid #fee2e2; padding: 16px; border-radius: 20px; text-align: center; margin-top: 20px; }
+    .support-card a { display: block; width: 100%; background: #dc2626; color: white; padding: 12px; border-radius: 12px; font-size: 13px; font-weight: 700; text-decoration: none; box-shadow: 0 4px 12px rgba(220, 38, 38, 0.15); }
+    .main-content { flex: 1; background: #fbfbfd; padding: 40px 50px; display: flex; flex-direction: column; gap: 24px; overflow-y: auto; }
+    .content-header h1 { font-size: 26px; font-weight: 800; color: #212529; }
+    .content-header p { font-size: 14px; color: #6c757d; margin-top: 4px; }
+    
+    /* =========================================================================
+       2. TOP BAR CONTROLS (SEARCH & BUTTONS)
+       ========================================================================= */
+    .control-bar { display: flex; justify-content: space-between; align-items: center; gap: 15px; margin-top: 10px; }
+    .search-box { display: flex; gap: 8px; flex: 1; max-width: 450px; }
+    .input-search { width: 100%; padding: 12px 16px; border: 1px solid #cbd5e1; border-radius: 10px; font-size: 14px; color: #334155; outline: none; background: #ffffff; transition: all 0.2s; }
+    .input-search:focus { border-color: #4f46e5; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
+    .btn-search { background: #4f46e5; color: white; border: none; padding: 0 24px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+    .btn-search:hover { background: #4338ca; }
+    .action-right { display: flex; gap: 10px; }
+    .btn-add { background: #10b981; color: white; border: none; padding: 12px 24px; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; transition: background 0.2s; }
+    .btn-add:hover { background: #059669; }
+
+    /* =========================================================================
+       3. HIGH-CONTRAST MODERN TABLE DESIGN
+       ========================================================================= */
+    .table-wrapper { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.02); margin-top: 5px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    
+    th { background: #f8fafc; color: #1e293b; padding: 18px 16px; font-weight: 700; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 2px solid #e2e8f0; text-align: left; }
+    td { padding: 18px 16px; color: #334155; font-weight: 500; border-bottom: 1px solid #f1f5f9; vertical-align: middle; text-align: left; }
+    tr:hover td { background-color: #f8fafc; }
+
+    /* Penataan perataan kolom agar proporsional */
+    th:first-child, td:first-child { text-align: center; width: 70px; font-weight: 600; color: #94a3b8; } /* Kolom No */
+    th:last-child, td:last-child { text-align: center; width: 120px; } /* Kolom Aksi */
+
+    /* Pengentalan teks khusus data identifikasi utama */
+    td:nth-child(3) { font-family: 'Courier New', Courier, monospace; font-weight: 700; color: #4f46e5; } /* Kode Jabatan */
+    td:nth-child(4) { font-weight: 700; color: #0f172a; } /* Nama Jabatan */
+
+    /* =========================================================================
+       4. ACTION BUTTONS & INTERACTION COMPONENTS
+       ========================================================================= */
+    .action-container { display: flex; gap: 8px; justify-content: center; }
+    .btn-action { width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; border: none; cursor: pointer; color: white; text-decoration: none; font-size: 14px; transition: transform 0.1s, opacity 0.2s; }
+    .btn-action:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-edit { background: #0ea5e9; }   
+    .btn-delete { background: #ef4444; } 
+    
+    /* Input form inline di dalam tabel */
+    .table-input { width: 100%; padding: 10px 14px; border: 1px solid #cbd5e1; border-radius: 8px; color: #1e293b; background: #ffffff; outline: none; transition: border 0.2s; }
+    .table-input:focus { border-color: #4f46e5; }
+</style>
+
 </head>
 <body>
 

@@ -15,13 +15,14 @@ if (!$koneksi) {
 }
 
 // =========================================================================
-// 2. QUERY UTAMA: AMBIL DATA TALENT POOL & TRACKING ID TAHAPAN LAMARAN
+// 2. QUERY UTAMA: AMBIL DATA TALENT POOL, PELAMAR, & JUDUL LOWONGAN
 // =========================================================================
 $query_pool = mysqli_query($koneksi, "
     SELECT
         tp.*,
         p.*,
         p.nama_lengkap AS nama_pendaftar,
+        rlow.judul_lowongan AS posisi_dilamar, -- Mengambil nama lowongan dari database
         (
             SELECT MAX(lt.id)
             FROM rekrutmen_lamaran rl
@@ -30,14 +31,15 @@ $query_pool = mysqli_query($koneksi, "
             WHERE rl.pelamar_id = p.id
         ) AS id_lamaran_tahapan
     FROM talent_pool tp
-    JOIN pelamar p
+    JOIN pelamar p 
         ON tp.pelamar_id = p.id
+    LEFT JOIN rekrutmen_lamaran rlam 
+        ON p.id = rlam.pelamar_id
+    LEFT JOIN rekrutmen_lowongan rlow 
+        ON rlam.lowongan_id = rlow.id
     ORDER BY tp.id DESC
 ");
 
-if (!$query_pool) {
-    die("Query Gagal: " . mysqli_error($koneksi));
-}
 ?>
 
 <!DOCTYPE html>
