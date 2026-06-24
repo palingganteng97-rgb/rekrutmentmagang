@@ -18,29 +18,22 @@ if (!$koneksi) {
 // 2. QUERY UTAMA: AMBIL DATA TALENT POOL & TRACKING ID TAHAPAN LAMARAN
 // =========================================================================
 $query_pool = mysqli_query($koneksi, "
-SELECT
-tp.*,
-p.*,
-p.nama_lengkap AS nama_pendaftar,
-
-```
-    (
-        SELECT MAX(lt.id)
-        FROM rekrutmen_lamaran rl
-        JOIN lamaran_tahapan lt
-            ON rl.id = lt.lamaran_id
-        WHERE rl.pelamar_id = p.id
-    ) AS id_lamaran_tahapan
-
-FROM talent_pool tp
-JOIN pelamar p
-    ON tp.pelamar_id = p.id
-
-ORDER BY tp.id DESC
-```
-
+    SELECT
+        tp.*,
+        p.*,
+        p.nama_lengkap AS nama_pendaftar,
+        (
+            SELECT MAX(lt.id)
+            FROM rekrutmen_lamaran rl
+            JOIN lamaran_tahapan lt
+                ON rl.id = lt.lamaran_id
+            WHERE rl.pelamar_id = p.id
+        ) AS id_lamaran_tahapan
+    FROM talent_pool tp
+    JOIN pelamar p
+        ON tp.pelamar_id = p.id
+    ORDER BY tp.id DESC
 ");
-
 
 if (!$query_pool) {
     die("Query Gagal: " . mysqli_error($koneksi));
