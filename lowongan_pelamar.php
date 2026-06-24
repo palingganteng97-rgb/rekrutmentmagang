@@ -133,91 +133,356 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
     }
 }
 ?>
-
-<!DOCTYPE html>
-<html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <title>Portal Lowongan Kerja</title>
-    <style>
-        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f8fafc; margin: 0; padding: 20px; }
-        .navbar { display: flex; justify-content: space-between; align-items: center; background: white; padding: 15px 30px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .container { max-width: 1200px; margin: 40px auto; }
-        .grid-lowongan { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 350px)); gap: 25px; justify-content: start; margin-top: 20px; }
-        .card-lowongan { background: white; padding: 25px; border-radius: 8px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; display: flex; flex-direction: column; justify-content: space-between; }
-        .action-buttons { display: flex; gap: 10px; margin-top: 20px; width: 100%; }
-        .btn-action { flex: 1; padding: 12px; border-radius: 6px; font-size: 14px; font-weight: bold; border: none; text-align: center; text-decoration: none; cursor: pointer; transition: 0.2s; }
-        .btn-lamar { background: #4338ca; color: white; }
-        .btn-lamar:hover { background: #3730a3; }
-        .btn-detail { background: #2563eb; color: white; }
-        .btn-detail:hover { background: #1d4ed8; }
-        .btn-disabled { background: #e2e8f0; color: #64748b; cursor: not-allowed; }
-        .link-user-profil { color: #2563eb; text-decoration: none; font-weight: bold; }
-        .modal { display: none; position: fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); justify-content:center; align-items:center; z-index: 1000; }
-        .modal-content { background:white; padding:30px; border-radius:8px; width:550px; text-align:left; max-height: 85vh; overflow-y: auto; }
-        .btn-konfirmasi { background:#198754; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold; }
-        .btn-batal { background:#6c757d; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold; margin-right:10px; }
+<!DOCTYPE html><html class="scroll-smooth" lang="id" style=""><head>
+<meta charset="utf-8">
+<meta content="width=device-width, initial-scale=1.0" name="viewport">
+<title>Karir - RSI Kendal | Bergabung Bersama Kami</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet">
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline": "#6d7a78",
+                    "on-primary-container": "#004642",
+                    "error-container": "#ffdad6",
+                    "on-secondary-fixed-variant": "#444749",
+                    "surface-dim": "#cbdbf5",
+                    "surface-variant": "#d3e4fe",
+                    "secondary-fixed": "#e0e3e5",
+                    "on-secondary": "#ffffff",
+                    "primary-container": "#4db9b2",
+                    "primary-fixed": "#8bf4ec",
+                    "outline-variant": "#bcc9c7",
+                    "on-primary": "#ffffff",
+                    "secondary-container": "#e0e3e5",
+                    "primary-fixed-dim": "#6ed7d0",
+                    "on-secondary-container": "#626567",
+                    "on-tertiary-container": "#333e51",
+                    "inverse-on-surface": "#eaf1ff",
+                    "primary": "#006a65",
+                    "on-tertiary": "#ffffff",
+                    "on-surface-variant": "#3d4948",
+                    "tertiary": "#545f73",
+                    "on-secondary-fixed": "#191c1e",
+                    "surface-container-low": "#eff4ff",
+                    "surface-container-lowest": "#ffffff",
+                    "on-error": "#ffffff",
+                    "tertiary-container": "#9ea9c0",
+                    "surface-bright": "#f8f9ff",
+                    "on-error-container": "#93000a",
+                    "tertiary-fixed": "#d8e3fb",
+                    "on-tertiary-fixed": "#111c2d",
+                    "surface": "#f8f9ff",
+                    "on-tertiary-fixed-variant": "#3c475a",
+                    "inverse-surface": "#213145",
+                    "on-background": "#0b1c30",
+                    "inverse-primary": "#6ed7d0",
+                    "on-primary-fixed": "#00201e",
+                    "surface-container-high": "#dce9ff",
+                    "secondary-fixed-dim": "#c4c7c9",
+                    "secondary": "#5c5f61",
+                    "surface-tint": "#006a65",
+                    "on-surface": "#0b1c30",
+                    "on-primary-fixed-variant": "#00504c",
+                    "tertiary-fixed-dim": "#bcc7de",
+                    "background": "#f8f9ff",
+                    "surface-container-highest": "#d3e4fe",
+                    "surface-container": "#e5eeff",
+                    "error": "#ba1a1a"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "section-gap": "52px",
+                    "margin-desktop": "40px",
+                    "stack-sm": "8px",
+                    "margin-mobile": "16px",
+                    "container-max": "1280px",
+                    "stack-lg": "24px",
+                    "stack-md": "12px",
+                    "gutter": "16px"
+            },
+            "fontFamily": {
+                    "label-sm": ["Inter"],
+                    "display-lg-mobile": ["Inter"],
+                    "body-md": ["Inter"],
+                    "body-lg": ["Inter"],
+                    "headline-md": ["Inter"],
+                    "display-lg": ["Inter"],
+                    "headline-sm": ["Inter"],
+                    "label-md": ["Inter"]
+            },
+            "fontSize": {
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "600"}],
+                    "display-lg-mobile": ["30px", {"lineHeight": "36px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["14px", {"lineHeight": "22px", "fontWeight": "400"}],
+                    "body-lg": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["26px", {"lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                    "display-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-md": ["13px", {"lineHeight": "18px", "letterSpacing": "0.01em", "fontWeight": "500"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .premium-shadow {
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.05);
+        }
+        .premium-shadow-hover:hover {
+            box-shadow: 0px 10px 30px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+        .glass-header {
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
     </style>
 </head>
-<body>
+<body class="bg-background text-on-background font-body-md selection:bg-primary-container selection:text-on-primary-container">
 
-    <!-- NAVBAR -->
-    <div class="navbar">
-        <h2 style="margin:0; color:#1e293b;">PORTAL KARIR</h2>
-        <div>
-            <?php if ($pelamar_id) : ?>
-                <span style="margin-right:15px; color:#475569;">
-                    Halo, <a href="profil_pelamar.php" class="link-user-profil"><?= htmlspecialchars($pelamar_nama); ?></a>
-                </span>
-                <a href="rekrutmen_lamaran.php" style="background:#198754; color:white; padding:8px 16px; text-decoration:none; border-radius:6px; font-size:14px; font-weight:bold; margin-right:10px;">Data Lamaran Saya</a>
-                <a href="logout_pelamar.php" style="background:#dc2626; color:white; padding:8px 16px; text-decoration:none; border-radius:6px; font-size:14px; font-weight:bold;">Keluar</a>
-            <?php else : ?>
-                <a href="login_pelamar.php" style="background:#2563eb; color:white; padding:8px 16px; text-decoration:none; border-radius:6px; font-size:14px; font-weight:bold;">Masuk Akun</a>
-            <?php endif; ?>
-        </div>
+    <!-- Top Navigation -->
+<header class="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-md shadow-sm">
+
+<nav class="max-w-container-max mx-auto px-4 md:px-margin-desktop h-16 flex justify-between items-center">
+    <div class="flex items-center gap-2">
+        <img src="https://lh3.googleusercontent.com/aida-public/AB6AXuA-fKup3UmLpxKQXwXeoa6vDIdEGudQ6gscxPLvc3qdXVgANgK094MDXaRFcVEldNEw2J2zxMHBh3R81UWndLDGcalDvTE-UQeXJ8xVx5ccykGgMHTEOC6vsLxIxzSqkm4Jl1UsBU1ECAeezPmFuKkjYSv_hDJN9Ql2edK-qpzPi49jMlkt4Tc_w8VB9b620JfdgP7TSLkOaTK-ERApcDgCSu9ZzoqdYWyxjthoZOlW5PHKnS4JBwa9p60YV1PTXdtT7hXiyGpNuzw" alt="RSI Kendal Logo" class="h-8 w-auto">
+        <span class="text-headline-sm font-headline-sm font-bold text-primary">RSI Kendal</span>
     </div>
 
-    <!-- MAIN CONTAINER CARD LOWONGAN -->
-    <div class="container">
-        <h3 style="color:#1e293b; margin-bottom:25px;">Lowongan Magang Tersedia</h3>
-        <div class="grid-lowongan">
-            <?php
-            $query_lowongan = mysqli_query($koneksi, "SELECT * FROM rekrutmen_lowongan");
-            if (mysqli_num_rows($query_lowongan) > 0) {
-                while ($row = mysqli_fetch_assoc($query_lowongan)) {
-                    $nama_tampil = isset($row['judul_lowongan']) ? $row['judul_lowongan'] : 'Lowongan Magang';
-                    $deskripsi   = isset($row['deskripsi']) ? $row['deskripsi'] : '';
-                    $id_lowongan = $row['id'];
-                    $sudah_melamar = in_array($id_lowongan, $lowongan_dilamar);
-            ?>
-                    <div class="card-lowongan">
-                        <div>
-                            <h3 style="margin: 0; color: #1e293b; font-size: 20px; font-weight: 600;"><?= htmlspecialchars($nama_tampil); ?></h3>
-                            <p style="color: #64748b; font-size: 14px; line-height: 1.6; margin-top: 15px; margin-bottom: 5px;"><?= htmlspecialchars($deskripsi); ?></p>
-                        </div>
-                        
-                        <div class="action-buttons">
-                            <button type="button" class="btn-action btn-detail" onclick="bukaDetail('<?= $id_lowongan; ?>')">Detail</button>
-                            <?php if ($sudah_melamar) : ?>
-                                <button type="button" class="btn-action btn-disabled" disabled>✔ Sudah Dilamar</button>
-                            <?php else : ?>
-                                <button type="button" class="btn-action btn-lamar" onclick="bukaPreview('<?= addslashes(htmlspecialchars($nama_tampil)); ?>', '<?= $id_lowongan; ?>')">Lamar</button>
-                            <?php endif; ?>
-                        </div>
-                    </div>
-            <?php
-                } 
-            } else {
-                echo "<p style='color:#64748b; text-align: center; width: 100%;'>Belum ada lowongan magang yang tersedia saat ini.</p>";
-            }
-            ?>
-        </div> 
+    <div class="flex items-center gap-2 ml-3">
+        <?php if(isset($_SESSION['pelamar_logged_in'])): ?>
+            <span class="text-primary font-medium">
+                <?= htmlspecialchars($_SESSION['pelamar_nama']) ?>
+            </span>
+            <a href="logout_pelamar.php" class="font-label-md text-label-md bg-red-500 text-white px-4 py-1.5 rounded-lg">
+                Logout
+            </a>
+        <?php else: ?>
+            <a href="login_pelamar.php" class="font-label-md text-label-md text-primary px-3.5 py-1.5 rounded-lg hover:bg-primary/5 transition-all">
+                Sign In
+            </a>
+            <a href="daftar_pelamar.php" class="font-label-md text-label-md bg-primary text-white px-4 py-1.5 rounded-lg hover:brightness-110 transition-all">
+                Sign Up
+            </a>
+        <?php endif; ?>
     </div>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="md:hidden text-primary">
+        <span class="material-symbols-outlined">menu</span>
+    </button>
+</nav>
+
+</header>
+<main class="pt-16">
+<!-- Hero Section -->
+<section class="relative h-[76vh] min-h-[520px] flex items-center overflow-hidden transition-all duration-1000 opacity-100 translate-y-0">
+<div class="absolute inset-0 z-0">
+<div class="w-full h-full bg-cover bg-center relative" style="background-image: url('bg.png');"><div class="absolute inset-0 bg-primary/30 backdrop-blur-[1px]"></div></div>
+<div class="absolute inset-0 bg-gradient-to-r from-on-primary-container/70 to-transparent"></div>
+</div>
+<div class="relative z-10 max-w-container-max mx-auto px-4 md:px-margin-desktop text-white">
+<div class="max-w-2xl space-y-5 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+<h1 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg hover:translate-y-[-3px] transition-transform duration-500">
+Bergabunglah Bersama Rumah Sakit Islam Kendal
+</h1>
+<p class="font-body-lg text-body-lg text-white/90 max-w-xl hover:translate-y-[-2px] transition-transform duration-500">
+Mari tumbuh bersama kami dalam memberikan pelayanan kesehatan yang profesional, berkualitas, dan penuh kepedulian kepada masyarakat.
+</p>
+<div class="flex flex-col sm:flex-row gap-3 pt-3">
+<a class="inline-flex items-center justify-center bg-primary-container text-on-primary-container font-label-md text-label-md px-6 py-3 rounded-lg hover:scale-105 hover:shadow-lg transition-all duration-300" href="#jobs">Lihat Lowongan</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Why Join Us Section -->
+<section class="py-14 bg-surface transition-all duration-1000 opacity-100 translate-y-0">
+<div class="max-w-container-max mx-auto px-4 md:px-margin-desktop">
+<div class="text-center mb-10">
+<h2 class="font-headline-md text-headline-md text-on-background mb-4">Mengapa Berkarir Bersama Kami?</h2>
+<p class="text-secondary max-w-2xl mx-auto">Kami menghargai setiap dedikasi dan memberikan ruang seluas-luasnya untuk aktualisasi diri para profesional kesehatan.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl premium-shadow premium-shadow-hover transition-all duration-300">
+<div class="w-10 h-10 bg-primary/10 text-primary rounded-lg flex items-center justify-center mb-4">
+<span class="material-symbols-outlined">clinical_notes</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm mb-2">Lingkungan Profesional</h3>
+<p class="text-on-surface-variant text-body-md">Sistem kerja yang terorganisir dengan standar akreditasi rumah sakit tingkat paripurna.</p>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl premium-shadow premium-shadow-hover transition-all duration-300">
+<div class="w-10 h-10 bg-primary/10 text-primary rounded-lg flex items-center justify-center mb-4">
+<span class="material-symbols-outlined">trending_up</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm mb-2">Jenjang Karir</h3>
+<p class="text-on-surface-variant text-body-md">Kesempatan kenaikan jabatan yang transparan berdasarkan kinerja dan kompetensi profesional.</p>
+</div>
+<!-- Card 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl premium-shadow premium-shadow-hover transition-all duration-300">
+<div class="w-10 h-10 bg-primary/10 text-primary rounded-lg flex items-center justify-center mb-4">
+<span class="material-symbols-outlined">school</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm mb-2">Pelatihan Berkelanjutan</h3>
+<p class="text-on-surface-variant text-body-md">Program pengembangan skill rutin baik internal maupun eksternal untuk seluruh staf.</p>
+</div>
+<!-- Card 4 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl premium-shadow premium-shadow-hover transition-all duration-300">
+<div class="w-10 h-10 bg-primary/10 text-primary rounded-lg flex items-center justify-center mb-4">
+<span class="material-symbols-outlined">volunteer_activism</span>
+</div>
+<h3 class="font-headline-sm text-headline-sm mb-2">Kesejahteraan</h3>
+<p class="text-on-surface-variant text-body-md">Paket remunerasi yang kompetitif, asuransi kesehatan, dan lingkungan kerja yang islami.</p>
+</div>
+</div>
+</div>
+</section> <!-- Akhir dari Section Why Join Us -->
+
+<!-- ==================== TAMBAHKAN BLOK BARU INI DI SINI ==================== -->
+<section class="py-14 bg-background">
+    <div class="max-w-container-max mx-auto px-4 md:px-margin-desktop mb-14">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- ========================================================================= -->
+<?php
+$query_lowongan = mysqli_query(
+    $koneksi,
+    "SELECT * FROM rekrutmen_lowongan
+     ORDER BY tanggal_selesai ASC"
+);
+
+if(mysqli_num_rows($query_lowongan) > 0):
+
+while($row = mysqli_fetch_assoc($query_lowongan)):
+
+    $id_lowongan = $row['id'];
+
+    $nama_tampil = $row['judul_lowongan'] ?? 'Lowongan';
+
+    $deskripsi = strip_tags($row['deskripsi'] ?? '');
+
+    $deadline = !empty($row['tanggal_selesai'])
+        ? date('d M Y', strtotime($row['tanggal_selesai']))
+        : '-';
+
+    $sudah_melamar = in_array(
+        $id_lowongan,
+        $lowongan_dilamar
+    );
+
+    $status_badge = 'Aktif';
+    $badge_class = 'bg-primary/10 text-primary';
+
+    if(!empty($row['tanggal_selesai'])){
+
+        $sisa_hari =
+            (strtotime($row['tanggal_selesai']) - time())
+            / 86400;
+
+        if($sisa_hari <= 7){
+            $status_badge = 'Segera Berakhir';
+            $badge_class =
+                'bg-error-container text-on-error-container';
+        }
+    }
+?>
+
+<div class="bg-white border border-outline-variant/30 p-5 rounded-xl premium-shadow premium-shadow-hover transition-all group">
+
+    <div class="flex justify-between items-start mb-3">
+        <span class="px-3 py-1 <?= $badge_class ?> text-label-sm rounded-full">
+            <?= $status_badge ?>
+        </span>
+
+        <span class="text-outline text-label-sm">
+            Deadline: <?= $deadline ?>
+        </span>
+    </div>
+
+    <h4 class="font-headline-sm text-headline-sm mb-2 group-hover:text-primary transition-colors">
+        <?= htmlspecialchars($nama_tampil) ?>
+    </h4>
+
+    <div class="space-y-2 mb-5 text-on-surface-variant text-body-md">
+
+        <p>
+            <?= htmlspecialchars(substr($deskripsi,0,140)) ?>...
+        </p>
+
+        <?php if(!empty($row['jumlah_kebutuhan'])): ?>
+        <p class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[18px]">
+                groups
+            </span>
+            Kebutuhan:
+            <?= $row['jumlah_kebutuhan'] ?> Orang
+        </p>
+        <?php endif; ?>
+
+        <?php if(!empty($row['tanggal_mulai'])): ?>
+        <p class="flex items-center gap-2">
+            <span class="material-symbols-outlined text-primary text-[18px]">
+                calendar_month
+            </span>
+            Mulai:
+            <?= date('d M Y', strtotime($row['tanggal_mulai'])) ?>
+        </p>
+        <?php endif; ?>
+
+    </div>
+
+    <div class="flex gap-3">
+
+        <button
+            onclick="bukaDetail('<?= $id_lowongan ?>')"
+            class="flex-1 py-2.5 border border-primary text-primary rounded-xl hover:bg-primary/5 transition-all">
+            Lihat Detail
+        </button>
+
+        <?php if($sudah_melamar): ?>
+
+            <button
+                class="flex-1 py-2.5 bg-slate-400 text-white rounded-xl cursor-not-allowed">
+                Sudah Dilamar
+            </button>
+
+        <?php else: ?>
+
+            <button
+                onclick="bukaPreview('<?= addslashes(htmlspecialchars($nama_tampil)) ?>','<?= $id_lowongan ?>')"
+                class="flex-1 py-2.5 bg-primary text-white rounded-xl hover:brightness-110 transition-all">
+                Lamar
+            </button>
+            
+        <?php endif; ?> <!-- Tambahkan baris ini untuk menutup tag else -->
+
+    </div>
+
+</div>
 
     <!-- WINDOW MODAL DETAIL LOWONGAN (POP-UP DETAIL) -->
-<div id="modalDetailLowongan" class="modal">
-    <div class="modal-content" style="width: 600px; max-width: 95%; text-align: left; padding: 25px; border-radius: 12px; max-height: 85vh; overflow-y: auto; margin: auto; position: relative;">
-        <h3 id="detailJudul" style="margin-top: 0; color: #1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; font-size: 22px;">-</h3>
+<!-- Ganti baris pertama dengan kode ber-utility Tailwind ini -->
+<div id="modalDetailLowongan" class="hidden fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    
+    <!-- Berikan latar belakang putih 'bg-white shadow-2xl' pada penampung konten di bawahnya -->
+    <div class="modal-content bg-white shadow-2xl" style="width: 600px; max-width: 95%; text-align: left; padding: 25px; border-radius: 12px; max-height: 85vh; overflow-y: auto; margin: auto; position: relative;">
+
+    <h3 id="detailJudul" style="margin-top: 0; color: #1e293b; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; font-size: 22px;">-</h3>
         <div style="font-size: 14px; line-height: 1.6; color: #334155;">
             <div style="margin-bottom: 15px;"><strong style="color: #4338ca; display:block; margin-bottom: 4px;">Deskripsi Pekerjaan:</strong><p id="detailDeskripsi" style="margin: 0; color: #475569;">-</p></div>
             <div style="margin-bottom: 15px;"><strong style="color: #4338ca; display:block; margin-bottom: 4px;">Kualifikasi:</strong><p id="detailKualifikasi" style="margin: 0; color: #475569; white-space: pre-line;">-</p></div>
@@ -232,9 +497,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
     </div>
 </div>
 <!-- ==================== WINDOW MODAL PREVIEW DATA (LENGKAP PROFIL & PENGALAMAN) ==================== -->
-<div id="modalPreview" class="modal">
-    <div class="modal-content" style="width: 600px; max-width: 95%; background: white; padding: 30px; border-radius: 12px; text-align: left; max-height: 90vh; overflow-y: auto;">
-        <h3 style="margin-top: 0; text-align: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; color: #1e293b;">Preview Kelengkapan Data</h3>
+<!-- Tambahkan kelas 'hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4' -->
+<div id="modalPreview" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+    
+    <!-- Hapus margin:auto karena posisi flex dari kontainer luar sudah otomatis membuatnya ke tengah -->
+    <div class="modal-content" style="width: 600px; max-width: 95%; background: white; padding: 30px; border-radius: 12px; text-align: left; max-height: 90vh; overflow-y: auto; position: relative;">
+
+    <h3 style="margin-top: 0; text-align: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; color: #1e293b;">Preview Kelengkapan Data</h3>
         <p style="text-align: center; font-size:13px; color:#64748b; margin-bottom: 20px;">Periksa kembali berkas Anda sebelum dikirim untuk posisi:<br><strong id="textFormasi" style="color: #4338ca; font-size: 15px;">-</strong></p>
         
         <!-- BAGIAN I: BIODATA LENGKAP & PENDIDIKAN -->
@@ -290,10 +559,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
             <?php if(!empty($list_pengalaman)) : ?>
                 <?php foreach($list_pengalaman as $exp) : ?>
                     <?php 
-                        // Mencari otomatis nama instansi dari data baris perusahaan yang diinput pelamar
                         $nama_instansi_tampil = $exp['nama_instansi'] ?? $exp['instansi'] ?? $exp['nama_perusahaan'] ?? $exp['perusahaan'] ?? '';
-                        
-                        // Jika masih kosong, ambil nilai string pertama dari kolom database yang bukan angka ID
                         if(empty($nama_instansi_tampil)) {
                             foreach($exp as $key => $val) {
                                 if($key != 'id' && $key != 'pelamar_id' && !is_numeric($val) && strlen($val) > 5 && strpos(strtolower($val), '-') === false) {
@@ -314,48 +580,67 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['kirim_lamaran_final'])
             <?php endif; ?>
         </div>
 
-        <!-- BUTTON AKSI -->
+        <!-- BUTTON AKSI FORM FINAL -->
         <form action="" method="POST" style="text-align: right; border-top: 2px solid #f1f5f9; padding-top: 15px; margin: 0;">
             <input type="hidden" id="inputLowonganId" name="lowongan_id" value="">
-            <!-- Tombol Batal yang sudah diperbaiki warna teksnya agar muncul jelas -->
-            <button type="button" class="btn-batal" onclick="document.getElementById('modalPreview').style.display='none'" style="padding: 10px 20px; border-radius: 4px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #475569; cursor: pointer; font-weight: bold; margin-right: 10px; transition: background 0.2s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">Batal</button>
+            <button type="button" class="btn-batal" onclick="const m = document.getElementById('modalPreview'); m.classList.add('hidden'); m.style.display='none';" style="padding: 10px 20px; border-radius: 4px; border: 1px solid #cbd5e1; background: #f1f5f9; color: #475569; cursor: pointer; font-weight: bold; margin-right: 10px;">Batal</button>
             <button type="submit" name="kirim_lamaran_final" class="btn-konfirmasi" style="background:#198754; color:white; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight:bold;">Kirim Lamaran Sekarang</button>
         </form>
     </div>
 </div>
 
-<!-- ==================== JAVASCRIPT LOGIC POP-UP MODAL ==================== -->
+<?php 
+    // KUNCI PERBAIKAN: Tag penutup loop daftar lowongan wajib ditaruh di sini
+    endwhile; 
+endif; 
+?>
+
+<!-- ==================== LOGIKA JAVASCRIPT SINKRONISASI ==================== -->
 <script>
+const mDetail = document.getElementById('modalDetailLowongan');
+const mPreview = document.getElementById('modalPreview');
+
 function bukaDetail(idLowongan) {
+    if(mDetail) {
+        mDetail.classList.remove('hidden');
+        mDetail.style.display = 'flex';
+    }
+
     fetch('get_detail_lowongan.php?id=' + idLowongan)
-        .then(response => response.json())
-        .then(res => {
-            if (res.status === 'success') {
-                document.getElementById('detailJudul').innerText = res.data.judul_lowongan;
-                document.getElementById('detailDeskripsi').innerText = res.data.deskripsi || 'Tidak ada deskripsi.';
-                document.getElementById('detailKualifikasi').innerText = res.data.kualifikasi || '-';
-                document.getElementById('detailPersyaratan').innerText = res.data.persyaratan || '-';
-                document.getElementById('detailKuota').innerText = (res.data.jumlah_kebutuhan || '0') + ' Orang';
-                document.getElementById('detailTglMulai').innerText = res.data.tanggal_mulai || '-';
-                document.getElementById('detailTglSelesai').innerText = res.data.tanggal_selesai || '-';
-                document.getElementById('modalDetailLowongan').style.display = 'flex';
-            } else {
-                alert('Gagal mengambil data: ' + res.message);
-            }
-        }).catch(err => alert('Gagal memuat detail lowongan.'));
+        .then(res => res.json())
+        .then(data => {
+            document.getElementById('detailJudul').innerText = data.judul_lowongan || data.judul || '-';
+            document.getElementById('detailDeskripsi').innerText = data.deskripsi || data.deskripsi_pekerjaan || '-';
+            document.getElementById('detailKualifikasi').innerText = data.kualifikasi || '-';
+            document.getElementById('detailPersyaratan').innerText = data.persyaratan || data.persyaratan_dokumen || '-';
+            document.getElementById('detailTglMulai').innerText = data.tanggal_mulai || data.tgl_mulai || '-';
+            document.getElementById('detailTglSelesai').innerText = data.tanggal_selesai || data.tgl_selesai || '-';
+            document.getElementById('detailKuota').innerText = (data.jumlah_kebutuhan || data.kuota || '0') + " Orang";
+        })
+        .catch(err => {
+            console.error(err);
+            alert('Gagal memuat detail lowongan.');
+        });
 }
 
 function bukaPreview(namaTampil, idLowongan) {
-    document.getElementById('textFormasi').innerText = namaTampil;
-    document.getElementById('inputLowonganId').value = idLowongan;
-    document.getElementById('modalPreview').style.display = 'flex';
+    if(mPreview) {
+        document.getElementById('textFormasi').innerText = namaTampil;
+        document.getElementById('inputLowonganId').value = idLowongan;
+        mPreview.classList.remove('hidden');
+        mPreview.style.display = 'flex';
+    }
 }
 
 window.onclick = function(event) {
-    const mDetail = document.getElementById('modalDetailLowongan');
-    const mPreview = document.getElementById('modalPreview');
-    if (event.target == mDetail) mDetail.style.display = 'none';
-    if (event.target == mPreview) mPreview.style.display = 'none';
+    if (event.target == mDetail) {
+        mDetail.classList.add('hidden');
+        mDetail.style.display = 'none';
+    }
+    if (event.target == mPreview) {
+        mPreview.classList.add('hidden');
+        mPreview.style.display = 'none';
+    }
 }
 </script>
 </body>
