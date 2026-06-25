@@ -217,6 +217,13 @@ if (!$query_lowongan) {
     <?php if (!empty($pelamar_nama)): ?>
         <!-- TAMPILAN JIKA USER SUDAH LOGIN -->
         <div class="flex items-center gap-2">
+            
+            <!-- 🔥 TOMBOL BARU: Lamaran Saya (Mengarah ke rekrutmen_lamaran.php) -->
+            <a href="rekrutmen_lamaran.php" class="font-label-md text-label-md text-slate-700 border border-slate-200 bg-white px-3.5 py-1.5 rounded-lg hover:bg-slate-50 transition-all text-center inline-block font-semibold">
+                <span class="material-symbols-outlined align-middle text-[18px] mr-1 text-slate-500">work_history</span>
+                Lamaran Saya
+            </a>
+
             <!-- Nama Pelamar (Klik untuk ke Profil) -->
             <a href="profil_pelamar.php" class="font-label-md text-label-md text-primary px-3.5 py-1.5 rounded-lg hover:bg-primary/5 transition-all text-center inline-block font-semibold">
                 <span class="material-symbols-outlined align-middle text-[18px] mr-1">account_circle</span>
