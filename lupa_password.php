@@ -13,43 +13,33 @@ if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
-// 2. LOGIKA PROSES SUBMIT FORM LOGIN (MURNI TABEL USERS)
 $error_message = "";
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $email_input    = mysqli_real_escape_string($koneksi, $_POST['email']);
-    $password_input = mysqli_real_escape_string($koneksi, $_POST['password']);
+$success_message = "";
+
+// 2. LOGIKA MEMPROSES SUBMIT GANTI PASSWORD
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['ganti_password_submit'])) {
+    $email_input    = mysqli_real_escape_string($koneksi, trim($_POST['email']));
+    $password_baru  = mysqli_real_escape_string($koneksi, $_POST['password']);
     
-    // Cari data murni di tabel users (karena akun pelamar & admin kumpul di sini)
-    $query_login = "SELECT * FROM users WHERE email = '$email_input' OR username = '$email_input'";
-    $hasil_login = mysqli_query($koneksi, $query_login);
+    // Pengecekan 1: Pastikan email terdaftar di dalam tabel users
+    $query_cek = mysqli_query($koneksi, "SELECT id FROM users WHERE email = '$email_input'");
     
-    if ($hasil_login && mysqli_num_rows($hasil_login) > 0) {
-        $data_user = mysqli_fetch_assoc($hasil_login);
+    if (mysqli_num_rows($query_cek) > 0) {
+        // Pengecekan 2: Update kata sandi baru murni teks biasa agar cocok dengan database Anda
+        $query_update = "UPDATE users SET password = '$password_baru' WHERE email = '$email_input'";
         
-        // Verifikasi kecocokan password
-        if ($data_user['password'] == $password_input) {
-            
-            // Cek status keaktifan akun
-            if ($data_user['status'] == 'Nonaktif') {
-                $error_message = "Gagal Masuk! Akun Anda berstatus NONAKTIF. Silakan hubungi Administrator.";
-            } else {
-                // SINKRONISASI SESI UNTUK NAV BAR NAVBAR (MENGGUNAKAN NAMA DARI TABEL USERS)
-                $_SESSION['pelamar_id']   = $data_user['id'];
-                $_SESSION['pelamar_nama'] = $data_user['nama']; // Kolom 'nama' sesuai tabel users Anda
-                
-                // Update waktu login terakhir
-                mysqli_query($koneksi, "UPDATE users SET last_login = NOW() WHERE id = '".$data_user['id']."'");
-                
-                // Redirect langsung ke halaman lowongan pelamar
-                header("Location: lowongan_pelamar.php");
-                exit();
-            }
-            
+        if (mysqli_query($koneksi, $query_update)) {
+            // Memunculkan pop-up sukses asli bawaan browser dan mengalihkan ke halaman masuk pelamar
+            echo "<script>
+                    alert('Kata sandi akun Anda berhasil diperbarui! Silakan masuk kembali dengan sandi baru Anda.');
+                    window.location.href = 'login_pelamar.php';
+                  </script>";
+            exit();
         } else {
-            $error_message = "Password yang Anda masukkan salah!";
+            $error_message = "Gagal memperbarui kata sandi: " . mysqli_error($koneksi);
         }
     } else {
-        $error_message = "Alamat Email atau Username tidak terdaftar!";
+        $error_message = "Alamat email tidak ditemukan di dalam sistem karir!";
     }
 }
 ?>
@@ -171,8 +161,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     </style>
 </head>
-
 <body class="bg-background text-on-background min-h-screen flex flex-col">
+<!-- TopNavBar (Shared Component Guide) -->
+<header class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-4 md:px-margin-desktop h-16 bg-surface dark:bg-on-background shadow-sm">
+<div class="flex items-center gap-stack-sm">
+<img alt="RSI Kendal Logo" class="h-10 w-auto" src="https://lh3.googleusercontent.com/aida-public/AB6AXuA7_eG7QY9kXyoYohLINJaqjG5Ak7zoa-aYo64ludFyBmQMCmnQaPbgl4C7r59jvEtYCW1QwjwTQIql5N-DlE0PHSlwWscTiD3LJDxyq1rOA91YS-yBfGlORJ3Euxl5s3GJ4n8a7UMzTARS-6DOCObwD0XNVw5696zRXHzsVY91i8vwyPla0B3OlIxm0mK5MUgOWoH9RS5S0-NZdyosZZjnq7VrE9u8GNzYTnbeIHqY7GNoW_NOrCTCoYLmpbfm50U8IfD0f58k7E8">
+<span class="text-headline-sm font-headline-sm font-bold text-primary dark:text-primary-fixed">RSI Kendal Careers</span>
+</div>
+</header>
+
 <main class="flex-grow flex items-center justify-center pt-20 pb-10 px-4 relative overflow-hidden">
 <!-- Background Atmospheric Element -->
 <div class="absolute inset-0 z-0 opacity-10">
@@ -192,69 +189,72 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     </p>
 </div>
 </div>
-<!-- Right Side: Sign In Form -->
-<div class="p-6 md:p-10 flex flex-col justify-center">
-    <div class="mb-8 text-center md:text-left">
-        <h2 class="font-headline-md text-headline-md text-on-background mb-2">Selamat Datang Kembali</h2>
-        <p class="font-body-md text-body-md text-outline">Silakan masuk ke akun karir Anda untuk melamar pekerjaan atau melihat status aplikasi.</p>
-    </div>
 
-    <!-- PERBAIKAN 1: Menambahkan method="POST" agar data form terkirim ke PHP -->
-    <form class="space-y-4" id="loginForm" method="POST">
+<!-- Right Side: Lupa Password Form -->
+<div class="p-6 md:p-10 flex flex-col justify-center bg-white">
+    <div class="mb-8 text-center md:text-left">
+        <h2 class="font-headline-md text-headline-md text-on-background mb-2">Lupa Password</h2>
+        <p class="font-body-md text-body-md text-outline">Silakan ganti password akun Anda di sini.</p>
+    </div>
+    
+    <!-- Memastikan method POST aktif dan name tombol dikenali PHP -->
+    <form class="space-y-4" id="resetPasswordForm" method="POST" action="">
         
-        <!-- PERBAIKAN 2: Menampilkan Pesan Error di atas input jika login gagal -->
+        <!-- PERBAIKAN FINAL: Menambahkan input tersembunyi sebagai penanda parameter submit untuk PHP -->
+        <input type="hidden" name="ganti_password_submit" value="1">
+        
+        <!-- Notifikasi Pesan Eror di atas Input jika Validasi Gagal -->
         <?php if (!empty($error_message)): ?>
-            <div class="bg-error-container text-on-error-container p-3 rounded-xl text-body-md border border-error/20">
+            <div class="bg-error-container text-on-error-container p-3 rounded-xl text-body-md border border-error/20 text-left">
                 <?php echo htmlspecialchars($error_message); ?>
             </div>
         <?php endif; ?>
 
         <!-- Email Field -->
-        <div class="space-y-1.5">
+        <div class="space-y-1.5 text-left">
             <label class="block font-label-md text-label-md text-on-surface-variant" for="email">Alamat Email</label>
             <div class="relative">
                 <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">mail</span>
-                <input class="w-full pl-10 pr-3 py-2.5 rounded-xl border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/15 transition-all outline-none text-body-md font-body-md bg-white" id="email" name="email" placeholder="nama@email.com" required="" type="email">
+                <input class="w-full pl-10 pr-3 py-2.5 rounded-xl border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/15 transition-all outline-none text-body-md font-body-md bg-white" id="email" name="email" placeholder="budi.kurniawan@gmail.com" required type="email">
             </div>
         </div>
 
         <!-- Password Field -->
-        <div class="space-y-1.5">
-            <div class="flex justify-between items-center">
-                <label class="block font-label-md text-label-md text-on-surface-variant" for="password">Kata Sandi</label>
-                <!-- PERBAIKAN: Mengubah href="#" menjadi href="lupa_password.php" -->
-                <a class="font-label-md text-label-md text-primary hover:underline transition-all" href="lupa_password.php">Lupa kata sandi?</a>
-            </div>
+        <div class="space-y-1.5 text-left">
+            <label class="block font-label-md text-label-md text-on-surface-variant" for="password">Kata Sandi Baru</label>
             <div class="relative">
                 <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">lock</span>
-                <input class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/15 transition-all outline-none text-body-md font-body-md bg-white" id="password" name="password" placeholder="••••••••" required="" type="password">
+                <input class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/15 transition-all outline-none text-body-md font-body-md bg-white" id="password" name="password" placeholder="••••••••" required type="password">
                 <button class="absolute right-3.5 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors" onclick="togglePassword()" type="button">
                     <span class="material-symbols-outlined text-[18px]" id="passwordIcon">visibility</span>
                 </button>
             </div>
         </div>
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-2 py-1 text-left">
             <input class="w-4 h-4 text-primary border-outline-variant rounded focus:ring-primary" id="remember" type="checkbox">
             <label class="font-label-md text-label-md text-on-surface-variant select-none" for="remember">Ingat saya untuk sesi berikutnya</label>
         </div>
 
-        <!-- PERBAIKAN 3: Mengubah tag <a> kembali menjadi <button type="submit"> dan menambahkan name="login" -->
-        <button type="submit" name="login" class="w-full bg-primary text-on-primary py-3 rounded-xl font-headline-sm text-label-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2">
-            Masuk Ke Akun
+        <!-- Tombol submit utama -->
+        <button type="submit" name="ganti_password_submit" class="w-full bg-primary text-on-primary py-3 rounded-xl font-headline-sm text-label-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+            Ganti Password
         </button>
-
     </form>
 
-    <div class="text-center mt-4 text-label-md">
-        Belum punya akun? <a href="daftar_pelamar.php" class="text-primary font-bold hover:underline">Daftar Sekarang</a>
+    <div class="relative my-6">
+        <div class="absolute inset-0 flex items-center">
+            <div class="w-full border-t border-outline-variant"></div>
+        </div>
     </div>
-</div>
 
+    <p class="text-center font-body-md text-body-md text-outline">
+        Sudah ingat akun Anda? <a class="text-primary font-bold hover:underline" href="login_pelamar.php">Masuk Sekarang</a>
+    </p>
 </div>
-</main>
 
 <script>
+    // 1. FUNGSI UNTUK MENYEMBUNYIKAN & MENAMPILKAN KATA SANDI
     function togglePassword() {
         const passwordInput = document.getElementById('password');
         const passwordIcon = document.getElementById('passwordIcon');
@@ -267,25 +267,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     }
 
-    document.getElementById('loginForm').addEventListener('submit', function(e) {
-        // PERBAIKAN: e.preventDefault() DIHAPUS agar form bisa terkirim ke PHP
+    // 2. LOGIKA PENANGANAN SUBMIT FORMULIR (SINKRONISASI KE resetPasswordForm)
+    document.getElementById('resetPasswordForm').addEventListener('submit', function(e) {
+        // PERBAIKAN: e.preventDefault() DIHAPUS agar form bisa terkirim ke server PHP
         
-        const btn = e.target.querySelector('button[type="submit"]');
+        const btn = this.querySelector('button[type="submit"]');
         btn.disabled = true;
         
         // Mempertahankan visual feedback animasi berputar saat tombol ditekan
         btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Memproses...';
         
-        // PERBAIKAN: setTimeout dan alert tiruan dihapus agar proses langsung dilanjutkan ke server PHP
+        // PERBAIKAN: setTimeout dan alert pengganggu dihapus agar data langsung diproses ke database
     });
 
-    // Mouse move effect for background subtle interaction
+    // 3. EFEK INTERAKSI LATAR BELAKANG (MOUSE MOVE EFFECT)
     document.addEventListener('mousemove', (e) => {
         const x = e.clientX / window.innerWidth;
         const y = e.clientY / window.innerHeight;
         
         const lights = document.querySelectorAll('.absolute.inset-0.z-0 div');
-        if (lights.length >= 2) { // Validasi untuk memastikan elemen ada dan menghindari error JS
+        // Validasi untuk memastikan elemen div background ada agar tidak memicu error JS
+        if (lights && lights.length >= 2) { 
             lights[0].style.transform = `translate(${x * 20}px, ${y * 20}px)`;
             lights[1].style.transform = `translate(${-x * 30}px, ${-y * 30}px)`;
         }
