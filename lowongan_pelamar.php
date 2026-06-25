@@ -237,19 +237,14 @@ if (!$query_lowongan) {
 </div>
 <div class="relative z-10 max-w-container-max mx-auto px-4 md:px-margin-desktop text-white">
 <div class="max-w-2xl space-y-5 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-<h1 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg hover:translate-y-[-3px] transition-transform duration-500">
-                        Bergabunglah Bersama Rumah Sakit Islam Kendal
-                    </h1>
-<p class="font-body-lg text-body-lg text-white/90 max-w-xl hover:translate-y-[-2px] transition-transform duration-500">
-                        Mari tumbuh bersama kami dalam memberikan pelayanan kesehatan yang profesional, berkualitas, dan penuh kepedulian kepada masyarakat.
-                    </p>
+<h1 class="font-display-lg-mobile md:font-display-lg text-display-lg-mobile md:text-display-lg hover:translate-y-[-3px] transition-transform duration-500">Bergabunglah Bersama Rumah Sakit Islam Kendal
+</h1>
+<p class="font-body-lg text-body-lg text-white/90 max-w-xl hover:translate-y-[-2px] transition-transform duration-500">Mari tumbuh bersama kami dalam memberikan pelayanan kesehatan yang profesional, berkualitas, dan penuh kepedulian kepada masyarakat.
+</p>
 <div class="flex flex-col sm:flex-row gap-3 pt-3">
-<a class="inline-flex items-center justify-center bg-primary-container text-on-primary-container font-label-md text-label-md px-6 py-3 rounded-lg hover:scale-105 hover:shadow-lg transition-all duration-300" href="#jobs">
-                            Lihat Lowongan
-                        </a>
-<a class="inline-flex items-center justify-center border border-white/30 backdrop-blur-sm text-white font-label-md text-label-md px-6 py-3 rounded-lg hover:bg-white/10 hover:scale-105 transition-all duration-300" href="#">
-                            Tentang Kami
-                        </a>
+<a class="inline-flex items-center justify-center bg-primary-container text-on-primary-container font-label-md text-label-md px-6 py-3 rounded-lg hover:scale-105 hover:shadow-lg transition-all duration-300" href="#jobs">Lihat Lowongan
+</a>
+
 </div>
 </div>
 </div>
