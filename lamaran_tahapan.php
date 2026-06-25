@@ -63,7 +63,7 @@ if (isset($_GET['action']) && $_GET['action'] == 'hapus_tahapan') {
 }
 
 // =========================================================================
-// 4. QUERY READ - PEMBACA KARTU LOWONGAN & AMAN DARI ONLY_FULL_GROUP_BY
+// 4. QUERY READ - DINAMIS (ANTI LOCK STATUS SKIP)
 // =========================================================================
 
 // AMBIL DATA LOWONGAN DARI MASTER (Untuk Kartu Atas)
@@ -75,16 +75,28 @@ if ($q_lwn && mysqli_num_rows($q_lwn) > 0) {
     }
 }
 
-// AMBIL DATA PROGRESS PELAMAR (Untuk Tabel Bawah)
+// AMBIL DATA PROGRESS PELAMAR
 $filter_lowongan = isset($_GET['lowongan']) ? mysqli_real_escape_string($koneksi, $_GET['lowongan']) : '';
 
 $sql_progress = "SELECT 
                     MAX(lt.id) AS id_tahapan,
                     rl.id AS id_lamaran,
+                    rl.pelamar_id, 
                     COALESCE(p.nama_lengkap, 'Pelamar Otomatis') AS nama_pendaftar, 
                     COALESCE(p.nik, '-') AS nik, 
                     COALESCE(low.judul_lowongan, 'dokter umum') AS nama_lowongan,
-                    COALESCE(MAX(lt.status), 'Pending') AS status_tahap, 
+                    
+                    /* PERBAIKAN LOGIKA AKURAT: Menggunakan SUBQUERY untuk membaca status terbaru di baris tabel, bukan MAX alfabet */
+                    IF(
+                        (SELECT COUNT(*) FROM penilaian_tahapan WHERE lamaran_tahapan_id = rl.id) > 0,
+                        IF(
+                            (SELECT COUNT(*) FROM penilaian_tahapan WHERE lamaran_tahapan_id = rl.id) < (SELECT COUNT(*) FROM mst_tahapan_seleksi WHERE status = 'Aktif'),
+                            'Pending',
+                            COALESCE((SELECT status FROM lamaran_tahapan WHERE lamaran_id = rl.id ORDER BY id DESC LIMIT 1), 'Pending')
+                        ),
+                        COALESCE((SELECT status FROM lamaran_tahapan WHERE lamaran_id = rl.id ORDER BY id DESC LIMIT 1), 'Pending')
+                    ) AS status_tahap, 
+                    
                     COALESCE(MAX(lt.tanggal_mulai), rl.created_at) AS tanggal_update
                  FROM rekrutmen_lamaran rl
                  LEFT JOIN rekrutmen_lowongan low ON rl.lowongan_id = low.id
@@ -95,7 +107,7 @@ if (!empty($filter_lowongan)) {
     $sql_progress .= " WHERE low.judul_lowongan = '$filter_lowongan'";
 }
 
-$sql_progress .= " GROUP BY rl.id, p.nama_lengkap, p.nik, low.judul_lowongan ORDER BY rl.id DESC";
+$sql_progress .= " GROUP BY rl.id, rl.pelamar_id, p.nama_lengkap, p.nik, low.judul_lowongan ORDER BY rl.id DESC";
 $query_progress = mysqli_query($koneksi, $sql_progress);
 
 if (!$query_progress) {
@@ -498,21 +510,21 @@ if ($query_progress && mysqli_num_rows($query_progress) > 0) : ?>
                 <span class="badge <?php echo $class_badge; ?>"><?php echo htmlspecialchars($status_badge); ?></span>
             </td>
 
-            <!-- KOLOM AKSI: TOMBOL NILAI (SAMP PAGE / SINGLE TAB ONLY) -->
-            <td style="text-align: center; white-space: nowrap;">
-                <!-- PERBAIKAN: Menghapus target="_blank" agar tidak membuka tab baru terus-menerus -->
-                <a href="penilaian_tahapan.php?id=<?php echo urlencode($id_lamaran_tahapan); ?>" 
-                class="btn-score" 
-                title="Beri Nilai Pelamar" 
-                style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 14px; background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; border-radius: 8px; font-weight: 700; font-size: 13px; text-decoration: none; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
-                    <svg xmlns="http://w3.org" width="14" height="14" fill="currentColor" class="bi bi-bookmark-star" viewBox="0 0 16 16" style="display: inline-block; vertical-align: middle;">
-                        <path d="M7.84 4.1a.5.5 0 0 1 .32 0l1.353.362-.124.484L8 4.584l-1.39.362-.122-.484zM6.6 6.3a.5.5 0 0 0 .117-.168l1-2a.5.5 0 0 0-.834-.464l-1 2A.5.5 0 0 0 6.6 6.3"/>
-                        <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.543a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/>
-                    </svg>
-                    <span style="line-height: 1;">Nilai</span>
-                </a>
-            </td>
-        </tr>
+<!-- KOLOM AKSI: TOMBOL NILAI (SAMP PAGE / SINGLE TAB ONLY) -->
+<td style="text-align: center; white-space: nowrap;">
+    <!-- PERBAIKAN MUTLAK: Mengunci URL agar mutlak menggunakan pelamar_id -->
+    <a href="penilaian_tahapan.php?id=<?php echo urlencode($row['pelamar_id'] ?? ''); ?>" 
+       class="btn-score" 
+       title="Beri Nilai Pelamar" 
+       style="display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 6px 14px; background-color: #eef2ff; color: #4f46e5; border: 1px solid #c7d2fe; border-radius: 8px; font-weight: 700; font-size: 13px; text-decoration: none; transition: all 0.2s; box-shadow: 0 1px 2px rgba(0,0,0,0.05);">
+        <svg xmlns="http://w3.org" width="14" height="14" fill="currentColor" class="bi bi-bookmark-star" viewBox="0 0 16 16" style="display: inline-block; vertical-align: middle;">
+            <path d="M7.84 4.1a.5.5 0 0 1 .32 0l1.353.362-.124.484L8 4.584l-1.39.362-.122-.484zM6.6 6.3a.5.5 0 0 0 .117-.168l1-2a.5.5 0 0 0-.834-.464l-1 2A.5.5 0 0 0 6.6 6.3"/>
+            <path d="M2 2a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v13.5a.5.5 0 0 1-.777.416L8 13.101l-5.223 2.815A.5.5 0 0 1 2 15.5zm2-1a1 1 0 0 0-1 1v12.566l4.723-2.543a.5.5 0 0 1 .554 0L13 14.566V2a1 1 0 0 0-1-1z"/>
+        </svg>
+        <span style="line-height: 1;">Nilai</span>
+    </a>
+</td>
+      </tr>
     <?php endwhile; ?>
 <?php else : ?>
     <tr>
@@ -522,7 +534,6 @@ if ($query_progress && mysqli_num_rows($query_progress) > 0) : ?>
     </tr>
 <?php endif; ?>
 </tbody>
-
                     </table>
                 </div>
             </section>
