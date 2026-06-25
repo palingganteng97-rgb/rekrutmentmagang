@@ -434,7 +434,6 @@ if (!$query_progress) {
         </table>
     </div>
 </section>
-
             <!-- TABEL PROGRESS SELEKSI -->
             <section>
                 <div class="section-header">
@@ -455,8 +454,7 @@ if (!$query_progress) {
                                     <th style="text-align: center; width: 100px;">AKSI</th> <!-- TAMBAHKAN INI -->
                                 </tr>
                             </thead>
-
-<tbody>
+                    <tbody>
 <?php // KONDISIONAL PEMBUKA YANG DIKEMBALIKAN AGAR TIDAK SYNTAX ERROR
 if ($query_progress && mysqli_num_rows($query_progress) > 0) : ?>
     <?php while ($row = mysqli_fetch_assoc($query_progress)) : ?>
