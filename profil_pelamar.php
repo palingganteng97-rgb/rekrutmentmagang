@@ -16,7 +16,9 @@ if (!$koneksi) {
 }
 mysqli_query($koneksi, "SET time_zone = '+07:00'");
 
-// 3. AMBIL DATA SESSION USER LOGIN
+// =========================================================================
+// 3. AMBIL DATA SESSION USER LOGIN & FETCHING SYSTEM SEMUA TABEL
+// =========================================================================
 $pelamar_id   = isset($_SESSION['pelamar_id']) ? $_SESSION['pelamar_id'] : null;
 $pelamar_nama = isset($_SESSION['pelamar_nama']) ? $_SESSION['pelamar_nama'] : null;
 
@@ -25,10 +27,18 @@ if (!$pelamar_id) {
     exit;
 }
 
-// =========================================================================
-// PISAHKAN DI SINI: AMBIL DATA UTAMA RIWAYAT PENDIDIKAN (FETCHING SYSTEM)
-// =========================================================================
-// Kode ini sekarang aman karena $koneksi dan $pelamar_id sudah terdefinisi di atasnya
+// 🟢 A. FETCH DATA BIODATA UTAMA (Untuk Form Sebelah Kiri)
+$query_profil = mysqli_query($koneksi, "SELECT * FROM pelamar WHERE id = '$pelamar_id'");
+$data = mysqli_fetch_assoc($query_profil);
+
+// Sinkronisasi otomatis jika kolom di tabel MySQL Anda bernama 'nama', bukan 'nama_lengkap'
+if ($data) {
+    if (!isset($data['nama_lengkap']) && isset($data['nama'])) {
+        $data['nama_lengkap'] = $data['nama'];
+    }
+}
+
+// 🟢 B. FETCH DATA RIWAYAT PENDIDIKAN (Sistem Anda yang Sudah Ada)
 $query_ambil = "SELECT * FROM pelamar_pendidikan WHERE pelamar_id = '$pelamar_id'";
 $result_ambil = mysqli_query($koneksi, $query_ambil);
 
@@ -47,7 +57,18 @@ if ($result_ambil && mysqli_num_rows($result_ambil) > 0) {
     }
 }
 
-// 4. LOGIC BACKEND: PROSES UPDATE BIODATA (FIXED VALIDASI UNIQUE NIK)
+// 🟢 C. FETCH DATA RIWAYAT PENGALAMAN KERJA (Untuk Form Sebelah Kanan)
+$query_exp = mysqli_query($koneksi, "SELECT * FROM pelamar_pengalaman WHERE pelamar_id = '$pelamar_id'");
+$list_pengalaman = [];
+if ($query_exp && mysqli_num_rows($query_exp) > 0) {
+    while ($row_exp = mysqli_fetch_assoc($query_exp)) {
+        $list_pengalaman[] = $row_exp;
+    }
+}
+
+// =========================================================================
+// 4. LOGIC BACKEND: PROSES UPDATE BIODATA (FIXED AUTO-INSERT & KOLOM NAMA)
+// =========================================================================
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profil'])) {
     $nama_lengkap    = mysqli_real_escape_string($koneksi, $_POST['nama_lengkap']);
     $nik             = mysqli_real_escape_string($koneksi, $_POST['nik']);
@@ -71,6 +92,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profil'])) {
         exit;
     }
 
+    // 🔥 1. DETEKSI NAMA KOLOM NAMA UTAMA (Dinamis: 'nama' atau 'nama_lengkap')
+    $cek_kolom_nama = mysqli_query($koneksi, "SHOW COLUMNS FROM pelamar LIKE 'nama_lengkap'");
+    $kolom_nama_db = (mysqli_num_rows($cek_kolom_nama) > 0) ? 'nama_lengkap' : 'nama';
+
+    // 🔥 2. FIX AUTO-INSERT: Jika ID belum ada di tabel pelamar, buatkan barisnya dahulu
+    $cek_data_induk = mysqli_query($koneksi, "SELECT id FROM pelamar WHERE id = '$pelamar_id'");
+    if (mysqli_num_rows($cek_data_induk) == 0) {
+        mysqli_query($koneksi, "INSERT INTO pelamar (id, $kolom_nama_db) VALUES ('$pelamar_id', '$nama_lengkap')");
+    }
+
     $query_foto_part = "";
     if (!empty($_FILES['foto']['name'])) {
         $nama_file_foto = time() . "_" . $_FILES['foto']['name'];
@@ -79,9 +110,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profil'])) {
         }
     }
 
-    // Eksekusi query dengan aman menggunakan parameter WHERE ID yang tervalidasi
+    // 🔥 3. EKSEKUSI UPDATE DATA (Menggunakan variabel $kolom_nama_db hasil deteksi database)
     $query_update = "UPDATE pelamar SET 
-                        nama_lengkap='$nama_lengkap', 
+                        $kolom_nama_db='$nama_lengkap', 
                         nik='$nik', 
                         tempat_lahir='$tempat_lahir', 
                         tanggal_lahir='$tanggal_lahir', 
@@ -99,9 +130,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profil'])) {
         echo "<script>alert('✓ Biodata profil berhasil diperbarui!'); window.location.href='profil_pelamar.php';</script>";
         exit;
     } else {
-        echo "Error: " . mysqli_error($koneksi);
+        // Jika ada masalah struktur tabel lainnya, sistem akan berhenti di sini dan memunculkan error transparan
+        echo "<h3>Gagal Menyimpan Data! Periksa kesalahan struktur tabel di bawah ini:</h3>";
+        echo "Error MySQL: " . mysqli_error($koneksi);
+        exit;
     }
 }
+
 // =========================================================================
 // 4A. LOGIC BACKEND: PROSES SIMPAN DATA RIWAYAT PENDIDIKAN + TAHUN LULUS (SUPER FAST)
 // =========================================================================
@@ -185,6 +220,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_pendidikan'])) 
 // 4B. LOGIC BACKEND: PROSES SIMPAN DATA PENGALAMAN KERJA (FIXED KOLOM SQL)
 // =========================================================================
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_pengalaman'])) {
+    
+    // 1. Validasi awal bentuk data session
+    if (empty($pelamar_id) || !is_numeric($pelamar_id)) {
+        echo "<script>alert('Error: Sesi pelamar tidak valid atau tidak ditemukan!'); window.location.href='profil_pelamar.php';</script>";
+        exit;
+    }
+
+    $pelamar_id = (int)$pelamar_id;
+
+    // 🔥 FIX UTAMA: CEK DAN AUTO-CREATE JIKA ID PELAMAR BELUM ADA DI TABEL INDUK
+    $cek_pelamar = mysqli_query($koneksi, "SELECT id FROM pelamar WHERE id = $pelamar_id");
+    if (mysqli_num_rows($cek_pelamar) == 0) {
+        // Ambil nama dari session untuk nama default database
+        $nama_default = isset($_SESSION['pelamar_nama']) ? mysqli_real_escape_string($koneksi, $_SESSION['pelamar_nama']) : 'Pelamar Baru';
+        
+        // Deteksi nama kolom (nama atau nama_lengkap) agar tidak error syntax
+        $cek_kolom_nama = mysqli_query($koneksi, "SHOW COLUMNS FROM pelamar LIKE 'nama_lengkap'");
+        $kolom_nama_db = (mysqli_num_rows($cek_kolom_nama) > 0) ? 'nama_lengkap' : 'nama';
+        
+        // Buatkan baris data baru secara paksa di tabel induk pelamar
+        mysqli_query($koneksi, "INSERT INTO pelamar (id, $kolom_nama_db) VALUES ($pelamar_id, '$nama_default')");
+    }
+
     $perusahaan_arr  = $_POST['nama_perusahaan'] ?? [];
     $jabatan_arr     = $_POST['jabatan'] ?? [];
     $mulai_kerja_arr = $_POST['mulai_kerja'] ?? [];
@@ -192,6 +250,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_pengalaman'])) 
     $alasan_arr      = $_POST['alasan_keluar'] ?? [];
     $sukses_kerja    = true;
 
+    // Hapus data lama pelamar tersebut terlebih dahulu (sekarang aman karena ID pasti ada)
     mysqli_query($koneksi, "DELETE FROM pelamar_pengalaman WHERE pelamar_id = $pelamar_id");
 
     foreach ($perusahaan_arr as $index => $perusahaan) {
@@ -203,7 +262,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_pengalaman'])) 
         $selesai_clean    = !empty($selesai_arr[$index]) ? "'" . mysqli_real_escape_string($koneksi, $selesai_arr[$index]) . "'" : "NULL";
         $alasan_clean     = !empty($alasan_arr[$index]) ? "'" . mysqli_real_escape_string($koneksi, $alasan_arr[$index]) . "'" : "NULL";
 
-        // PERBAIKAN UTAMA: Mengubah nama_perusahaan menjadi perusahaan agar sinkron dengan struktur database asli
         $query_ins_exp = "INSERT INTO pelamar_pengalaman (pelamar_id, perusahaan, jabatan, mulai_kerja, selesai_kerja, alasan_keluar) 
                           VALUES ($pelamar_id, '$perusahaan_clean', $jabatan_clean, $mulai_clean, $selesai_clean, $alasan_clean)";
                           
@@ -219,6 +277,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_pengalaman'])) 
         exit;
     }
 }
+
 
 // 5. LOGIC BACKEND: PROSES SIMPAN DATA STR (SINKRON HEIDISQL)
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_str'])) {
@@ -440,18 +499,18 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
             </div>
 
         </div> <!-- PENUTUP KOLOM SEBELAH KIRI -->
-        <!-- ==================== KOLOM KANAN: PENGALAMAN, PENDIDIKAN, BERKAS ==================== -->
-        <div>
-            
-<!-- KARTU 2: PENGALAMAN KERJA (FIXED SINKRONISASI TOMBOL SUBMIT) -->
-<div class="card-profil">
-    <!-- Tag pembuka form diletakkan di paling atas kartu agar membungkus seluruh elemen di dalamnya -->
-    <form action="" method="POST" enctype="multipart/form-data">        
         
-        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px;">
-            <div class="card-title" style="color: #0d6efd; margin-bottom: 0; font-weight: 700; font-size: 16px;">Riwayat Pengalaman Kerja</div>
-            <button type="button" onclick="tambahBarisPengalaman()" style="background-color: #0d6efd; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah Pengalaman</button>
-        </div>
+        <!-- ==================== KOLOM KANAN: PENGALAMAN, PENDIDIKAN, BERKAS ==================== -->
+        <div>            
+        <!-- KARTU 2: PENGALAMAN KERJA (FIXED SINKRONISASI TOMBOL SUBMIT) -->
+        <div class="card-profil">
+            <!-- Tag pembuka form diletakkan di paling atas kartu agar membungkus seluruh elemen di dalamnya -->
+            <form action="" method="POST" enctype="multipart/form-data">        
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px;">
+                    <div class="card-title" style="color: #0d6efd; margin-bottom: 0; font-weight: 700; font-size: 16px;">Riwayat Pengalaman Kerja</div>
+                    <button type="button" onclick="tambahBarisPengalaman()" style="background-color: #0d6efd; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah Pengalaman</button>
+                </div>
 
  <!-- Wadah target id untuk JavaScript agar baris baru tidak merusak form layout -->
         <div id="wadah-pengalaman">

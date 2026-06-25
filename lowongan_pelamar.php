@@ -17,7 +17,9 @@ if (!$koneksi) {
 $pelamar_id   = $_SESSION['pelamar_id'] ?? 0;
 $pelamar_nama = $_SESSION['pelamar_nama'] ?? '';
 
-// 3. LOGIKA MEMPROSES LAMARAN FINAL (POST)
+// =========================================================================
+// 3. LOGIKA MEMPROSES LAMARAN FINAL (POST) - CEK DUPLIKAT DENGAN ALERT
+// =========================================================================
 if (isset($_POST['kirim_lamaran_final'])) {
     if (!$pelamar_id) {
         echo "<script>alert('Silakan login terlebih dahulu');location='login_pelamar.php';</script>";
@@ -26,14 +28,29 @@ if (isset($_POST['kirim_lamaran_final'])) {
 
     $lowongan_id = (int)$_POST['lowongan_id'];
 
+    // Cek duplikasi lamaran
     $cek = mysqli_query($koneksi, "SELECT id FROM rekrutmen_lamaran WHERE lowongan_id='$lowongan_id' AND pelamar_id='$pelamar_id'");
 
-    if (mysqli_num_rows($cek) == 0) {
-        mysqli_query($koneksi, "INSERT INTO rekrutmen_lamaran (lowongan_id, pelamar_id, tanggal_lamaran, status, created_at) VALUES ('$lowongan_id', '$pelamar_id', NOW(), 'Lamaran Masuk', NOW())");
-    }
+    if (mysqli_num_rows($cek) > 0) {
+        // 🔥 JIKA SUDAH PERNAH MELAMAR, BERI PERINGATAN DAN JANGAN INSERT LAGI
+        echo "<script>alert('❌ Anda sudah pernah melamar lowongan pekerjaan ini sebelumnya!'); window.location.href='lowongan_pelamar.php';</script>";
+        exit;
+    } else {
+        // Jalankan proses ambil ENUM status otomatis seperti sebelumnya
+        $cek_enum = mysqli_query($koneksi, "SHOW COLUMNS FROM rekrutmen_lamaran LIKE 'status'");
+        $status_final = 'Pending';
+        if ($cek_enum && mysqli_num_rows($cek_enum) > 0) {
+            $row_enum = mysqli_fetch_assoc($cek_enum);
+            $type = $row_enum['Type'];
+            preg_match_all("/'([^']+)'/", $type, $matches);
+            if (!empty($matches[1])) { $status_final = $matches[1][0]; }
+        }
 
-    header("Location: lowongan_pelamar.php");
-    exit;
+        // Simpan ke database
+        mysqli_query($koneksi, "INSERT INTO rekrutmen_lamaran (lowongan_id, pelamar_id, tanggal_lamaran, status, created_at) VALUES ('$lowongan_id', '$pelamar_id', NOW(), '$status_final', NOW())");
+        echo "<script>alert('✓ Selamat! Lamaran pekerjaan Anda berhasil terkirim.'); window.location.href='lowongan_pelamar.php';</script>";
+        exit;
+    }
 }
 
 // 4. LOGIKA MENANGKAP PARAMETER FILTER (GET)
@@ -385,21 +402,42 @@ if (!$query_lowongan) {
                 </div>
             </div>
             
-            <!-- Tombol Aksi -->
+        <!-- Tombol Aksi -->
             <div class="flex gap-3 mt-auto">
                 <!-- Tombol Lihat Detail Modal -->
                 <button type="button" onclick="bukaDetail(<?php echo $row_lowongan['id']; ?>)" class="flex-1 py-2.5 border border-primary text-primary rounded-xl font-label-md text-label-md hover:bg-primary/5 transition-all text-center block">
                     Lihat Detail
                 </button>
                 
-                <!-- PERBAIKAN: Tombol Lamar dikeluarkan dari <form> dan berdiri sendiri secara bersih -->
-                <button type="button" onclick="prosesLamar(<?php echo $row_lowongan['id']; ?>)" class="flex-1 py-2.5 bg-primary text-white rounded-xl font-label-md text-label-md hover:brightness-110 shadow-sm transition-all text-center block">
-                    Lamar
-                </button>
+                <?php 
+                // 🔥 SELEKSI VALIDASI: Cek apakah pelamar yang login sudah pernah melamar lowongan ini
+                $id_kerjaan = $row_lowongan['id'];
+                $sudah_lamar = false;
+
+                if (!empty($pelamar_id)) {
+                    $cek_tombol = mysqli_query($koneksi, "SELECT id FROM rekrutmen_lamaran WHERE lowongan_id = '$id_kerjaan' AND pelamar_id = '$pelamar_id'");
+                    if ($cek_tombol && mysqli_num_rows($cek_tombol) > 0) {
+                        $sudah_lamar = true;
+                    }
+                }
+                ?>
+
+                <?php if ($sudah_lamar) : ?>
+                    <!-- 🔥 JIKA SUDAH DILAMAR: Tombol berubah warna abu-abu (gray-400), teks ganti, dan tidak bisa diklik -->
+                    <button type="button" class="flex-1 py-2.5 bg-gray-400 text-white rounded-xl font-label-md text-label-md cursor-not-allowed text-center block shadow-none" disabled>
+                        ✓ Sudah Dilamar
+                    </button>
+                <?php else : ?>
+                    <!-- JIKA BELUM DILAMAR: Tombol aktif normal seperti biasa -->
+                    <button type="button" onclick="prosesLamar(<?php echo $row_lowongan['id']; ?>)" class="flex-1 py-2.5 bg-primary text-white rounded-xl font-label-md text-label-md hover:brightness-110 shadow-sm transition-all text-center block">
+                        Lamar
+                    </button>
+                <?php endif; ?>
             </div>
         </div>
     <?php endwhile; ?>
 </div>
+
 
 <!-- Penutup kontainer grid lowongan -->
 </div>
