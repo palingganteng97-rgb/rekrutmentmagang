@@ -1,58 +1,86 @@
 <?php
 session_start();
 header('Content-Type: application/json');
-include 'koneksi.php'; // Pastikan nama file koneksi Anda sudah benar
 
-$pelamar_id = isset($_GET['pelamar_id']) ? (int)$_GET['pelamar_id'] : 0;
+// Koneksi Database
+$host     = "10.10.6.59";
+$user_db  = "root_host";
+$pass_db  = "password";
+$nama_db  = "magang_rekrutmen_rs";
 
-if ($pelamar_id <= 0) {
-    echo json_encode(['status' => 'error', 'message' => 'ID Pelamar tidak valid.']);
+$koneksi = mysqli_connect($host, $user_db, $pass_db, $nama_db);
+
+if (!$koneksi) {
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Koneksi database gagal'
+    ]);
     exit;
 }
 
-// 🟢 1. AMBIL DATA BERKAS (IJAZAH / LAMPIRAN)
-// Deteksi dinamis nama tabel berkas pelamar
-$cek_tabel_berkas = mysqli_query($koneksi, "SHOW TABLES LIKE 'pelamar_dokumen'");
-$tabel_berkas_aktif = (mysqli_num_rows($cek_tabel_berkas) > 0) ? 'pelamar_dokumen' : 'pelamar_berkas';
+$pelamar_id = isset($_GET['pelamar_id']) ? intval($_GET['pelamar_id']) : 0;
 
-$query_berkas = mysqli_query($koneksi, "SELECT * FROM $tabel_berkas_aktif WHERE pelamar_id = $pelamar_id");
+if ($pelamar_id <= 0) {
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'ID pelamar tidak valid'
+    ]);
+    exit;
+}
+
+// ======================
+// AMBIL BERKAS
+// ======================
 $data_berkas = [];
 
-if ($query_berkas && mysqli_num_rows($query_berkas) > 0) {
-    while ($bk = mysqli_fetch_assoc($query_berkas)) {
-        // 🔥 MENYELARASKAN DENGAN JAVASCRIPT: Menggunakan properti 'jenis_berkas' dan 'nama_file'
-        $jenis = $bk['jenis_berkas'] ?? $bk['nama_berkas'] ?? $bk['nama'] ?? 'Berkas Lampiran';
-        $file  = $bk['nama_file'] ?? $bk['nama_berkas'] ?? $bk['file_berkas'] ?? $bk['file_dokumen'] ?? $bk['berkas'] ?? $bk['file'] ?? '';
-        
+$q_berkas = mysqli_query(
+    $koneksi,
+    "SELECT jenis_berkas,nama_file
+     FROM pelamar_berkas
+     WHERE pelamar_id='$pelamar_id'"
+);
+
+if ($q_berkas) {
+    while ($row = mysqli_fetch_assoc($q_berkas)) {
         $data_berkas[] = [
-            'jenis_berkas' => $jenis,
-            'nama_file'    => $file
+            'jenis_berkas' => $row['jenis_berkas'],
+            'nama_file'    => $row['nama_file']
         ];
     }
 }
 
-// 🟢 2. AMBIL DATA SURAT TANDA REGISTRASI (STR)
-$query_str = mysqli_query($koneksi, "SELECT * FROM pelamar_str WHERE pelamar_id = $pelamar_id");
+// ======================
+// AMBIL STR
+// ======================
 $data_str = [];
 
-if ($query_str && mysqli_num_rows($query_str) > 0) {
-    while ($s = mysqli_fetch_assoc($query_str)) {
-        // 🔥 MENYELARASKAN DENGAN JAVASCRIPT: Menggunakan properti 'nomor_str', 'tanggal_terbit', 'tanggal_expired', 'file_str'
-        $file_str_aktif = $s['file_str'] ?? $s['berkas_str'] ?? $s['file'] ?? '';
-        
+$q_str = mysqli_query(
+    $koneksi,
+    "SELECT *
+     FROM pelamar_str
+     WHERE pelamar_id='$pelamar_id'"
+);
+
+if ($q_str) {
+    while ($row = mysqli_fetch_assoc($q_str)) {
+
         $data_str[] = [
-            'nomor_str'       => $s['nomor_str'] ?? '-',
-            'tanggal_terbit'  => !empty($s['tanggal_terbit']) ? date('d/m/Y', strtotime($s['tanggal_terbit'])) : '-',
-            'tanggal_expired' => !empty($s['tanggal_expired']) ? date('d/m/Y', strtotime($s['tanggal_expired'])) : '-',
-            'file_str'        => $file_str_aktif
+            'nomor_str'       => $row['nomor_str'],
+            'tanggal_terbit'  => $row['tanggal_terbit'],
+            'tanggal_expired' => $row['tanggal_expired'],
+            'nama_file'       => $row['file_str']
         ];
     }
 }
 
-// 🟢 3. KIRIM RESPON GABUNGAN DALAM SATU PAKET JSON (Sesuai Kebutuhan Fetch JavaScript Anda)
+// ======================
+// RETURN JSON
+// ======================
 echo json_encode([
-    'status'  => 'success',
-    'berkas'  => $data_berkas,
-    'str'     => $data_str
+    'status' => 'success',
+    'berkas' => $data_berkas,
+    'str'    => $data_str
 ]);
+
 exit;
+?>

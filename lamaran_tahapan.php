@@ -17,97 +17,90 @@ if (!$koneksi) {
 }
 
 // =========================================================================
-// 2. LOGIKA CRUD BACKEND - [UPDATE / INSERT] STATUS DARI POP-UP MODAL
+// 2. LOGIKA CRUD BACKEND - [UPDATE / INSERT] STATUS AMAN (ANTI DOUBLE)
 // =========================================================================
 if (isset($_POST['action']) && $_POST['action'] == 'update_status') {
-    $id_tahapan = mysqli_real_escape_string($koneksi, $_POST['id_tahapan']);
     $id_lamaran = mysqli_real_escape_string($koneksi, $_POST['id_lamaran']);
     $status_baru = mysqli_real_escape_string($koneksi, $_POST['status_tahap']);
     $tanggal_sekarang = date('Y-m-d H:i:s');
-    $tahapan_id_default = 1; // Solusi Error: 'tahapan_id' doesn't have a default value
+    $tahapan_id_default = 1;
 
-    if (!empty($id_tahapan)) {
-        // C (Update) - Jika data tahapan sudah ada, lakukan UPDATE
-        $stmt = mysqli_prepare($koneksi, "UPDATE lamaran_tahapan SET status = ?, tanggal_mulai = ? WHERE id = ?");
-        mysqli_stmt_bind_param($stmt, "sss", $status_baru, $tanggal_sekarang, $id_tahapan);
+    $cek_tahapan = mysqli_query($koneksi, "SELECT id FROM lamaran_tahapan WHERE lamaran_id = '$id_lamaran'");
+    $tahapan_ada = mysqli_fetch_assoc($cek_tahapan);
+
+    if ($tahapan_ada) {
+        $stmt = mysqli_prepare($koneksi, "UPDATE lamaran_tahapan SET status = ?, tanggal_mulai = ? WHERE lamaran_id = ?");
+        mysqli_stmt_bind_param($stmt, "sss", $status_baru, $tanggal_sekarang, $id_lamaran);
     } else {
-        // C (Create) - Jika belum ada tahapan (pelamar baru), lakukan INSERT dengan menyertakan tahapan_id
         $stmt = mysqli_prepare($koneksi, "INSERT INTO lamaran_tahapan (lamaran_id, status, tanggal_mulai, tahapan_id) VALUES (?, ?, ?, ?)");
         mysqli_stmt_bind_param($stmt, "issi", $id_lamaran, $status_baru, $tanggal_sekarang, $tahapan_id_default);
     }
     mysqli_stmt_execute($stmt);
     mysqli_stmt_close($stmt);
 
-    header("Location: lamaran_tahapan.php");
+    echo json_encode(['status' => 'success']);
     exit();
 }
 
 // =========================================================================
-// [CRUD - DELETE] SINKRONISASI TOTAL: HAPUS DI TAHAPAN & DATA PELAMAR
+// 3. LOGIKA CRUD BACKEND - [DELETE] HAPUS DATA TAHAPAN
 // =========================================================================
 if (isset($_GET['action']) && $_GET['action'] == 'hapus_tahapan') {
     $id_lamaran_hapus = mysqli_real_escape_string($koneksi, $_GET['id_lamaran']);
 
-    // 1. Hapus terlebih dahulu riwayat tahapan pelamar agar tidak melanggar Foreign Key Constraint
     $stmt1 = mysqli_prepare($koneksi, "DELETE FROM lamaran_tahapan WHERE lamaran_id = ?");
     mysqli_stmt_bind_param($stmt1, "i", $id_lamaran_hapus);
     mysqli_stmt_execute($stmt1);
     mysqli_stmt_close($stmt1);
 
-    // 2. Hapus berkas pendaftaran utama di rekrutmen_lamaran agar data di kedua halaman hilang bersamaan
     $stmt2 = mysqli_prepare($koneksi, "DELETE FROM rekrutmen_lamaran WHERE id = ?");
     mysqli_stmt_bind_param($stmt2, "i", $id_lamaran_hapus);
     mysqli_stmt_execute($stmt2);
     mysqli_stmt_close($stmt2);
 
-    // Refresh halaman untuk melihat hasil perubahan
-    header("Location: lamaran_tahapan.php");
+    header("Location: data_pelamar.php");
     exit();
 }
 
+// =========================================================================
+// 4. QUERY READ - PEMBACA KARTU LOWONGAN & AMAN DARI ONLY_FULL_GROUP_BY
+// =========================================================================
 
-// =========================================================================
-// 4. QUERY READ - PEMBACA KARTU LOWONGAN AKTIF
-// =========================================================================
+// AMBIL DATA LOWONGAN DARI MASTER (Untuk Kartu Atas)
 $lowongan_kerja = [];
 $q_lwn = mysqli_query($koneksi, "SELECT judul_lowongan AS posisi, deskripsi FROM rekrutmen_lowongan ORDER BY id DESC LIMIT 2");
-if ($q_lwn) {
+if ($q_lwn && mysqli_num_rows($q_lwn) > 0) {
     while ($r_lwn = mysqli_fetch_assoc($q_lwn)) {
         $lowongan_kerja[] = $r_lwn;
     }
 }
 
-// =========================================================================
-// [CRUD - READ] PERBAIKAN LOGIKA: FILTER INTERAKTIF BERDASARKAN KARTU KLIK
-// =========================================================================
+// AMBIL DATA PROGRESS PELAMAR (Untuk Tabel Bawah)
 $filter_lowongan = isset($_GET['lowongan']) ? mysqli_real_escape_string($koneksi, $_GET['lowongan']) : '';
 
-// Query dasar membaca seluruh data lamaran
 $sql_progress = "SELECT 
-                    lt.id AS id_tahapan,
+                    MAX(lt.id) AS id_tahapan,
                     rl.id AS id_lamaran,
                     COALESCE(p.nama_lengkap, 'Pelamar Otomatis') AS nama_pendaftar, 
                     COALESCE(p.nik, '-') AS nik, 
                     COALESCE(low.judul_lowongan, 'dokter umum') AS nama_lowongan,
-                    COALESCE(lt.status, 'Pending') AS status_tahap, 
-                    COALESCE(lt.tanggal_mulai, rl.created_at) AS tanggal_update
+                    COALESCE(MAX(lt.status), 'Pending') AS status_tahap, 
+                    COALESCE(MAX(lt.tanggal_mulai), rl.created_at) AS tanggal_update
                  FROM rekrutmen_lamaran rl
                  LEFT JOIN rekrutmen_lowongan low ON rl.lowongan_id = low.id
                  LEFT JOIN pelamar p ON rl.pelamar_id = p.id
                  LEFT JOIN lamaran_tahapan lt ON lt.lamaran_id = rl.id";
 
-// Jika admin mengklik kartu lowongan atas, tambahkan kondisi WHERE penyaring database
 if (!empty($filter_lowongan)) {
     $sql_progress .= " WHERE low.judul_lowongan = '$filter_lowongan'";
 }
 
-$sql_progress .= " ORDER BY rl.id DESC";
+$sql_progress .= " GROUP BY rl.id, p.nama_lengkap, p.nik, low.judul_lowongan ORDER BY rl.id DESC";
 $query_progress = mysqli_query($koneksi, $sql_progress);
 
 if (!$query_progress) {
     die("Gagal memuat data progress: " . mysqli_error($koneksi));
 }
-
 ?>
 
 <!-- =========================================================================
@@ -391,55 +384,56 @@ if (!$query_progress) {
                 <h1>Lamaran Tahapan</h1>
             </div>
 
-            <!-- Bagian Lowongan Kerja (Kotak Kuota Master - VERSI TABEL FILTER) -->
-            <section>
-                <div class="section-header">
-                    <div class="section-title">Kuota Data Master Lowongan (Klik baris tabel untuk memfilter)</div>
-                    <?php if (!empty($filter_lowongan)) : ?>
-                        <!-- Tombol untuk mengembalikan/menampilkan semua data lagi -->
-                        <a href="lamaran_tahapan.php" style="font-size: 13px; font-weight: 700; color: #4f46e5; text-decoration: none;">🔄 Tampilkan Semua Formasi</a>
-                    <?php endif; ?>
-                </div>
+<!-- ========================================================================= -->
+<!-- 1. KOTAK KUOTA MASTER (VERSI TABEL FILTER BERGARIS BATAS KOKOH)           -->
+<!-- ========================================================================= -->
+<section style="font-family: system-ui, sans-serif; box-sizing: border-box; margin-bottom: 30px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; width: 100%;">
+        <div style="font-size: 14px; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px;">Kuota Data Master Lowongan (Klik baris tabel untuk memfilter)</div>
+        <?php if (!empty($filter_lowongan)) : ?>
+            <a href="lamaran_tahapan.php" style="font-size: 12px; font-weight: 700; color: #2563eb; text-decoration: none; background: #eff6ff; padding: 6px 12px; border-radius: 6px; border: 1px solid #bfdbfe;">🔄 Tampilkan Semua Formasi</a>
+        <?php endif; ?>
+    </div>
 
-                <div class="table-wrapper" style="margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); border-radius: 8px; border: 1px solid #e2e8f0; background: #ffffff;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background-color: #f8fafc; border-bottom: 2px solid #e2e8f0;">
-                                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 700;">STATUS</th>
-                                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 700;">POSISI / FORMASI LOWONGAN</th>
-                                <th style="padding: 12px; text-align: left; font-size: 13px; color: #64748b; font-weight: 700;">DESKRIPSI SINGKAT</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php if (!empty($lowongan_kerja)) : ?>
-                                <?php foreach ($lowongan_kerja as $lk) : ?>
-                                    <?php 
-                                        $nama_posisi = $lk['posisi'] ?? ''; 
-                                        // Cek apakah baris lowongan ini sedang aktif difilter untuk mengubah background-nya
-                                        $is_active_row = ($filter_lowongan === $nama_posisi) ? 'style="background-color: #f5f3ff; cursor: pointer; font-weight: 600;"' : 'style="cursor: pointer;"';
-                                    ?>
-                                    <!-- Menjadikan satu baris tabel sebagai tautan filter -->
-                                    <tr <?php echo $is_active_row; ?> onclick="window.location.href='lamaran_tahapan.php?lowongan=<?php echo urlencode($nama_posisi); ?>';" onmouseover="this.style.backgroundColor='#f1f5f9'" onmouseout="this.style.backgroundColor='<?php echo ($filter_lowongan === $nama_posisi) ? '#f5f3ff' : 'transparent'; ?>'">
-                                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0;">
-                                            <span style="background-color: #e0e7ff; color: #4338ca; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700;">NEW</span>
-                                        </td>
-                                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #1e293b;">
-                                            <strong>Posisi: <?php echo htmlspecialchars($nama_posisi); ?></strong>
-                                        </td>
-                                        <td style="padding: 12px; border-bottom: 1px solid #e2e8f0; color: #64748b; font-size: 13px;">
-                                            <?php echo htmlspecialchars($lk['deskripsi'] ?? '-'); ?>
-                                        </td>
-                                    </tr>
-                                <?php endforeach; ?>
-                            <?php else : ?>
-                                <tr>
-                                    <td colspan="3" style="text-align: center; padding: 20px; color:#94a3b8; font-style:italic; font-size: 14px;">Belum ada kuota data master lowongan aktif.</td>
-                                </tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </section>
+    <!-- Tambahan border solid #cbd5e1 -->
+    <div class="table-wrapper" style="box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); border-radius: 12px; border: 1px solid #cbd5e1; background: #ffffff; overflow: hidden; box-sizing: border-box; width: 100%;">
+        <table style="width: 100%; border-collapse: collapse; border: none; table-layout: fixed;">
+            <thead>
+                <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                    <th style="padding: 14px 16px; text-align: left; font-size: 13px; color: #475569; font-weight: 700; border-right: 1px solid #cbd5e1; width: 100px;">STATUS</th>
+                    <th style="padding: 14px 16px; text-align: left; font-size: 13px; color: #475569; font-weight: 700; border-right: 1px solid #cbd5e1; width: 220px;">POSISI / FORMASI LOWONGAN</th>
+                    <th style="padding: 14px 16px; text-align: left; font-size: 13px; color: #475569; font-weight: 700;">DESKRIPSI SINGKAT</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php if (!empty($lowongan_kerja)) : ?>
+                    <?php foreach ($lowongan_kerja as $lk) : ?>
+                        <?php 
+                            $nama_posisi = $lk['posisi'] ?? ''; 
+                            $is_active_row = ($filter_lowongan === $nama_posisi) ? 'background-color: #f5f3ff; cursor: pointer; font-weight: 600;' : 'cursor: pointer;';
+                        ?>
+                        <tr style="<?php echo $is_active_row; ?> border-bottom: 1px solid #cbd5e1; transition: background 0.1s;" onclick="window.location.href='lamaran_tahapan.php?lowongan=<?php echo urlencode($nama_posisi); ?>';" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='<?php echo ($filter_lowongan === $nama_posisi) ? '#f5f3ff' : 'transparent'; ?>'">
+                            <td style="padding: 14px 16px; border-right: 1px solid #cbd5e1; text-align: center;">
+                                <span style="background-color: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; display: inline-block;">NEW</span>
+                            </td>
+                            <td style="padding: 14px 16px; border-right: 1px solid #cbd5e1; color: #0f172a;">
+                                <strong>Posisi: <?php echo htmlspecialchars($nama_posisi); ?></strong>
+                            </td>
+                            <!-- MODIFIKASI TERKUNCI: Memotong teks panjang menjadi satu baris tipis -->
+                            <td style="padding: 14px 16px; color: #475569; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?php echo htmlspecialchars($lk['deskripsi'] ?? '-'); ?>">
+                                <?php echo htmlspecialchars($lk['deskripsi'] ?? '-'); ?>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                <?php else : ?>
+                    <tr>
+                        <td colspan="3" style="text-align: center; padding: 32px; color:#64748b; font-style:italic; font-size: 13px; background: #f8fafc;">Belum ada kuota data master lowongan aktif.</td>
+                    </tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+    </div>
+</section>
 
             <!-- TABEL PROGRESS SELEKSI -->
             <section>

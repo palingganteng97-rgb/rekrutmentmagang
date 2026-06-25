@@ -70,17 +70,59 @@ if (isset($_SESSION['username'])) {
 // =========================================================================
 try {
     // Query ini dijamin bersih dan hanya menghasilkan 1 baris per lamaran pelamar
-    $query_pelamar = "SELECT 
-        rl.id AS lamaran_id, p.id AS pelamar_id, p.nama_lengkap AS nama_pendaftar, p.nik AS nik_pendaftar, 
-        p.tempat_lahir, p.tanggal_lahir, p.jenis_kelamin, p.agama, p.alamat, p.kota, p.provinsi, 
-        p.no_telepon, p.email, p.status_sosial, p.foto AS foto_pelamar, 
-        low.judul_lowongan AS nama_lowongan, rl.created_at AS tanggal_daftar, 
-        lt.status AS status_tahap
-    FROM rekrutmen_lamaran rl
-    INNER JOIN pelamar p ON rl.pelamar_id = p.id
-    INNER JOIN rekrutmen_lowongan low ON rl.lowongan_id = low.id
-    LEFT JOIN lamaran_tahapan lt ON lt.lamaran_id = rl.id
-    ORDER BY rl.id DESC";
+$query_pelamar = "
+SELECT
+    rl.id AS lamaran_id,
+    p.id AS pelamar_id,
+
+    p.nama_lengkap AS nama_pendaftar,
+    p.nik AS nik_pendaftar,
+    p.tempat_lahir,
+    p.tanggal_lahir,
+    p.jenis_kelamin,
+    p.agama,
+    p.alamat,
+    p.kota,
+    p.provinsi,
+    p.no_telepon,
+    p.email,
+    p.status_sosial,
+    p.foto AS foto_pelamar,
+
+    low.judul_lowongan AS nama_lowongan,
+    rl.created_at AS tanggal_daftar,
+
+    lt.status AS status_tahap,
+
+    pp.institusi,
+    pp.jurusan,
+    pp.ipk,
+
+    pk.perusahaan,
+    pk.jabatan,
+    pk.mulai_kerja,
+    pk.selesai_kerja,
+    pk.alasan_keluar
+
+FROM rekrutmen_lamaran rl
+
+INNER JOIN pelamar p
+    ON rl.pelamar_id = p.id
+
+INNER JOIN rekrutmen_lowongan low
+    ON rl.lowongan_id = low.id
+
+LEFT JOIN lamaran_tahapan lt
+    ON lt.lamaran_id = rl.id
+
+LEFT JOIN pelamar_pendidikan pp
+    ON pp.pelamar_id = p.id
+
+LEFT JOIN pelamar_pengalaman pk
+    ON pk.pelamar_id = p.id
+
+ORDER BY rl.id DESC
+";
 
     $result_pelamar = mysqli_query($koneksi, $query_pelamar);
     if (!$result_pelamar) {
@@ -96,7 +138,9 @@ try {
     FROM rekrutmen_lamaran rl
     INNER JOIN pelamar p ON rl.pelamar_id = p.id
     LEFT JOIN lamaran_tahapan lt ON lt.lamaran_id = rl.id
+    GROUP BY rl.id
     ORDER BY rl.id DESC";
+
     
     $result_pelamar = mysqli_query($koneksi, $query_backup);
 }
@@ -105,9 +149,13 @@ try {
 <!DOCTYPE html>
 <html lang="id">
 <head>
+    <!-- PERBAIKAN TAUTAN IKON GOOGLE MATERIAL SYMBOLS -->
+    <link rel="stylesheet" href="https://googleapis.com" />
+
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Daftar Pelamar Kerja - Admin</title>
+
 
 <style>
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
@@ -234,7 +282,6 @@ try {
                     <a href="master_pendidikan.php" class="menu-item">Master Pendidikan</a>
                     <a href="master_lowongan.php" class="menu-item">Master Lowongan</a>
                     <a href="master_tahapan_seleksi.php" class="menu-item">Master Tahapan Seleksi</a>
-                    <a href="lowongan_tahapan.php" class="menu-item">Lowongan Tahapan</a>                    
                     <a href="data_pelamar.php" class="menu-item active">Data Pelamar</a>
                     <a href="lamaran_tahapan.php" class="menu-item">Lamaran Tahapan</a>
                     <a href="talent_pool.php" class="menu-item">Talent Pool</a>
@@ -299,31 +346,31 @@ try {
                 <td><?php echo date('d M Y', strtotime($row['tanggal_daftar'])); ?></td>
                 <td><span class="status-pill <?php echo $class_badge; ?>">• <?php echo htmlspecialchars($status_badge); ?></span></td>
                 <td style="text-align: center;">
-                    <button type="button" class="btn-detail" onclick="bukaDetailModal(
-                        '<?php echo $row['lamaran_id']; ?>', 
-                        '<?php echo $row['pelamar_id']; ?>', 
-                        '<?php echo addslashes(htmlspecialchars($row['nama_pendaftar'] ?? $row['nama_lengkap'] ?? '')); ?>', 
-                        '<?php echo $row['nik_pendaftar'] ?? $row['nik'] ?? ''; ?>', 
-                        '<?php echo $row['foto_pelamar'] ?? $row['foto'] ?? ''; ?>', 
-                        '<?php echo ($row['tempat_lahir'] ?? '') . ', ' . (!empty($row['tanggal_lahir']) ? date('d/m/Y', strtotime($row['tanggal_lahir'])) : ''); ?>', 
-                        '<?php echo $row['jenis_kelamin'] ?? ''; ?>', 
-                        '<?php echo $row['agama'] ?? ''; ?>', 
-                        '<?php echo $row['status_sosial'] ?? ''; ?>', 
-                        '<?php echo $row['email'] ?? ''; ?>', 
-                        '<?php echo $row['no_telepon'] ?? ''; ?>', 
-                        '<?php echo ($row['kota'] ?? '') . ', ' . ($row['provinsi'] ?? ''); ?>', 
-                        '<?php echo addslashes(htmlspecialchars($row['alamat'] ?? '')); ?>', 
-                        '<?php echo addslashes(htmlspecialchars($row['institusi'] ?? $row['nama_institusi'] ?? '')); ?>', 
-                        '<?php echo addslashes(htmlspecialchars($row['jurusan'] ?? '')); ?>', 
-                        '<?php echo $row['ipk'] ?? $row['nilai'] ?? ''; ?>', 
-                        '<?php echo $row['status'] ?? 'Pending'; ?>', /* 🔥 FIX: Kirim teks status aslinya saja, JANGAN $status_badge */
-                        '<?php echo addslashes(htmlspecialchars($row['perusahaan'] ?? '')); ?>',
-                        '<?php echo addslashes(htmlspecialchars($row['jabatan'] ?? '')); ?>',
-                        '<?php echo $row['mulai_kerja'] ?? ''; ?>',
-                        '<?php echo $row['selesai_kerja'] ?? ''; ?>',
-                        '<?php echo addslashes(htmlspecialchars($row['alasan_keluar'] ?? '')); ?>'
-                    )">Lihat Detail
-                    </button>
+<
+                <button type="button" class="btn-detail" onclick="bukaDetailModal(
+                    '<?php echo $row['lamaran_id']; ?>', 
+                    '<?php echo $row['pelamar_id']; ?>', 
+                    '<?php echo addslashes(htmlspecialchars($row['nama_pendaftar'] ?? $row['nama_lengkap'] ?? '')); ?>', 
+                    '<?php echo $row['nik_pendaftar'] ?? $row['nik'] ?? ''; ?>', 
+                    '<?php echo $row['foto_pelamar'] ?? $row['foto'] ?? ''; ?>', 
+                    '<?php echo ($row['tempat_lahir'] ?? '') . ', ' . (!empty($row['tanggal_lahir']) ? date('d/m/Y', strtotime($row['tanggal_lahir'])) : ''); ?>', 
+                    '<?php echo $row['jenis_kelamin'] ?? ''; ?>', 
+                    '<?php echo $row['agama'] ?? ''; ?>', 
+                    '<?php echo $row['status_sosial'] ?? ''; ?>', 
+                    '<?php echo $row['email'] ?? ''; ?>', 
+                    '<?php echo $row['no_telepon'] ?? ''; ?>', 
+                    '<?php echo ($row['kota'] ?? '') . ', ' . ($row['provinsi'] ?? ''); ?>', 
+                    '<?php echo addslashes(htmlspecialchars($row['alamat'] ?? '')); ?>', 
+                    '<?php echo addslashes(htmlspecialchars($row['institusi'] ?? $row['nama_institusi'] ?? '')); ?>', 
+                    '<?php echo addslashes(htmlspecialchars($row['jurusan'] ?? '')); ?>', 
+                    '<?php echo $row['ipk'] ?? $row['nilai'] ?? ''; ?>', 
+                    '<?php echo addslashes(htmlspecialchars($row['status_tahap'] ?? 'Pending')); ?>', 
+                    '<?php echo addslashes(htmlspecialchars($row['perusahaan'] ?? '')); ?>',
+                    '<?php echo addslashes(htmlspecialchars($row['jabatan'] ?? '')); ?>',
+                    '<?php echo $row['mulai_kerja'] ?? ''; ?>',
+                    '<?php echo $row['selesai_kerja'] ?? ''; ?>',
+                    '<?php echo addslashes(htmlspecialchars($row['alasan_keluar'] ?? '')); ?>'
+                )">Lihat Detail</button>
 
                     <a href="?action=hapus_lamaran&lamaran_id=<?php echo $row['lamaran_id']; ?>" class="text-danger" style="margin-left: 12px;" onclick="return confirm('Apakah Anda yakin ingin menghapus data lamaran pendaftar ini?')">Hapus</a>
                 </td>
@@ -338,276 +385,358 @@ try {
     </div>
 </div>
 
-<!-- ==================== MODAL OVERLAY POP-UP DETAIL PELAMAR (FIXED SIMPLE LAYOUT) ==================== -->
+<!-- ==================== MODAL OVERLAY POP-UP DETAIL PELAMAR ==================== -->
 <div id="detailModal" style="
     display: none; 
     position: fixed; 
     inset: 0; 
-    background-color: rgba(0, 0, 0, 0.5); 
+    background-color: rgba(15, 23, 42, 0.6); 
+    backdrop-filter: blur(4px);
     z-index: 9999; 
     align-items: center; 
     justify-content: center; 
     font-family: system-ui, -apple-system, sans-serif;
+    box-sizing: border-box;
 ">
     <div style="
         background: #ffffff; 
-        border-radius: 16px; 
-        max-width: 600px; 
+        border-radius: 20px; 
+        max-width: 640px; 
         width: 100%; 
         margin: 16px; 
-        box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); 
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25); 
         display: flex; 
         flex-direction: column; 
         max-height: 85vh;
+        border: 1px solid #e2e8f0;
+        overflow: hidden;
+        box-sizing: border-box;
     ">
         
         <!-- HEADER MODAL -->
-        <div style="padding: 16px 20px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-top-left-radius: 16px; border-top-right-radius: 16px;">
-            <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #1e293b; display: flex; align-items: center; gap: 8px; text-align: left;">
-                <span class="material-symbols-outlined" style="color: #2563eb; vertical-align: middle;">assignment_ind</span>
-                Informasi Lengkap Berkas Pelamar
-            </h3>
-            <button onclick="tutupDetailPelamar()" type="button" style="background: #e2e8f0; border: none; padding: 6px 14px; border-radius: 8px; color: #475569; font-weight: 600; cursor: pointer; font-size: 12px;">
-                Tutup
-            </button>
+<div style="padding: 18px 24px; border-bottom: 1px solid #f1f5f9; display: flex; justify-content: space-between; align-items: center; background: #ffffff; box-sizing: border-box;">
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <!-- Wadah ikon assignment_ind telah dihapus dari sini -->
+        <div>
+            <h3 style="margin: 0; font-size: 16px; font-weight: 700; color: #0f172a; text-align: left;">Informasi Berkas Pelamar</h3>
+            <p style="margin: 2px 0 0 0; font-size: 12px; color: #64748b; text-align: left;">Detail resume dan dokumen administrasi</p>
         </div>
+    </div>
+    <button onclick="tutupDetailPelamar()" type="button" style="background: #f1f5f9; border: none; padding: 6px 12px; border-radius: 20px; color: #64748b; font-size: 13px; font-weight: 600; cursor: pointer; display: flex; align-items: center; justify-content: center;">
+        close
+    </button>
+</div>
 
-        <!-- ISI KONTEN MODAL (SCROLLABLE AREA - 100% PASTI RAPAT KIRI) -->
-        <div style="padding: 20px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 20px; text-align: left;">
+        <!-- ISI KONTEN MODAL (SCROLLABLE AREA) -->
+        <div style="padding: 24px; overflow-y: auto; flex: 1; display: flex; flex-direction: column; gap: 20px; text-align: left; background: #f8fafc; box-sizing: border-box;">
             
             <!-- BAGIAN A: BIODATA PROFIL -->
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: left;">
-                <h5 style="margin: 0 0 16px 0; color: #2563eb; font-size: 13px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 8px; text-align: left;">
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; box-sizing: border-box;">
+                <h5 style="margin: 0 0 16px 0; color: #1e3a8a; font-size: 13px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
                     A. Biodata Profil Pelamar
                 </h5>
-                
-                <!-- FOTO PROFIL (DIKUNCI DAN SELALU DI ATAS TEKS BIODATA) -->
-                <div style="margin-bottom: 15px; text-align: left;">
-                    <img id="modalFoto" src="" alt="Foto Profil" style="width: 110px; height: 140px; object-fit: cover; border-radius: 8px; border: 1px solid #cbd5e1; display: none;">
-                    <div id="modalNoFoto" style="display: flex; width: 110px; height: 140px; background: #f1f5f9; border: 1px dashed #cbd5e1; border-radius: 8px; align-items: center; justify-content: center; font-size: 12px; color: #64748b;">
-                        No Photo
+                <div style="display: flex; gap: 20px; align-items: flex-start; flex-wrap: wrap;">
+                    <div style="flex-shrink: 0;">
+                        <img id="modalFoto" src="" alt="Foto Profil" style="width: 100px; height: 130px; object-fit: cover; border-radius: 10px; border: 1px solid #cbd5e1; display: none;">
+                        <div id="modalNoFoto" style="display: flex; width: 100px; height: 130px; background: #f1f5f9; border: 2px dashed #cbd5e1; border-radius: 10px; align-items: center; justify-content: center; font-size: 12px; color: #64748b;">
+                            No Photo
+                        </div>
                     </div>
-                </div>
-                
-                <!-- DATA BIODATA LIST BARIS (RAPAT KIRI SEMPURNA) -->
-                <div style="font-size: 13px; color: #334155; line-height: 2; text-align: left;">
-                    <div style="text-align: left;"><strong>Nama Lengkap:</strong> <span id="md_nama" style="font-weight: bold; color: #1e293b;">-</span></div>
-                    <div style="text-align: left;"><strong>NIK:</strong> <span id="md_nik" style="font-family: monospace;">-</span></div>
-                    <div style="text-align: left;"><strong>Tempat, Tgl Lahir:</strong> <span id="md_ttl">-</span></div>
-                    <div style="text-align: left;"><strong>Jenis Kelamin:</strong> <span id="md_jk">-</span></div>
-                    <div style="text-align: left;"><strong>Agama:</strong> <span id="md_agama">-</span></div>
-                    <div style="text-align: left;"><strong>Status Hubungan:</strong> <span id="md_status">-</span></div>
-                    <div style="text-align: left;"><strong>No. Telepon / WA:</strong> <span id="md_telepon" style="color: #15803d; font-weight: 600;">-</span></div>
-                    <div style="text-align: left;"><strong>Email:</strong> <span id="md_email">-</span></div>
-                    <div style="text-align: left;"><strong>Kota / Provinsi:</strong> <span id="md_lokasi">-</span></div>
-                    <div style="text-align: left; line-height: 1.5; margin-top: 4px;"><strong>Alamat Rumah:</strong> <span id="md_alamat" style="color: #475569;">-</span></div>
+                    <div style="flex: 1; min-width: 250px; font-size: 13px; color: #334155; display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px;"><span style="width: 130px; font-weight: 600; color: #64748b;">Nama Lengkap</span> <span>: <span id="md_nama" style="font-weight: 700; color: #0f172a;">-</span></span></div>
+                        <div style="display: flex; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px;"><span style="width: 130px; font-weight: 600; color: #64748b;">NIK</span> <span>: <span id="md_nik" style="font-family: monospace;">-</span></span></div>
+                        <div style="display: flex; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px;"><span style="width: 130px; font-weight: 600; color: #64748b;">Tempat, Tgl Lahir</span> <span>: <span id="md_ttl">-</span></span></div>
+                        <div style="display: flex; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px;"><span style="width: 130px; font-weight: 600; color: #64748b;">Jenis Kelamin</span> <span>: <span id="md_jk">-</span></span></div>
+                        <div style="display: flex; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px;"><span style="width: 130px; font-weight: 600; color: #64748b;">No. Telepon / WA</span> <span>: <span id="md_telepon" style="color: #16a34a; font-weight: 700;">-</span></span></div>
+                        <div style="display: flex; border-bottom: 1px dashed #f1f5f9; padding-bottom: 4px; align-items: flex-start;">
+                            <span style="width: 130px; font-weight: 600; color: #64748b; flex-shrink: 0;">Alamat Rumah</span> 
+                            <span style="display: flex; flex: 1; gap: 4px;">: 
+                                <span id="md_alamat" style="color: #475569; line-height: 1.4; background: #f8fafc; padding: 8px; border-radius: 6px; border: 1px solid #f1f5f9; width: 100%; box-sizing: border-box; display: inline-block;">-</span>
+                            </span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
             <!-- BAGIAN B: RIWAYAT PENDIDIKAN -->
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: left;">
-                <h5 style="margin: 0 0 12px 0; color: #2563eb; font-size: 13px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; text-align: left;">
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; box-sizing: border-box;">
+                <h5 style="margin: 0 0 14px 0; color: #1e3a8a; font-size: 13px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
                     B. Riwayat Pendidikan
                 </h5>
-                <div style="font-size: 13px; line-height: 1.8; color: #334155; background: #f8fafc; padding: 12px; border-radius: 8px; text-align: left;">
-                    <div style="text-align: left;"><strong>Kampus / Sekolah :</strong> <span id="md_kampus" style="font-weight: 600;">-</span></div>
-                    <div style="text-align: left;"><strong>Jurusan / Prodi :</strong> <span id="md_prodi">-</span></div>
-                    <div style="text-align: left;"><strong>IPK / Nilai Akhir :</strong> <span id="md_nilai" style="font-weight: bold; color: #2563eb;">-</span></div>
+                <div style="font-size: 13px; color: #334155; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 12px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                        <div style="display: flex; flex-direction: column; gap: 2px;">
+                            <span id="md_kampus" style="font-weight: 700; color: #0f172a; font-size: 14px;">-</span>
+                            <span id="md_prodi" style="color: #64748b;">-</span>
+                        </div>
+                    </div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; background: #eff6ff; padding: 10px 14px; border-radius: 8px; border: 1px solid #bfdbfe;">
+                        <span style="font-weight: 600; color: #1e40af;">IPK / Nilai Akhir</span>
+                        <span id="md_nilai" style="font-weight: 800; color: #2563eb; font-size: 15px;">-</span>
+                    </div>
                 </div>
             </div>
 
-    <!-- 2. PERBAIKAN PADA BAGIAN C: RIWAYAT PENGALAMAN KERJA (Tambahkan word-break) -->
-    <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: left; word-break: break-word !important;">
-        <h5 style="margin: 0 0 12px 0; color: #4f46e5; font-size: 13px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; text-align: left;">
-            C. Riwayat Pengalaman Kerja
-        </h5>
-        <div style="font-size: 13px; line-height: 1.8; color: #334155; text-align: left;">
-            <div style="text-align: left;"><strong>Nama Perusahaan:</strong> <span id="md_perusahaan" style="font-weight: 600; color: #1e293b;">-</span></div>
-            <div style="text-align: left;"><strong>Jabatan / Posisi:</strong> <span id="md_jabatan">-</span></div>
-            <div style="text-align: left;"><strong>Periode Kerja:</strong> <span id="md_periode" style="font-size: 12px; color: #64748b;">-</span></div>
-            <div style="text-align: left;"><strong>Alasan Keluar:</strong> <span id="md_alasan_keluar" style="font-style: italic; color: #64748b;">-</span></div>
+            <!-- BAGIAN C: RIWAYAT PENGALAMAN KERJA -->
+            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; box-sizing: border-box;">
+                <h5 style="margin: 0 0 14px 0; color: #1e3a8a; font-size: 13px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                    C. Riwayat Pengalaman Kerja
+                </h5>
+                <div style="font-size: 13px; color: #334155; display: flex; flex-direction: column; gap: 10px;">
+                    <div style="display: flex; align-items: flex-start; gap: 12px; background: #f8fafc; padding: 12px; border-radius: 8px; border: 1px solid #f1f5f9;">
+                        <div style="display: flex; flex-direction: column; gap: 2px; width: 100%;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; flex-wrap: wrap; gap: 5px;">
+                                <span id="md_perusahaan" style="font-weight: 700; color: #0f172a;">-</span>
+                                <span id="md_periode" style="font-size: 12px; color: #64748b; background: #e2e8f0; padding: 2px 8px; border-radius: 20px;">-</span>
+                            </div>
+                            <span id="md_jabatan" style="color: #475569; font-weight: 500;">-</span>
+                        </div>
+                    </div>
+                                <!-- Perbaikan Struktur Bagian C: Alasan Keluar -->
+            <div style="display: flex; flex-direction: column; gap: 4px; padding: 4px;">
+                <span style="font-weight: 600; color: #64748b;">Alasan Keluar:</span>
+                <span id="md_alasan_keluar" style="font-style: italic; color: #475569; background: #fff7ed; padding: 8px; border-radius: 6px; border: 1px solid #ffedd5;">-</span>
+            </div>
+        </div> <!-- Penutup inner box Bagian C Pengalaman Kerja -->
+
+        <!-- BAGIAN D: LAMPIRAN BERKAS DOKUMEN -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; box-sizing: border-box;">
+            <h5 style="margin: 0 0 14px 0; color: #1e3a8a; font-size: 13px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                D. Lampiran Berkas Dokumen (Ijazah)
+            </h5>
+            <div id="admin-wadah-berkas" style="font-size: 13px; display: flex; flex-direction: column; gap: 10px; width: 100%; box-sizing: border-box;">
+                <!-- Diisi otomatis oleh JavaScript -->
+            </div>
         </div>
+        <!-- BAGIAN E: SURAT TANDA REGISTRASI (STR) -->
+        <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 14px; padding: 20px; box-sizing: border-box;">
+            <h5 style="margin: 0 0 14px 0; color: #1e3a8a; font-size: 13px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px;">
+                E. Surat Tanda Registrasi (STR)
+            </h5>
+            <div id="admin-wadah-str" style="font-size: 13px; display: flex; flex-direction: column; gap: 10px; width: 100%; box-sizing: border-box;">
+                <!-- Diisi otomatis oleh JavaScript -->
+            </div>
+        </div>
+
+    </div> <!-- /ISI KONTEN MODAL -->
+
+<!-- FOOTER MODAL (FORM UPDATE STATUS SELEKSI PELAMAR) -->
+<div style="padding: 18px 24px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: flex-end; background: #ffffff; box-sizing: border-box; flex-wrap: wrap; gap: 15px; width: 100%;">
+    <!-- Bagian Kiri: Dropdown Pilihan Tahap Seleksi -->
+    <div style="display: flex; flex-direction: column; gap: 6px; text-align: left; width: 260px; max-width: 100%;">
+        <label style="font-size: 11px; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px;">Tahap Seleksi Pelamar:</label>
+        <input type="hidden" id="formLamaranId" value="">
+        <select id="md_status_seleksi" style="width: 100%; padding: 11px 14px; border-radius: 10px; border: 1px solid #cbd5e1; font-size: 13px; color: #0f172a; background-color: #ffffff; font-weight: 600; cursor: pointer; outline: none; height: 42px; box-sizing: border-box;">
+            <option value="Pending">🟡 Pending</option>
+            <option value="Lulus">🟢 Lulus</option>
+            <option value="Tidak Lulus">🔴 Tidak Lulus</option>
+            <option value="Proses">🔵 Proses</option>
+            <option value="Skip">⚫ Skip</option>
+        </select>
     </div>
 
-            <!-- BAGIAN D: LAMPIRAN BERKAS DOKUMEN -->
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: left;">
-                <h5 style="margin: 0 0 12px 0; color: #16a34a; font-size: 13px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; text-align: left;">
-                    D. Lampiran Berkas Dokumen (Ijazah)
-                </h5>
-                <div id="admin-wadah-berkas" style="font-size: 13px; text-align: left;">
-                    <!-- Masuk otomatis via JavaScript -->
-                </div>
-            </div>
-
-            <!-- BAGIAN E: DATA STR -->
-            <div style="background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 16px; text-align: left;">
-                <h5 style="margin: 0 0 12px 0; color: #d97706; font-size: 13px; font-weight: 700; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; text-align: left;">
-                    E. Data Surat Tanda Registrasi (STR)
-                </h5>
-                <div id="admin-wadah-str" style="font-size: 13px; text-align: left;">
-                    <!-- Masuk otomatis via JavaScript -->
-                </div>
-            </div>
-
-        </div>
-
-        <!-- FOOTER MODAL (BAGIAN TOMBOL STATUS SELEKSI) -->
-        <div style="padding: 16px 20px; border-top: 1px solid #f1f5f9; background: #f8fafc; border-bottom-left-radius: 16px; border-bottom-right-radius: 16px;">
-            <form action="" method="POST" style="display: flex; flex-direction: column; gap: 12px; text-align: left;">
-                <input type="hidden" name="lamaran_id" id="formLamaranId">
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; text-align: left;">
-                    <div style="flex: 1; min-width: 200px; text-align: left;">
-                        <label style="display: block; font-size: 10px; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 4px; text-align: left;">Tahap Seleksi Pelamar:</label>
-                        <select name="status_aksi" id="formStatusAksi" style="width: 100%; padding: 10px 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 13px; font-weight: 600; color: #334155; background: #ffffff; cursor: pointer;">
-                            <option value="Pending">🟡 Pending / Belum Diproses</option>
-                            <option value="Proses">🔵 Sedang Diproses</option>
-                            <option value="Lulus">🟢 Lulus Seleksi</option>
-                            <option value="Tidak Lulus">🔴 Tidak Lulus</option>
-                            <option value="Skip">⚫ Skip / Lewati</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: end; height: 100%;">
-                        <button type="button" onclick="tutupDetailPelamar()" style="padding: 10px 20px; border: 1px solid #cbd5e1; background: #ffffff; border-radius: 8px; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer;">Batal</button>
-                        <button type="submit" name="update_status_seleksi" style="padding: 10px 20px; border: none; background: #4f46e5; color: #ffffff; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);">Simpan Perubahan</button>
-                    </div>
-                </div>
-            </form>
-        </div>
-
+    <!-- Bagian Kanan: Tombol Aksi Batal & Simpan -->
+    <div style="display: flex; gap: 10px; align-items: center; justify-content: flex-end;">
+        <button onclick="tutupDetailPelamar()" type="button" style="background: #ffffff; border: 1px solid #cbd5e1; border-radius: 10px; color: #475569; font-weight: 600; cursor: pointer; font-size: 13px; height: 42px; padding: 0 20px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;">
+            Batal
+        </button>
+        <button onclick="simpanPerubahanStatus()" type="button" style="background: #2563eb; border: none; border-radius: 10px; color: #ffffff; font-weight: 600; cursor: pointer; font-size: 13px; box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.2); height: 42px; padding: 0 22px; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center;">
+            Simpan Perubahan
+        </button>
     </div>
 </div>
 
+</div> <!-- /BOX INNER MODAL -->
+</div> <!-- /OVERLAY MODAL -->
+
 <!-- ==================== LOGIKA JAVASCRIPT SUNTIK MODAL ==================== -->
 <script>
-// SINKRONISASI TOTAL: Menangkap parameter sesuai baris tombol tabel dan ID elemen asli Anda
 function bukaDetailModal(
     lamaranId, pelamarId, nama, nik, foto, ttl, 
     jk, agama, status, email, telepon, lokasi, 
     alamat, kampus, prodi, nilai, statusAksi,
     perusahaan, jabatan, mulai, selesai, alasan
 ) {
-    // 1. Suntik Biodata Utama Pelamar (Menggunakan ID Elemen Asli Anda)
-    document.getElementById('md_nama').innerText = nama ? nama : '-';
-    document.getElementById('md_nik').innerText = nik ? nik : '-';
-    document.getElementById('md_ttl').innerText = ttl ? ttl : '-';
-    document.getElementById('md_jk').innerText = jk ? jk : '-';
-    document.getElementById('md_agama').innerText = agama ? agama : '-';
-    document.getElementById('md_status').innerText = status ? status : '-';
-    document.getElementById('md_telepon').innerText = telepon ? telepon : '-';
-    document.getElementById('md_email').innerText = email ? email : '-';
-    document.getElementById('md_lokasi').innerText = lokasi ? lokasi : '-';
-    document.getElementById('md_alamat').innerText = alamat ? alamat : '-';
-    
-    // 2. Suntik Riwayat Pendidikan
-    document.getElementById('md_kampus').innerText = kampus ? kampus : '-';
-    document.getElementById('md_prodi').innerText = prodi ? prodi : '-';
-    document.getElementById('md_nilai').innerText = nilai ? nilai : '-';
+    try {
+        if(document.getElementById('md_nama')) document.getElementById('md_nama').innerText = nama || '-';
+        if(document.getElementById('md_nik')) document.getElementById('md_nik').innerText = nik || '-';
+        if(document.getElementById('md_ttl')) document.getElementById('md_ttl').innerText = ttl || '-';
+        if(document.getElementById('md_jk')) document.getElementById('md_jk').innerText = jk || '-';
+        if(document.getElementById('md_agama')) document.getElementById('md_agama').innerText = agama || '-';
+        if(document.getElementById('md_status')) document.getElementById('md_status').innerText = status || '-';
+        if(document.getElementById('md_telepon')) document.getElementById('md_telepon').innerText = telepon || '-';
+        if(document.getElementById('md_email')) document.getElementById('md_email').innerText = email || '-';
+        if(document.getElementById('md_lokasi')) document.getElementById('md_lokasi').innerText = lokasi || '-';
+        if(document.getElementById('md_alamat')) document.getElementById('md_alamat').innerText = alamat || '-';
+        
+        if(document.getElementById('md_kampus')) document.getElementById('md_kampus').innerText = kampus || '-';
+        if(document.getElementById('md_prodi')) document.getElementById('md_prodi').innerText = prodi || '-';
+        if(document.getElementById('md_nilai')) document.getElementById('md_nilai').innerText = nilai || '-';
 
-    // 3. Suntik Riwayat Pengalaman Kerja
-    document.getElementById('md_perusahaan').innerText = perusahaan ? perusahaan : 'Tidak Ada Pengalaman';
-    document.getElementById('md_jabatan').innerText = jabatan ? jabatan : '-';
-    
-    if (mulai) {
-        let tgl_selesai = selesai ? selesai.split('-').reverse().join('/') : 'Sekarang';
-        let tgl_mulai = mulai.split('-').reverse().join('/');
-        document.getElementById('md_periode').innerText = tgl_mulai + ' s/d ' + tgl_selesai;
-    } else { 
-        document.getElementById('md_periode').innerText = '-'; 
+        if(document.getElementById('md_perusahaan')) document.getElementById('md_perusahaan').innerText = perusahaan || 'Tidak Ada Pengalaman';
+        if(document.getElementById('md_jabatan')) document.getElementById('md_jabatan').innerText = jabatan || '-';
+        
+        if (mulai) {
+            let tgl_selesai = selesai ? selesai.split('-').reverse().join('/') : 'Sekarang';
+            let tgl_mulai = mulai.split('-').reverse().join('/');
+            if(document.getElementById('md_periode')) document.getElementById('md_periode').innerText = tgl_mulai + ' s/d ' + tgl_selesai;
+        } else { 
+            if(document.getElementById('md_periode')) document.getElementById('md_periode').innerText = '-'; 
+        }
+        if(document.getElementById('md_alasan_keluar')) document.getElementById('md_alasan_keluar').innerText = alasan || '-';
+
+        const imgObj = document.getElementById('modalFoto');
+        const noImgObj = document.getElementById('modalNoFoto');
+        if (imgObj) {
+            if (foto && foto !== '') {
+                imgObj.src = 'uploads/' + foto;
+                imgObj.style.display = 'inline-block';
+                if(noImgObj) noImgObj.style.display = 'none';
+            } else {
+                imgObj.style.display = 'none';
+                if(noImgObj) noImgObj.style.display = 'flex';
+            }
+        }
+
+        if(document.getElementById('formLamaranId')) document.getElementById('formLamaranId').value = lamaranId;
+        
+        const selectStatus = document.getElementById('md_status_seleksi');
+        if (selectStatus && statusAksi) {
+            selectStatus.value = statusAksi;
+        }
+    } catch (e) {
+        console.warn("Ada elemen HTML biodata yang tidak ditemukan:", e);
     }
-    document.getElementById('md_alasan_keluar').innerText = alasan ? alasan : '-';
 
-    // 4. Pengendali Tampilan Foto Profil Asli Anda
-    const imgObj = document.getElementById('modalFoto');
-    const noImgObj = document.getElementById('modalNoFoto');
-    if (foto && foto !== '') {
-        imgObj.src = 'uploads/' + foto;
-        imgObj.style.display = 'inline-block';
-        if(noImgObj) noImgObj.style.display = 'none';
-    } else {
-        imgObj.style.display = 'none';
-        if(noImgObj) noImgObj.style.display = 'flex';
+    // === TAMBAHKAN KODE INI DI SINI ===
+    const modalObj = document.getElementById('detailModal');
+    if (modalObj) {
+        modalObj.style.display = 'flex'; 
     }
+    // =================================
 
-    // 5. Masukkan ID ke Form Update Status Dokumen Anda
-    document.getElementById('formLamaranId').value = lamaranId;
-    document.getElementById('formStatusAksi').value = statusAksi;
-
-    // =========================================================================
-    // 6. LOGIKA OTOMATIS: AMBIL DATA BERKAS & STR VIA AJAX (GET)
-    // =========================================================================
     const wadahBerkas = document.getElementById('admin-wadah-berkas');
     const wadahSTR    = document.getElementById('admin-wadah-str');
 
-    // Tampilkan animasi loading teks ringan sebelum data termuat
+
     if(wadahBerkas) wadahBerkas.innerHTML = '<span style="color: #64748b; font-size: 13px; font-style: italic;">Memuat berkas dokumen...</span>';
     if(wadahSTR) wadahSTR.innerHTML    = '<span style="color: #64748b; font-size: 13px; font-style: italic;">Memuat data STR...</span>';
 
-    // Menembak AJAX fetch ke file api get_berkas_str_admin.php
     fetch('get_berkas_str_admin.php?pelamar_id=' + pelamarId)
         .then(response => response.json())
         .then(res => {
             if (res.status === 'success') {
-                // A. Tampilkan paket Berkas Dokumen Pelamar
+                
+                // A. Tampilkan Paket Berkas Dokumen Pelamar (Ijazah)
                 if (wadahBerkas) {
-                    if (res.berkas.length > 0) {
-                        let htmlBerkas = '<table style="width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 5px;">';
+                    if (res.berkas && res.berkas.length > 0) {
+                        let htmlBerkas = '';
                         res.berkas.forEach(bk => {
                             htmlBerkas += `
-                                <tr style="border-bottom: 1px solid #f1f5f9;">
-                                    <td style="padding: 8px 0; color: #475569; font-weight: 500;">• ${bk.jenis_berkas}</td>
-                                    <td style="padding: 8px 0; text-align: right;">
-                                        ${bk.nama_file ? `<a href="uploads/${bk.nama_file}" target="_blank" style="color: #0d6efd; text-decoration: none; font-weight: bold;">👁 Lihat Berkas</a>` : '<span style="color: #94a3b8; font-style: italic;">Belum diunggah</span>'}
-                                    </td>
-                                </tr>`;
+                                <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 12px 16px; border-radius: 10px; border: 1px solid #e2e8f0; gap: 15px; width: 100%; box-sizing: border-box; margin-bottom: 8px;">
+                                    <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; width: 70%;">
+                                        <span style="font-weight: 600; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                            ${bk.jenis_berkas}
+                                        </span>
+                                    </div>
+                                    ${bk.nama_file ? `
+                                        <a href="uploads/${bk.nama_file}" target="_blank" style="color: #2563eb; text-decoration: none; font-weight: 700; font-size: 12px; display: flex; align-items: center; gap: 6px; flex-shrink: 0; background: #eff6ff; padding: 8px 14px; border-radius: 8px; border: 1px solid #bfdbfe;">
+                                            Lihat Berkas
+                                        </a>
+                                    ` : '<span style="color: #94a3b8; font-style: italic; font-size: 12px;">Belum diunggah</span>'}
+                                </div>`;
                         });
-                        htmlBerkas += '</table>';
                         wadahBerkas.innerHTML = htmlBerkas;
                     } else {
                         wadahBerkas.innerHTML = '<span style="color: #64748b; font-size: 13px; font-style: italic;">Pelamar belum melampirkan berkas dokumen.</span>';
                     }
                 }
 
-                // B. Tampilkan paket Data Surat Tanda Registrasi (STR)
+                // B. Tampilkan Paket Data Surat Tanda Registrasi (STR)
                 if (wadahSTR) {
-                    if (res.str.length > 0) {
+                    if (res.str && res.str.length > 0) {
                         let htmlSTR = '';
                         res.str.forEach(s => {
                             htmlSTR += `
-                                <div style="background: #fafafa; border: 1px solid #e2e8f0; padding: 10px; border-radius: 6px; margin-top: 8px; font-size: 13px; line-height: 1.6;">
-                                    <div style="display: flex;"><span style="width: 120px; color: #475569; font-weight: bold;">Nomor STR</span><span style="flex: 1; color: #1e293b;">: ${s.nomor_str}</span></div>
-                                    <div style="display: flex;"><span style="width: 120px; color: #475569;">Tanggal Terbit</span><span style="flex: 1; color: #1e293b;">: ${s.tanggal_terbit || '-'}</span></div>
-                                    <div style="display: flex;"><span style="width: 120px; color: #475569;">Tanggal Expired</span><span style="flex: 1; color: #b91c1c; font-weight: 500;">: ${s.tanggal_expired || '-'}</span></div>
-                                    ${s.file_str ? `<div style="margin-top: 5px; text-align: right;"><a href="uploads/${s.file_str}" target="_blank" style="color: #0d6efd; text-decoration: none; font-weight: bold; font-size: 12px;">👁 Lihat Dokumen STR</a></div>` : ''}
+                                <div style="background: #ffffff; border: 1px solid #e2e8f0; padding: 16px; border-radius: 12px; font-size: 13px; line-height: 1.6; box-shadow: 0 1px 3px rgba(0,0,0,0.02); box-sizing: border-box; margin-bottom: 10px;">
+                                    <div style="display: flex; border-bottom: 1px dashed #f1f5f9; padding-bottom: 6px; margin-bottom: 6px;"><span style="width: 120px; color: #64748b; font-weight: 600;">Nomor STR</span><span style="flex: 1; color: #0f172a; font-family: monospace;">: ${s.nomor_str}</span></div>
+                                    <div style="display: flex; border-bottom: 1px dashed #f1f5f9; padding-bottom: 6px; margin-bottom: 6px;"><span style="width: 120px; color: #64748b; font-weight: 600;">Tanggal Terbit</span><span style="flex: 1; color: #0f172a;">: ${s.tanggal_terbit || '-'}</span></div>
+                                    <div style="display: flex; border-bottom: 1px dashed #f1f5f9; padding-bottom: 6px; margin-bottom: 12px;"><span style="width: 120px; color: #64748b; font-weight: 600;">Tanggal Expired</span><span style="flex: 1; color: #b91c1c; font-weight: 700;">: ${s.tanggal_expired || '-'}</span></div>
+                                    
+                                    <div style="display: flex; justify-content: space-between; align-items: center; background: #f8fafc; padding: 12px 16px; border-radius: 10px; border: 1px solid #e2e8f0; gap: 15px; width: 100%; box-sizing: border-box;">
+                                        <div style="display: flex; align-items: center; gap: 10px; overflow: hidden; width: 70%;">
+                                            <span style="font-weight: 600; color: #334155; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                ${s.nama_file || 'File_STR.pdf'}
+                                            </span>
+                                        </div>
+                                        ${s.nama_file ? `
+                                            <a href="uploads/${s.nama_file}" target="_blank" style="color: #2563eb; text-decoration: none; font-weight: 700; font-size: 12px; display: flex; align-items: center; gap: 6px; flex-shrink: 0; background: #eff6ff; padding: 8px 14px; border-radius: 8px; border: 1px solid #bfdbfe;">
+                                                Lihat Berkas
+                                            </a>
+                                        ` : '<span style="color: #94a3b8; font-style: italic; font-size: 12px;">Belum diunggah</span>'}
+                                    </div>
                                 </div>`;
                         });
-                        wadahSTR.innerHTML = htmlSTR;
+                                                wadahSTR.innerHTML = htmlSTR;
                     } else {
-                        wadahSTR.innerHTML = '<span style="color: #64748b; font-size: 13px; font-style: italic;">Pelamar tidak mengisi/menginput data STR aktif.</span>';
+                        wadahSTR.innerHTML = '<span style="color: #64748b; font-size: 13px; font-style: italic;">Pelamar belum melampirkan berkas STR.</span>';
                     }
                 }
+
+            } else {
+                if(wadahBerkas) wadahBerkas.innerHTML = '<span style="color: #ef4444; font-size: 13px;">Gagal memuat data berkas.</span>';
+                if(wadahSTR) wadahSTR.innerHTML = '<span style="color: #ef4444; font-size: 13px;">Gagal memuat data STR.</span>';
             }
         })
         .catch(err => {
-            console.error(err);
+            console.error("Terjadi error fetch data admin:", err);
+            if(wadahBerkas) wadahBerkas.innerHTML = '<span style="color: #ef4444; font-size: 13px;">Error koneksi data berkas.</span>';
+            if(wadahSTR) wadahSTR.innerHTML = '<span style="color: #ef4444; font-size: 13px;">Error koneksi data STR.</span>';
         });
-
-    // 7. Buka Jendela Modal Utama Admin Anda
-    document.getElementById('detailModal').style.display = 'flex';
 }
+
+// 1. FUNGSI UNTUK MENUTUP MODAL (Aksi tombol Close & Batal)
 function tutupDetailPelamar() {
-    // Berfungsi menyembunyikan modal kembali saat tombol Batal diklik
-    document.getElementById('detailModal').style.display = 'none';
-}
-
-// Menutup modal otomatis jika area luar (latar belakang gelap) diklik
-window.onclick = function(event) {
-    const modal = document.getElementById('detailModal');
-    if (event.target === modal) { 
-        modal.style.display = 'none'; 
+    const modalObj = document.getElementById('detailModal');
+    if (modalObj) {
+        modalObj.style.display = 'none';
     }
 }
 
+// 2. FUNGSI UNTUK SIMPAN STATUS SELEKSI (Aksi tombol Simpan Perubahan)
+function simpanPerubahanStatus() {
+    const lamaranId = document.getElementById('formLamaranId').value;
+    const statusBaru = document.getElementById('md_status_seleksi').value;
+
+    if (!lamaranId) {
+        alert("ID Lamaran tidak ditemukan!");
+        return;
+    }
+
+    // Mengirim data ke lamaran_tahapan.php di latar belakang menggunakan Fetch
+    fetch('lamaran_tahapan.php', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `action=update_status&id_lamaran=${lamaranId}&status_tahap=${statusBaru}&id_tahapan=`
+    })
+    .then(response => {
+        // Karena file PHP melakukan redirect (Location:), response.url akan mendeteksi halaman tujuan.
+        // Jika response aman, kita anggap database berhasil diperbarui.
+        if (response.ok) {
+            alert("Status seleksi berhasil diperbarui!");
+            tutupDetailPelamar(); // Menutup modal pop-up
+            location.reload();    // Menyegarkan halaman data_pelamar.php agar tabel terupdate
+        } else {
+            alert("Gagal memperbarui status pada sistem.");
+        }
+    })
+    .catch(err => {
+        console.error("Error saat menyimpan status:", err);
+        alert("Terjadi kesalahan koneksi saat menyimpan data!");
+    });
+}
 </script>
-</body>
+    </body>
 </html>
