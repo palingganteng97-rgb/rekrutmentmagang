@@ -13,44 +13,34 @@ if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
-// 2. LOGIKA PROSES SUBMIT FORM LOGIN
+// 2. LOGIKA PROSES SUBMIT FORM LOGIN (MURNI TABEL USERS)
 $error_message = "";
-if (isset($_POST['login'])) {
-    // Menggunakan 'email' karena input form Anda bertipe email & name="email"
+if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $email_input    = mysqli_real_escape_string($koneksi, $_POST['email']);
     $password_input = mysqli_real_escape_string($koneksi, $_POST['password']);
     
-    // Cari data di database (Sesuaikan nama kolom email/username jika berbeda di DB Anda)
+    // Cari data murni di tabel users (karena akun pelamar & admin kumpul di sini)
     $query_login = "SELECT * FROM users WHERE email = '$email_input' OR username = '$email_input'";
     $hasil_login = mysqli_query($koneksi, $query_login);
     
     if ($hasil_login && mysqli_num_rows($hasil_login) > 0) {
         $data_user = mysqli_fetch_assoc($hasil_login);
         
-        // Cek kecocokan password
+        // Verifikasi kecocokan password
         if ($data_user['password'] == $password_input) {
             
-            // Logika Blokir User Nonaktif
+            // Cek status keaktifan akun
             if ($data_user['status'] == 'Nonaktif') {
-                $error_message = "Gagal Masuk! Akun Anda berstatus NONAKTIF. Silakan hubungi Administrator Utama.";
+                $error_message = "Gagal Masuk! Akun Anda berstatus NONAKTIF. Silakan hubungi Administrator.";
             } else {
-                // SINKRONISASI SESI UNTUK HALAMAN LOWONGAN
-                $_SESSION['username']     = $data_user['username'];
+                // SINKRONISASI SESI UNTUK NAV BAR NAVBAR (MENGGUNAKAN NAMA DARI TABEL USERS)
                 $_SESSION['pelamar_id']   = $data_user['id'];
+                $_SESSION['pelamar_nama'] = $data_user['nama']; // Kolom 'nama' sesuai tabel users Anda
                 
-                // Ambil dari kolom nama_lengkap atau nama. Jika tidak ada, pakai username pembantu.
-                if (!empty($data_user['nama_lengkap'])) {
-                    $_SESSION['pelamar_nama'] = $data_user['nama_lengkap'];
-                } elseif (!empty($data_user['nama'])) {
-                    $_SESSION['pelamar_nama'] = $data_user['nama'];
-                } else {
-                    $_SESSION['pelamar_nama'] = $data_user['username'];
-                }
-                
-                // Update waktu last_login ke database
+                // Update waktu login terakhir
                 mysqli_query($koneksi, "UPDATE users SET last_login = NOW() WHERE id = '".$data_user['id']."'");
                 
-                // Berpindah langsung ke halaman lowongan pelamar
+                // Redirect langsung ke halaman lowongan pelamar
                 header("Location: lowongan_pelamar.php");
                 exit();
             }
@@ -204,87 +194,102 @@ if (isset($_POST['login'])) {
 </div>
 <!-- Right Side: Sign In Form -->
 <div class="p-6 md:p-10 flex flex-col justify-center">
-<div class="mb-8 text-center md:text-left">
-<h2 class="font-headline-md text-headline-md text-on-background mb-2">Selamat Datang Kembali</h2>
-<p class="font-body-md text-body-md text-outline">Silakan masuk ke akun karir Anda untuk melamar pekerjaan atau melihat status aplikasi.</p>
-</div>
-<form class="space-y-4" id="loginForm">
-<!-- Email Field -->
-<div class="space-y-1.5">
-<label class="block font-label-md text-label-md text-on-surface-variant" for="email">Alamat Email</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">mail</span>
-<input class="w-full pl-10 pr-3 py-2.5 rounded-xl border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/15 transition-all outline-none text-body-md font-body-md bg-white" id="email" name="email" placeholder="nama@email.com" required="" type="email">
-</div>
-</div>
-<!-- Password Field -->
-<div class="space-y-1.5">
-<div class="flex justify-between items-center">
-<label class="block font-label-md text-label-md text-on-surface-variant" for="password">Kata Sandi</label>
-<a class="font-label-md text-label-md text-primary hover:underline transition-all" href="#">Lupa kata sandi?</a>
-</div>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">lock</span>
-<input class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/15 transition-all outline-none text-body-md font-body-md bg-white" id="password" name="password" placeholder="••••••••" required="" type="password">
-<button class="absolute right-3.5 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors" onclick="togglePassword()" type="button">
-<span class="material-symbols-outlined text-[18px]" id="passwordIcon">visibility</span>
-</button>
-</div>
-</div>
-<div class="flex items-center gap-2">
-<input class="w-4 h-4 text-primary border-outline-variant rounded focus:ring-primary" id="remember" type="checkbox">
-<label class="font-label-md text-label-md text-on-surface-variant select-none" for="remember">Ingat saya untuk sesi berikutnya</label>
-</div>
-<button class="w-full bg-primary text-on-primary py-3 rounded-xl font-headline-sm text-label-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2" type="submit">
-                        Masuk Ke Akun
-                    </button>
-</form>
+    <div class="mb-8 text-center md:text-left">
+        <h2 class="font-headline-md text-headline-md text-on-background mb-2">Selamat Datang Kembali</h2>
+        <p class="font-body-md text-body-md text-outline">Silakan masuk ke akun karir Anda untuk melamar pekerjaan atau melihat status aplikasi.</p>
+    </div>
 
-<div class="space-y-4">
+    <!-- PERBAIKAN 1: Menambahkan method="POST" agar data form terkirim ke PHP -->
+    <form class="space-y-4" id="loginForm" method="POST">
+        
+        <!-- PERBAIKAN 2: Menampilkan Pesan Error di atas input jika login gagal -->
+        <?php if (!empty($error_message)): ?>
+            <div class="bg-error-container text-on-error-container p-3 rounded-xl text-body-md border border-error/20">
+                <?php echo htmlspecialchars($error_message); ?>
+            </div>
+        <?php endif; ?>
+
+        <!-- Email Field -->
+        <div class="space-y-1.5">
+            <label class="block font-label-md text-label-md text-on-surface-variant" for="email">Alamat Email</label>
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">mail</span>
+                <input class="w-full pl-10 pr-3 py-2.5 rounded-xl border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/15 transition-all outline-none text-body-md font-body-md bg-white" id="email" name="email" placeholder="nama@email.com" required="" type="email">
+            </div>
+        </div>
+
+        <!-- Password Field -->
+        <div class="space-y-1.5">
+            <div class="flex justify-between items-center">
+                <label class="block font-label-md text-label-md text-on-surface-variant" for="password">Kata Sandi</label>
+                <a class="font-label-md text-label-md text-primary hover:underline transition-all" href="#">Lupa kata sandi?</a>
+            </div>
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">lock</span>
+                <input class="w-full pl-10 pr-10 py-2.5 rounded-xl border border-outline-variant focus:border-primary focus:ring-4 focus:ring-primary/15 transition-all outline-none text-body-md font-body-md bg-white" id="password" name="password" placeholder="••••••••" required="" type="password">
+                <button class="absolute right-3.5 top-1/2 -translate-y-1/2 text-outline hover:text-primary transition-colors" onclick="togglePassword()" type="button">
+                    <span class="material-symbols-outlined text-[18px]" id="passwordIcon">visibility</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+            <input class="w-4 h-4 text-primary border-outline-variant rounded focus:ring-primary" id="remember" type="checkbox">
+            <label class="font-label-md text-label-md text-on-surface-variant select-none" for="remember">Ingat saya untuk sesi berikutnya</label>
+        </div>
+
+        <!-- PERBAIKAN 3: Mengubah tag <a> kembali menjadi <button type="submit"> dan menambahkan name="login" -->
+        <button type="submit" name="login" class="w-full bg-primary text-on-primary py-3 rounded-xl font-headline-sm text-label-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2">
+            Masuk Ke Akun
+        </button>
+
+    </form>
+
+    <div class="text-center mt-4 text-label-md">
+        Belum punya akun? <a href="daftar_pelamar.php" class="text-primary font-bold hover:underline">Daftar Sekarang</a>
+    </div>
 </div>
-<p class="mt-6 text-center font-body-md text-body-md text-outline">Belum punya akun? <a class="text-primary font-bold hover:underline" href="#">Daftar Sekarang</a>
-</p>
-</div>
+
 </div>
 </main>
 
 <script>
-        function togglePassword() {
-            const passwordInput = document.getElementById('password');
-            const passwordIcon = document.getElementById('passwordIcon');
-            if (passwordInput.type === 'password') {
-                passwordInput.type = 'text';
-                passwordIcon.innerText = 'visibility_off';
-            } else {
-                passwordInput.type = 'password';
-                passwordIcon.innerText = 'visibility';
-            }
+    function togglePassword() {
+        const passwordInput = document.getElementById('password');
+        const passwordIcon = document.getElementById('passwordIcon');
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            passwordIcon.innerText = 'visibility_off';
+        } else {
+            passwordInput.type = 'password';
+            passwordIcon.innerText = 'visibility';
         }
+    }
 
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
-            e.preventDefault();
-            // Basic UI feedback for interaction
-            const btn = e.target.querySelector('button[type="submit"]');
-            const originalText = btn.innerHTML;
-            btn.disabled = true;
-            btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Memproses...';
-            
-            setTimeout(() => {
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                alert('Sistem sedang dalam pengembangan. Silakan hubungi admin HR RSI Kendal.');
-            }, 1500);
-        });
+    document.getElementById('loginForm').addEventListener('submit', function(e) {
+        // PERBAIKAN: e.preventDefault() DIHAPUS agar form bisa terkirim ke PHP
+        
+        const btn = e.target.querySelector('button[type="submit"]');
+        btn.disabled = true;
+        
+        // Mempertahankan visual feedback animasi berputar saat tombol ditekan
+        btn.innerHTML = '<span class="material-symbols-outlined animate-spin">progress_activity</span> Memproses...';
+        
+        // PERBAIKAN: setTimeout dan alert tiruan dihapus agar proses langsung dilanjutkan ke server PHP
+    });
 
-        // Mouse move effect for background subtle interaction
-        document.addEventListener('mousemove', (e) => {
-            const x = e.clientX / window.innerWidth;
-            const y = e.clientY / window.innerHeight;
-            
-            const lights = document.querySelectorAll('.absolute.inset-0.z-0 div');
+    // Mouse move effect for background subtle interaction
+    document.addEventListener('mousemove', (e) => {
+        const x = e.clientX / window.innerWidth;
+        const y = e.clientY / window.innerHeight;
+        
+        const lights = document.querySelectorAll('.absolute.inset-0.z-0 div');
+        if (lights.length >= 2) { // Validasi untuk memastikan elemen ada dan menghindari error JS
             lights[0].style.transform = `translate(${x * 20}px, ${y * 20}px)`;
             lights[1].style.transform = `translate(${-x * 30}px, ${-y * 30}px)`;
-        });
-    </script>
+        }
+    });
+</script>
+
 </body>
 </html>

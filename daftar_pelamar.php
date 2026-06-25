@@ -1,5 +1,50 @@
-<!DOCTYPE html>
+<?php
+session_start();
 
+// Pengaturan Koneksi Database
+$host     = "10.10.6.59"; 
+$user_db  = "root_host";      
+$pass_db  = "password"; 
+$nama_db  = "magang_rekrutmen_rs"; 
+
+$koneksi = mysqli_connect($host, $user_db, $pass_db, $nama_db);
+if (!$koneksi) { die("Koneksi gagal: " . mysqli_connect_error()); }
+
+$error_message = "";
+
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['register'])) {
+    $email_input    = mysqli_real_escape_string($koneksi, $_POST['email']);
+    $password_input = mysqli_real_escape_string($koneksi, $_POST['password']);
+    $konfirmasi_pw  = mysqli_real_escape_string($koneksi, $_POST['confirm_password']);
+
+    // Ambil teks di depan @ untuk dijadikan username otomatis (contoh: budi@gmail.com -> username: budi)
+    $username_otomatis = explode('@', $email_input)[0];
+
+    if ($password_input !== $konfirmasi_pw) {
+        $error_message = "Konfirmasi kata sandi tidak cocok!";
+    } else {
+        // Cek apakah email sudah terdaftar di tabel users
+        $cek_email = mysqli_query($koneksi, "SELECT id FROM users WHERE email = '$email_input'");
+        
+        if (mysqli_num_rows($cek_email) > 0) {
+            $error_message = "Alamat email ini sudah terdaftar!";
+        } else {
+            // MASUKKAN KE TABEL users (Mengisi nama, username, email, password, dan status Aktif)
+            $query_daftar = "INSERT INTO users (nama, username, email, password, status, created_at) 
+                             VALUES ('$username_otomatis', '$username_otomatis', '$email_input', '$password_input', 'Aktif', NOW())";
+            
+            if (mysqli_query($koneksi, $query_daftar)) {
+                echo "<script>alert('Akun Pelamar berhasil dibuat di tabel Users! Silakan masuk.'); location='login_pelamar.php';</script>";
+                exit();
+            } else {
+                $error_message = "Gagal mendaftar: " . mysqli_error($koneksi);
+            }
+        }
+    }
+}
+?>
+
+<!DOCTYPE html>
 <html class="light" lang="id"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
@@ -138,51 +183,68 @@
 <h1 class="font-headline-md text-headline-md text-on-background text-center">Buat Akun Baru</h1>
 <p class="font-body-md text-body-md text-on-surface-variant text-center mt-2">Mulai karir profesional Anda bersama RSI Kendal</p>
 </div>
+
 <!-- Registration Form -->
-<!-- PERBAIKAN: Mengubah action untuk mengarah ke login_pelamar.php -->
-<form action="login_pelamar.php" class="space-y-4" method="POST">
-<!-- Email Address -->
-<div>
-<label class="block font-label-md text-label-md text-on-background mb-1" for="email">Alamat Email</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">mail</span>
-<input class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary/15 outline-none transition-all font-body-md text-body-md bg-white" id="email" name="email" placeholder="email@contoh.com" required="" type="email"/>
-</div>
-</div>
-<!-- Password -->
-<div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-<div>
-<label class="block font-label-md text-label-md text-on-background mb-1" for="password">Kata Sandi</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">lock</span>
-<input class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary/15 outline-none transition-all font-body-md text-body-md bg-white" id="password" name="password" placeholder="••••••••" required="" type="password"/>
-</div>
-</div>
-<div>
-<label class="block font-label-md text-label-md text-on-background mb-1" for="confirm_password">Konfirmasi</label>
-<div class="relative">
-<span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">verified_user</span>
-<input class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary/15 outline-none transition-all font-body-md text-body-md bg-white" id="confirm_password" name="confirm_password" placeholder="••••••••" required="" type="password"/>
-</div>
-</div>
-</div>
-<!-- Terms -->
-<div class="flex items-start gap-2.5 py-1">
-<input class="mt-1 w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant" id="terms" name="terms" required="" type="checkbox"/>
-<label class="font-label-md text-label-md text-on-surface-variant leading-tight" for="terms">Saya menyetujui <a class="text-primary font-bold hover:underline" href="#">Syarat &amp; Ketentuan</a> serta Kebijakan Privasi RSI Kendal.</label>
-</div>
-<!-- Submit Button -->
-<button class="w-full bg-primary-container text-on-primary-container font-headline-sm text-label-md py-3 rounded-lg shadow-sm hover:bg-primary hover:text-white transition-all duration-300 active:scale-95 flex justify-center items-center gap-1.5 mt-3" type="submit">
-<span>Daftar Sekarang</span>
-<span class="material-symbols-outlined">arrow_forward</span>
-</button>
+<!-- PERBAIKAN 1: Mengosongkan action agar diproses oleh PHP di file ini dulu sebelum pindah halaman -->
+<form action="" class="space-y-4" method="POST">
+    
+    <!-- PERBAIKAN 2: Tempatkan Pesan Error di sini agar pelamar tahu jika pendaftaran gagal -->
+    <?php if (!empty($error_message)): ?>
+        <div class="bg-error-container text-on-error-container p-3 rounded-lg text-body-md border border-error/20">
+            <?php echo htmlspecialchars($error_message); ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- Email Address -->
+    <div>
+        <label class="block font-label-md text-label-md text-on-background mb-1" for="email">Alamat Email</label>
+        <div class="relative">
+            <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">mail</span>
+            <input class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary/15 outline-none transition-all font-body-md text-body-md bg-white" id="email" name="email" placeholder="email@contoh.com" required="" type="email"/>
+        </div>
+    </div>
+    
+    <!-- Password -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div>
+            <label class="block font-label-md text-label-md text-on-background mb-1" for="password">Kata Sandi</label>
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">lock</span>
+                <input class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary/15 outline-none transition-all font-body-md text-body-md bg-white" id="password" name="password" placeholder="••••••••" required="" type="password"/>
+            </div>
+        </div>
+        <div>
+            <label class="block font-label-md text-label-md text-on-background mb-1" for="confirm_password">Konfirmasi</label>
+            <div class="relative">
+                <span class="material-symbols-outlined absolute left-2.5 top-1/2 -translate-y-1/2 text-outline text-[18px]">verified_user</span>
+                <input class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-outline-variant focus:border-primary focus:ring-1 focus:ring-primary/15 outline-none transition-all font-body-md text-body-md bg-white" id="confirm_password" name="confirm_password" placeholder="••••••••" required="" type="password"/>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Terms -->
+    <div class="flex items-start gap-2.5 py-1">
+        <input class="mt-1 w-4 h-4 rounded text-primary focus:ring-primary border-outline-variant" id="terms" name="terms" required="" type="checkbox"/>
+        <label class="font-label-md text-label-md text-on-surface-variant leading-tight" for="terms">Saya menyetujui <a class="text-primary font-bold hover:underline" href="#">Syarat &amp; Ketentuan</a> serta Kebijakan Privasi RSI Kendal.</label>
+    </div>
+    
+    <!-- Submit Button -->
+    <!-- PERBAIKAN 3: Menambahkan name="register" agar dikenali oleh skrip isset($_POST['register']) di PHP -->
+    <button type="submit" name="register" class="w-full bg-primary-container text-on-primary-container font-headline-sm text-label-md py-3 rounded-lg shadow-sm hover:bg-primary hover:text-white transition-all duration-300 active:scale-95 flex justify-center items-center gap-1.5 mt-3">
+        <span>Daftar Sekarang</span>
+        <span class="material-symbols-outlined">arrow_forward</span>
+    </button>
 </form>
+
 <!-- Footer Link -->
 <div class="mt-5 pt-4 border-t border-outline-variant/30 text-center">
-<!-- PERBAIKAN: Mengubah href tautan bawah untuk mengarah ke login_pelamar.php -->
-<p class="font-body-md text-body-md text-on-surface-variant">Sudah punya akun? <a class="text-primary font-bold hover:underline ml-1" href="login_pelamar.php">Masuk di sini</a>
-</p>
+    <!-- PERBAIKAN: Mengubah href tautan bawah untuk mengarah ke login_pelamar.php -->
+    <p class="font-body-md text-body-md text-on-surface-variant">
+        Sudah punya akun? 
+        <a class="text-primary font-bold hover:underline ml-1" href="login_pelamar.php">Masuk di sini</a>
+    </p>
 </div>
+
 </div>
 <!-- Desktop Visual Accent -->
 <div class="hidden lg:flex flex-col ml-10 text-white max-w-sm animate-fade-in">
