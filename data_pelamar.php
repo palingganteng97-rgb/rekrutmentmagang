@@ -299,91 +299,95 @@ ORDER BY rl.id DESC
             </div>            
         </aside>
 
-    <!-- MAIN KONTEN KANAN -->
-    <div class="main-content">
-        <div class="content-header">
-            <h1>Data Pelamar Kerja</h1>
-            <p>Halo, <?php echo htmlspecialchars($nama_tampilan); ?> • Kelola berkas pelamar baru masuk</p>
-        </div>
+<!-- MAIN KONTEN KANAN -->
+<div class="main-content">
+    <div class="content-header">
+        <h1>Data Pelamar Kerja</h1>
+        <p>Halo, <?php echo htmlspecialchars($nama_tampilan); ?> • Kelola berkas pelamar baru masuk</p>
+    </div>
 
-        <div class="table-wrapper">
-            <table>
+    <div class="table-wrapper">
+        <!-- Tambahkan inline style layout fixed agar persentase kolom dipatuhi -->
+        <table style="width: 100%; table-layout: fixed; border-collapse: collapse;">
+            <thead>
+                <tr>
+                    <!-- Lebar diubah menjadi persentase agar pas dengan layar -->
+                    <th style="width: 30%; text-align: left;">Nama Pelamar</th>
+                    <th style="width: 25%; text-align: left;">Formasi Lowongan</th>
+                    <th style="width: 15%; text-align: left;">Tanggal Masuk</th>
+                    <th style="width: 15%; text-align: center;">Tahap Seleksi</th>
+                    <th style="width: 15%; text-align: center;">Aksi Kontrol</th>
+                </tr>
+            </thead>
 
-        <thead>
-            <tr>
-                <th style="width: 250px;">Nama Pelamar</th>
-                <th style="width: 180px;">Formasi Lowongan</th>
-                <th style="width: 150px;">Tanggal Masuk</th>
-                <th style="width: 160px; text-align: center;">Tahap Seleksi</th> <!-- Kunci lebar di sini -->
-                <th style="text-align: center; width: 200px;">Aksi Kontrol</th>
-            </tr>
-        </thead>
+            <tbody>
+                <?php if ($result_pelamar && mysqli_num_rows($result_pelamar) > 0) : ?>
+                    <?php while ($row = mysqli_fetch_assoc($result_pelamar)) : ?>
+                        
+                        <?php 
+                            $status_badge = !empty($row['status_tahap']) ? $row['status_tahap'] : 'Pending'; 
+                            
+                            $class_badge = 'status-pending'; 
+                            if ($status_badge == 'Lulus') $class_badge = 'status-lulus';       
+                            if ($status_badge == 'Tidak Lulus') $class_badge = 'status-tolak';  
+                            if ($status_badge == 'Proses') $class_badge = 'status-proses';     
+                            if ($status_badge == 'Skip') $class_badge = 'status-skip';         
+                        ?>
 
+                        <tr>
+                            <td style="text-align: left; vertical-align: middle;">
+                                <div class="candidate-name" style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($row['nama_pendaftar']); ?></div>
+                                <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">NIK: <?php echo htmlspecialchars($row['nik_pendaftar']); ?></div>
+                            </td>
+                            <td style="text-align: left; vertical-align: middle;">
+                                <span style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($row['nama_lowongan']); ?></span>
+                            </td>
+                            <td style="text-align: left; vertical-align: middle; color: #475569;">
+                                <?php echo date('d M Y', strtotime($row['tanggal_daftar'])); ?>
+                            </td>
+                            <td style="text-align: center; vertical-align: middle;">
+                                <span class="status-pill <?php echo $class_badge; ?>">• <?php echo htmlspecialchars($status_badge); ?></span>
+                            </td>
+                            <td style="text-align: center; vertical-align: middle;">
+                                <!-- PERBAIKAN: Karakter bocor '<' sebelum tombol sudah dihapus -->
+                                <button type="button" class="btn-detail" onclick="bukaDetailModal(
+                                    '<?php echo $row['lamaran_id']; ?>', 
+                                    '<?php echo $row['pelamar_id']; ?>', 
+                                    '<?php echo addslashes(htmlspecialchars($row['nama_pendaftar'] ?? $row['nama_lengkap'] ?? '')); ?>', 
+                                    '<?php echo $row['nik_pendaftar'] ?? $row['nik'] ?? ''; ?>', 
+                                    '<?php echo $row['foto_pelamar'] ?? $row['foto'] ?? ''; ?>', 
+                                    '<?php echo ($row['tempat_lahir'] ?? '') . ', ' . (!empty($row['tanggal_lahir']) ? date('d/m/Y', strtotime($row['tanggal_lahir'])) : ''); ?>', 
+                                    '<?php echo $row['jenis_kelamin'] ?? ''; ?>', 
+                                    '<?php echo $row['agama'] ?? ''; ?>', 
+                                    '<?php echo $row['status_sosial'] ?? ''; ?>', 
+                                    '<?php echo $row['email'] ?? ''; ?>', 
+                                    '<?php echo $row['no_telepon'] ?? ''; ?>', 
+                                    '<?php echo ($row['kota'] ?? '') . ', ' . ($row['provinsi'] ?? ''); ?>', 
+                                    '<?php echo addslashes(htmlspecialchars($row['alamat'] ?? '')); ?>', 
+                                    '<?php echo addslashes(htmlspecialchars($row['institusi'] ?? $row['nama_institusi'] ?? '')); ?>', 
+                                    '<?php echo addslashes(htmlspecialchars($row['jurusan'] ?? '')); ?>', 
+                                    '<?php echo $row['ipk'] ?? $row['nilai'] ?? ''; ?>', 
+                                    '<?php echo addslashes(htmlspecialchars($row['status_tahap'] ?? 'Pending')); ?>', 
+                                    '<?php echo addslashes(htmlspecialchars($row['perusahaan'] ?? '')); ?>',
+                                    '<?php echo addslashes(htmlspecialchars($row['jabatan'] ?? '')); ?>',
+                                    '<?php echo $row['mulai_kerja'] ?? ''; ?>',
+                                    '<?php echo $row['selesai_kerja'] ?? ''; ?>',
+                                    '<?php echo addslashes(htmlspecialchars($row['alasan_keluar'] ?? '')); ?>'
+                                )">Lihat Detail</button>
 
-<tbody>
-    <!-- PERBAIKAN: Menambahkan kembali baris pengecekan if dan perulangan while yang hilang -->
-    <?php if ($result_pelamar && mysqli_num_rows($result_pelamar) > 0) : ?>
-        <?php while ($row = mysqli_fetch_assoc($result_pelamar)) : ?>
-            
-            <?php 
-                // Ambil status asli dari database, default ke 'Pending' jika kosong
-                $status_badge = !empty($row['status_tahap']) ? $row['status_tahap'] : 'Pending'; 
-                
-                // Logika penentuan class CSS berdasarkan status baru
-                $class_badge = 'status-pending'; // Default Kuning
-                if ($status_badge == 'Lulus') $class_badge = 'status-lulus';       // Hijau
-                if ($status_badge == 'Tidak Lulus') $class_badge = 'status-tolak';  // Merah
-                if ($status_badge == 'Proses') $class_badge = 'status-proses';     // Abu-abu
-                if ($status_badge == 'Skip') $class_badge = 'status-skip';         // Hitam
-            ?>
-
-            <tr>
-                <td>
-                    <div class="candidate-name"><?php echo htmlspecialchars($row['nama_pendaftar']); ?></div>
-                    <div style="font-size: 12px; color: #94a3b8; margin-top: 2px;">NIK: <?php echo htmlspecialchars($row['nik_pendaftar']); ?></div>
-                </td>
-                <td><span style="font-weight: 600; color: #1e293b;"><?php echo htmlspecialchars($row['nama_lowongan']); ?></span></td>
-                <td><?php echo date('d M Y', strtotime($row['tanggal_daftar'])); ?></td>
-                <td><span class="status-pill <?php echo $class_badge; ?>">• <?php echo htmlspecialchars($status_badge); ?></span></td>
-                <td style="text-align: center;">
-<
-                <button type="button" class="btn-detail" onclick="bukaDetailModal(
-                    '<?php echo $row['lamaran_id']; ?>', 
-                    '<?php echo $row['pelamar_id']; ?>', 
-                    '<?php echo addslashes(htmlspecialchars($row['nama_pendaftar'] ?? $row['nama_lengkap'] ?? '')); ?>', 
-                    '<?php echo $row['nik_pendaftar'] ?? $row['nik'] ?? ''; ?>', 
-                    '<?php echo $row['foto_pelamar'] ?? $row['foto'] ?? ''; ?>', 
-                    '<?php echo ($row['tempat_lahir'] ?? '') . ', ' . (!empty($row['tanggal_lahir']) ? date('d/m/Y', strtotime($row['tanggal_lahir'])) : ''); ?>', 
-                    '<?php echo $row['jenis_kelamin'] ?? ''; ?>', 
-                    '<?php echo $row['agama'] ?? ''; ?>', 
-                    '<?php echo $row['status_sosial'] ?? ''; ?>', 
-                    '<?php echo $row['email'] ?? ''; ?>', 
-                    '<?php echo $row['no_telepon'] ?? ''; ?>', 
-                    '<?php echo ($row['kota'] ?? '') . ', ' . ($row['provinsi'] ?? ''); ?>', 
-                    '<?php echo addslashes(htmlspecialchars($row['alamat'] ?? '')); ?>', 
-                    '<?php echo addslashes(htmlspecialchars($row['institusi'] ?? $row['nama_institusi'] ?? '')); ?>', 
-                    '<?php echo addslashes(htmlspecialchars($row['jurusan'] ?? '')); ?>', 
-                    '<?php echo $row['ipk'] ?? $row['nilai'] ?? ''; ?>', 
-                    '<?php echo addslashes(htmlspecialchars($row['status_tahap'] ?? 'Pending')); ?>', 
-                    '<?php echo addslashes(htmlspecialchars($row['perusahaan'] ?? '')); ?>',
-                    '<?php echo addslashes(htmlspecialchars($row['jabatan'] ?? '')); ?>',
-                    '<?php echo $row['mulai_kerja'] ?? ''; ?>',
-                    '<?php echo $row['selesai_kerja'] ?? ''; ?>',
-                    '<?php echo addslashes(htmlspecialchars($row['alasan_keluar'] ?? '')); ?>'
-                )">Lihat Detail</button>
-
-                    <a href="?action=hapus_lamaran&lamaran_id=<?php echo $row['lamaran_id']; ?>" class="text-danger" style="margin-left: 12px;" onclick="return confirm('Apakah Anda yakin ingin menghapus data lamaran pendaftar ini?')">Hapus</a>
-                </td>
-            </tr>
-        <?php endwhile; ?>
-    <?php else : ?>
-        <tr><td colspan="5" style="text-align: center; color: #94a3b8; font-style: italic; padding: 40px 0;">Belum ada berkas pendaftaran pelamar yang masuk.</td></tr>
-    <?php endif; ?>
-</tbody>
-            </table>
-        </div>
+                                <a href="?action=hapus_lamaran&lamaran_id=<?php echo $row['lamaran_id']; ?>" class="text-danger" style="margin-left: 12px; font-size: 14px; text-decoration: none;" onclick="return confirm('Apakah Anda yakin ingin menghapus data lamaran pendaftar ini?')">Hapus</a>
+                            </td>
+                        </tr>
+                    <?php endwhile; ?>
+                <?php else : ?>
+                    <tr>
+                        <td colspan="5" style="text-align: center; color: #94a3b8; font-style: italic; padding: 40px 0;">Belum ada berkas pendaftaran pelamar yang masuk.</td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
     </div>
 </div>
+
 
 <!-- ==================== MODAL OVERLAY POP-UP DETAIL PELAMAR ==================== -->
 <div id="detailModal" style="
