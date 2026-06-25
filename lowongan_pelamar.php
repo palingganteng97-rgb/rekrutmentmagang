@@ -41,15 +41,19 @@ $cari_posisi  = isset($_GET['cari']) ? mysqli_real_escape_string($koneksi, trim(
 $departemen   = isset($_GET['departemen']) && $_GET['departemen'] != 'Semua Departemen' ? mysqli_real_escape_string($koneksi, $_GET['departemen']) : '';
 $tipe_kerja   = isset($_GET['tipe']) && $_GET['tipe'] != 'Semua Tipe' ? mysqli_real_escape_string($koneksi, $_GET['tipe']) : '';
 
-// 5. PENYUSUNAN QUERY SQL LOWONGAN SECARA DINAMIS
+// 5. PENYUSUNAN QUERY SQL LOWONGAN MURNI (PERBAIKAN KOLOM)
 $sql = "SELECT * FROM rekrutmen_lowongan WHERE status='Aktif'";
 
 if (!empty($cari_posisi)) {
-    $sql .= " AND (nama_lowongan LIKE '%$cari_posisi%' OR deskripsi LIKE '%$cari_posisi%')";
+    // PERBAIKAN: Mengubah nama_lowongan menjadi judul_lowongan agar tidak error saat mencari
+    $sql .= " AND (judul_lowongan LIKE '%$cari_posisi%' OR deskripsi LIKE '%$cari_posisi%')";
 }
+
 if (!empty($departemen)) {
+    // Sesuaikan kolom unit jika diperlukan, sementara disesuaikan dengan skrip awal
     $sql .= " AND unit = '$departemen'";
 }
+
 if (!empty($tipe_kerja)) {
     $sql .= " AND tipe = '$tipe_kerja'";
 }
@@ -312,12 +316,30 @@ if (!$query_lowongan) {
                 </div>
             </div>
             
-            <!-- Tombol Kirim Form Filter -->
-            <!-- PERBAIKAN: Mengubah elemen menjadi type="submit" -->
-            <button type="submit" class="bg-primary text-white font-label-md text-label-md py-3 rounded-xl hover:brightness-110 transition-all flex items-center justify-center gap-2 w-full">
-                <span class="material-symbols-outlined text-[18px]">filter_list</span>
-                Filter Lowongan
-            </button>
+            <!-- Area Tombol Aksi Filter & Kembali (Dinamis & Diperbaiki) -->
+            <!-- PERBAIKAN: Menambahkan lg:col-span-1 atau menyesuaikan porsi kolom grid agar tidak tertekan -->
+            <div class="w-full">
+                <!-- PERBAIKAN: Menggunakan flex-nowrap dan min-w-max agar teks tombol tidak pecah ke bawah -->
+                <div class="flex items-center gap-2 w-full flex-nowrap min-w-max">
+                    
+                    <!-- Tombol Kirim Form Filter -->
+                    <!-- PERBAIKAN: Menggunakan px-4 dan text-center agar ukuran teks stabil -->
+                    <button type="submit" class="flex-1 bg-primary text-white font-label-md text-label-md py-3 px-4 rounded-xl hover:brightness-110 transition-all flex items-center justify-center gap-1.5 whitespace-nowrap text-center">
+                        <span class="material-symbols-outlined text-[18px]">filter_list</span>
+                        Filter Lowongan
+                    </button>
+                    
+                    <!-- Tombol Lihat Semua (Hanya muncul saat user memfilter) -->
+                    <?php if (!empty($cari_posisi)): ?>
+                        <!-- PERBAIKAN: Menggunakan whitespace-nowrap agar teks 'Lihat Semua' selalu lurus menyamping -->
+                        <a href="lowongan_pelamar.php#jobs" class="flex-1 bg-secondary-fixed text-on-surface hover:bg-secondary-container transition-all py-3 px-4 rounded-xl flex items-center justify-center gap-1.5 font-label-md text-label-md whitespace-nowrap text-center" title="Reset Pencarian">
+                            <span class="material-symbols-outlined text-[18px]">restart_alt</span>
+                            Lihat Semua
+                        </a>
+                    <?php endif; ?>
+
+                </div>
+            </div>
             
         </div>
     </form>

@@ -1,11 +1,11 @@
 <?php
 session_start();
 
-// Hapus semua data session yang tersimpan
+// Hapus seluruh data session pelamar yang aktif
 session_unset();
 session_destroy();
 
-// Alihkan kembali pengguna ke halaman login utama
-header("Location: login_pelamar.php");
+// PERBAIKAN: Alihkan kembali pengguna ke halaman lowongan, bukan ke halaman login
+header("Location: lowongan_pelamar.php");
 exit();
 ?>
