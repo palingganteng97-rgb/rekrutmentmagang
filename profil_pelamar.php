@@ -417,8 +417,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_berkas'])) {
     $file_berkas_lama_arr = $_POST['file_berkas_lama'] ?? [];
     $sukses_berkas        = true;
 
-    // --- FIX: jika record berkas dihapus (karena baris tidak dikirim / terhapus), maka file fisiknya ikut dihapus ---
-    // Ambil semua nama file lama milik pelamar sebelum DELETE tabel
+    // Filter array: pastikan kita hanya memproses baris yang benar-benar ada isinya atau ada file barunya
+    $ada_data_diinput = false;
+    foreach ($jenis_berkas_arr as $index => $jenis) {
+        if (!empty(trim($jenis)) || (!empty($_FILES['file_berkas']['name'][$index]))) {
+            $ada_data_diinput = true;
+            break;
+        }
+    }
+
+    // Ambil daftar file lama milik pelamar untuk dihapus secara fisik dari folder uploads
     $q_lama = mysqli_query($koneksi, "SELECT nama_file FROM pelamar_berkas WHERE pelamar_id = '$pelamar_id'");
     if ($q_lama) {
         while ($r_lama = mysqli_fetch_assoc($q_lama)) {
@@ -432,29 +440,40 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_berkas'])) {
         }
     }
 
-    // Hapus semua record berkas lama lalu insert ulang dari input yang tersisa
+    // Hapus semua record berkas lama di database pelamar_berkas
     mysqli_query($koneksi, "DELETE FROM pelamar_berkas WHERE pelamar_id = $pelamar_id");
 
-    foreach ($jenis_berkas_arr as $index => $jenis_berkas) {
-        if (empty(trim($jenis_berkas))) continue;
+    // Jika user menghapus semua baris berkas di layar, proses insert dilewati (database bersih)
+    if ($ada_data_diinput) {
+        foreach ($jenis_berkas_arr as $index => $jenis_berkas) {
+            // Jika jenis berkas kosong dan tidak ada file baru yang diupload pada baris ini, lewati
+            if (empty(trim($jenis_berkas)) && empty($_FILES['file_berkas']['name'][$index])) continue;
 
-        $jenis_clean       = mysqli_real_escape_string($koneksi, $jenis_berkas);
-        $nama_file_berkas  = $file_berkas_lama_arr[$index] ?? '';
+            $jenis_clean       = mysqli_real_escape_string($koneksi, $jenis_berkas);
+            
+            // Gunakan file lama jika tidak ada file baru yang diunggah
+            $nama_file_berkas  = $file_berkas_lama_arr[$index] ?? '';
 
-        if (isset($_FILES['file_berkas']['name'][$index]) && !empty($_FILES['file_berkas']['name'][$index])) {
-            $b_ext  = strtolower(pathinfo($_FILES['file_berkas']['name'][$index], PATHINFO_EXTENSION));
-            if (in_array($b_ext, ['pdf', 'jpg', 'jpeg', 'png'])) {
-                $nama_file_berkas = "berkas_" . $pelamar_id . "_" . time() . "_" . $index . "." . $b_ext;
-                move_uploaded_file($_FILES['file_berkas']['tmp_name'][$index], "uploads/" . $nama_file_berkas);
+            // Jika ada file baru yang diupload
+            if (isset($_FILES['file_berkas']['name'][$index]) && !empty($_FILES['file_berkas']['name'][$index])) {
+                $b_ext  = strtolower(pathinfo($_FILES['file_berkas']['name'][$index], PATHINFO_EXTENSION));
+                if (in_array($b_ext, ['pdf', 'jpg', 'jpeg', 'png'])) {
+                    $nama_file_berkas = "berkas_" . $pelamar_id . "_" . time() . "_" . $index . "." . $b_ext;
+                    move_uploaded_file($_FILES['file_berkas']['tmp_name'][$index], "uploads/" . $nama_file_berkas);
+                }
             }
+
+            // Insert kembali data berkas yang tersisa/baru
+            $query_ins_bk = "INSERT INTO pelamar_berkas (pelamar_id, jenis_berkas, nama_file) VALUES ($pelamar_id, '$jenis_clean', '$nama_file_berkas')";
+            if (!mysqli_query($koneksi, $query_ins_bk)) { $sukses_berkas = false; }
         }
-
-        $query_ins_bk = "INSERT INTO pelamar_berkas (pelamar_id, jenis_berkas, nama_file) VALUES ($pelamar_id, '$jenis_clean', '$nama_file_berkas')";
-        if (!mysqli_query($koneksi, $query_ins_bk)) { $sukses_berkas = false; }
     }
-    if ($sukses_berkas) { echo "<script>alert('✓ Berkas berhasil disimpan!'); window.location.href='profil_pelamar.php';</script>"; exit; }
-}
 
+    if ($sukses_berkas) { 
+        echo "<script>alert('✓ Perubahan berkas berhasil disimpan!'); window.location.href='profil_pelamar.php';</script>"; 
+        exit; 
+    }
+}
 
 // 7. LOADER DATA SINKRONISASI KE FORM VIEW
 $data = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM pelamar WHERE id = $pelamar_id"));
@@ -601,88 +620,67 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
         </form>
     </div>
 
-<!-- KARTU 2: DATA SURAT TANDA REGISTRASI (STR) -->
-<div class="card-profil" style="margin-top: 20px;">
-    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
-        <div class="card-title" style="color: #198754; margin-bottom: 0;">Data Surat Tanda Registrasi (STR)</div>
-        <button type="button" onclick="tambahBarisSTR()" style="background-color: #198754; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah STR Lain</button>
+<!-- KARTU STR -->
+<div class="card-profil" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 25px;">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px;">
+        <div class="card-title" style="color: #0d6efd; margin-bottom: 0; font-weight: 700; font-size: 16px;">Data Surat Tanda Registrasi (STR)</div>
+        <button type="button" onclick="tambahBarisSTR()" style="background-color: #198754; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah STR Lain</button>
     </div>
-    
-    <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
-        <!-- Wadah Utama Form STR -->
+
+    <form action="" method="POST" enctype="multipart/form-data">
         <div id="container-str">
             <?php 
-            // 1. Ambil data STR pelamar dari database
-            $q_tampil_str = mysqli_query($koneksi, "SELECT * FROM pelamar_str WHERE pelamar_id = $pelamar_id ORDER BY id ASC");
-            
-            // Jika data di database kosong, buat 1 form kosong bawaan awal
-            $list_str = [];
-            if (mysqli_num_rows($q_tampil_str) == 0) {
-                $list_str[] = ['nomor_str' => '', 'tanggal_terbit' => '', 'tanggal_expired' => '', 'file_str' => ''];
-            } else {
-                while ($row = mysqli_fetch_assoc($q_tampil_str)) {
-                    $list_str[] = $row;
-                }
-            }
-
-            $index = 0;
-            foreach ($list_str as $str) : 
-                $file_lama = $str['file_str'] ?? '';
-                $ada_file_fisik = (!empty($file_lama) && file_exists("uploads/" . $file_lama));
+            // FIX UTAMA: Jika kosong, jangan paksa render kolom input kosong agar layar bersih saat F5
+            if (!empty($list_str)) : 
+                foreach ($list_str as $index => $str) : 
+                    $sudah_ada_str = (!empty($str['nama_file']) && file_exists("uploads/" . $str['nama_file']));
             ?>
-                <!-- DESAIN DISAMAKAN: Latar belakang abu-abu, border putus-putus, jarak 12px -->
-                <div class="item-str-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-                    
-                    <!-- Input Nomor STR -->
-                    <div class="form-group">
-                        <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Nomor STR</label>
-                        <input type="text" name="nomor_str[]" class="form-control" placeholder="Contoh: 13 02 7 2 1 19 123457" value="<?= htmlspecialchars($str['nomor_str'] ?? ''); ?>" required>
+                <div class="item-str-row" style="background: #ffffff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; position: relative;">
+                    <div style="text-align: right; margin-bottom: 10px;">
+                        <button type="button" onclick="hapusBarisSTRManual(this)" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: bold; padding: 0;">Hapus STR</button>
                     </div>
                     
-                    <!-- Input Tanggal Terbit & Expired -->
-                    <div style="display: flex; gap: 15px; margin-bottom: 10px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Tanggal Terbit</label>
-                            <input type="date" name="tanggal_terbit[]" class="form-control" value="<?= $str['tanggal_terbit'] ?? ''; ?>" required>
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Tanggal Expired (Masa Berlaku)</label>
-                            <input type="date" name="tanggal_expired[]" class="form-control" value="<?= $str['tanggal_expired'] ?? ''; ?>" required>
-                        </div>
+                    <div class="form-group">
+                        <label style="font-size: 11px; font-weight: bold; color: #475569;">Nomor STR</label>
+                        <input type="text" name="no_str[]" class="form-control" value="<?= htmlspecialchars($str['no_str'] ?? ''); ?>" style="padding:6px 12px; font-size:13px;">
                     </div>
                     
-                    <input type="hidden" name="file_str_lama[]" value="<?= htmlspecialchars($file_lama); ?>">
-                    
-                    <!-- Bagian Upload & Tombol Lihat Berkas (Sama persis seperti Kartu Berkas) -->
-                    <div class="form-group">
-                        <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">
-                            <?= $ada_file_fisik ? 'Pilih File Baru (Kosongkan jika tidak ingin mengubah)' : 'Pilih File Dokumen STR (Wajib Diisi)'; ?>
-                        </label>
+                    <div style="display: flex; gap: 15px; margin-top: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label style="font-size: 11px; font-weight: bold; color: #475569;">Tanggal Terbit</label>
+                            <input type="date" name="tanggal_terbit[]" class="form-control" value="<?= $str['tanggal_terbit'] ?? ''; ?>" style="padding:6px 12px; font-size:13px;">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label style="font-size: 11px; font-weight: bold; color: #475569;">Tanggal Expired (Masa Berlaku)</label>
+                            <input type="date" name="berlaku_str[]" class="form-control" value="<?= $str['berlaku_str'] ?? ''; ?>" style="padding:6px 12px; font-size:13px;">
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="file_str_lama[]" value="<?= htmlspecialchars($str['nama_file'] ?? ''); ?>">
+
+                    <div class="form-group" style="margin-top: 15px;">
+                        <label style="font-size: 11px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Pilih File Baru (Opsional)</label>
                         <div style="display: flex; gap: 10px; align-items: center;">
-                            <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex: 1;" <?= !$ada_file_fisik ? 'required' : ''; ?>>
-                            
-                            <?php if ($ada_file_fisik) : ?>
-                                <a href="uploads/<?= htmlspecialchars($file_lama); ?>" target="_blank" style="background-color: #0d6efd; color: white; text-decoration: none; padding: 10px 15px; border-radius: 6px; font-size: 13px; font-weight: bold; text-align: center; white-space: nowrap; transition: 0.2s;" onmouseover="this.style.backgroundColor='#0b5ed7'" onmouseout="this.style.backgroundColor='#0d6efd'">
-                                    👁 Lihat Berkas
-                                </a>
+                            <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex: 1;">
+                            <?php if ($sudah_ada_str) : ?>
+                                <a href="uploads/<?= htmlspecialchars($str['nama_file']); ?>" target="_blank" style="background-color: #0d6efd; color: white; text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 12px; font-weight: bold; white-space: nowrap;">👁 Lihat Berkas</a>
                             <?php else : ?>
-                                <span style="font-size: 12px; color: #dc2626; font-style: italic; white-space: nowrap;">* Berkas belum ada</span>
+                                <span style="font-size: 12px; color: #64748b; font-style: italic; white-space: nowrap;">Belum ada file</span>
                             <?php endif; ?>
                         </div>
                     </div>
-                    
-                    <!-- TOMBOL HAPUS DI BAWAH KANAN (Sama persis seperti Kartu Berkas Anda) -->
-                    <div style="text-align: right; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
-                        <button type="button" onclick="hapusBarisDinamis(this, 'container-str')" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: bold; padding: 0;">Hapus</button>
-                    </div>
                 </div>
             <?php 
-                $index++;
                 endforeach; 
+            else: 
             ?>
+                <!-- Tampilan info jika pelamar memilih tidak menginput data STR -->
+                <div id="str-kosong-info" style="text-align: center; padding: 20px; color: #64748b; font-style: italic; font-size: 13px;">
+                    Belum ada data STR yang ditambahkan. Klik "+ Tambah STR Lain" jika ingin mengunggah berkas STR.
+                </div>
+            <?php endif; ?>
         </div>
-        <!-- Tombol Simpan Utama Hijau -->
-        <button type="submit" name="simpan_str" class="btn-simpan-full" style="background-color: #198754; width: 100%; margin-top: 10px;">Simpan Seluruh Data STR</button>
+        <button type="submit" name="simpan_str" class="btn-simpan-full" style="background-color: #0d6efd; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 10px;">Simpan Seluruh Data STR</button>
     </form>
 </div>
 
@@ -693,7 +691,7 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
 <div style="flex: 1; min-width: 0;">            
     
     <!-- KARTU 2: PENGALAMAN KERJA -->
-    <div class="card-profil" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <div class="card-profil" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); margin-bottom: 25px;">
         <form action="" method="POST" enctype="multipart/form-data">        
             
             <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px;">
@@ -701,82 +699,80 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
                 <button type="button" onclick="tambahBarisPengalaman()" style="background-color: #0d6efd; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah Pengalaman</button>
             </div>
 
- <!-- Wadah target id untuk JavaScript agar baris baru tidak merusak form layout -->
-        <div id="wadah-pengalaman">
-            <!-- Loop data lama yang sudah tersimpan agar langsung muncul di halaman -->
-            <?php if (!empty($list_pengalaman)): ?>
-                <?php foreach ($list_pengalaman as $index => $exp): ?>
-                    <div class="pengalaman-item" style="margin-bottom: 20px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 15px; position: relative;">
-                        <?php if ($index > 0): ?>
+            <!-- Wadah target id untuk JavaScript agar baris baru tidak merusak form layout -->
+            <div id="wadah-pengalaman">
+                <!-- Loop data lama yang sudah tersimpan agar langsung muncul di halaman -->
+                <?php if (!empty($list_pengalaman)): ?>
+                    <?php foreach ($list_pengalaman as $index => $exp): ?>
+                        <div class="pengalaman-item" style="margin-bottom: 20px; border-bottom: 1px dashed #e2e8f0; padding-bottom: 15px; position: relative;">
+                            <!-- Tombol hapus diletakkan di semua baris agar pengguna bisa mengosongkan data lama -->
                             <span style="position: absolute; right: 0; top: 0; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: 600;" onclick="this.parentElement.remove()">Hapus</span>
-                        <?php endif; ?>
+                            
+                            <div class="form-group">
+                                <label>Nama Perusahaan / Instansi</label>
+                                <input type="text" name="nama_perusahaan[]" class="form-control" value="<?= htmlspecialchars($exp['perusahaan'] ?? ''); ?>">
+                            </div>
+                            <div class="form-group">
+                                <label>Jabatan / Posisi</label>
+                                <input type="text" name="jabatan[]" class="form-control" value="<?= htmlspecialchars($exp['jabatan'] ?? ''); ?>">
+                            </div>
+                            <div style="display: flex; gap: 15px;">
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Mulai Kerja</label>
+                                    <input type="date" name="mulai_kerja[]" class="form-control" value="<?= $exp['mulai_kerja'] ?? ''; ?>">
+                                </div>
+                                <div class="form-group" style="flex: 1;">
+                                    <label>Selesai Kerja</label>
+                                    <input type="date" name="selesai_kerja[]" class="form-control" value="<?= $exp['selesai_kerja'] ?? ''; ?>">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Alasan Keluar</label>
+                                <input type="text" name="alasan_keluar[]" class="form-control" value="<?= htmlspecialchars($exp['alasan_keluar'] ?? ''); ?>">
+                            </div>
+                        </div>
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    <!-- Form kosong default jika pelamar belum pernah mengisi data kerja -->
+                    <div class="pengalaman-item" style="margin-bottom: 20px; padding-bottom: 15px;">
                         <div class="form-group">
                             <label>Nama Perusahaan / Instansi</label>
-                            <input type="text" name="nama_perusahaan[]" class="form-control" value="<?= htmlspecialchars($exp['perusahaan'] ?? ''); ?>" required>
+                            <input type="text" name="nama_perusahaan[]" class="form-control" placeholder="Contoh: PT Tech Indonesia">
                         </div>
                         <div class="form-group">
                             <label>Jabatan / Posisi</label>
-                            <input type="text" name="jabatan[]" class="form-control" value="<?= htmlspecialchars($exp['jabatan'] ?? ''); ?>" required>
+                            <input type="text" name="jabatan[]" class="form-control" placeholder="Contoh: Staff Administrasi">
                         </div>
                         <div style="display: flex; gap: 15px;">
                             <div class="form-group" style="flex: 1;">
                                 <label>Mulai Kerja</label>
-                                <input type="date" name="mulai_kerja[]" class="form-control" value="<?= $exp['mulai_kerja'] ?? ''; ?>" required>
+                                <input type="date" name="mulai_kerja[]" class="form-control">
                             </div>
                             <div class="form-group" style="flex: 1;">
                                 <label>Selesai Kerja</label>
-                                <input type="date" name="selesai_kerja[]" class="form-control" value="<?= $exp['selesai_kerja'] ?? ''; ?>" required>
+                                <input type="date" name="selesai_kerja[]" class="form-control">
                             </div>
                         </div>
                         <div class="form-group">
                             <label>Alasan Keluar</label>
-                            <input type="text" name="alasan_keluar[]" class="form-control" value="<?= htmlspecialchars($exp['alasan_keluar'] ?? ''); ?>">
+                            <input type="text" name="alasan_keluar[]" class="form-control" placeholder="Tulis alasan singkat...">
                         </div>
                     </div>
-                <?php endforeach; ?>
-            <?php else: ?>
-                <!-- Form kosong default jika pelamar belum pernah mengisi data kerja -->
-                <div class="pengalaman-item" style="margin-bottom: 20px; padding-bottom: 15px;">
-                    <div class="form-group">
-                        <label>Nama Perusahaan / Instansi</label>
-                        <input type="text" name="nama_perusahaan[]" class="form-control" placeholder="Contoh: PT Tech Indonesia">
-                    </div>
-                    <div class="form-group">
-                        <label>Jabatan / Posisi</label>
-                        <input type="text" name="jabatan[]" class="form-control" placeholder="Contoh: Staff Administrasi">
-                    </div>
-                    <div style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label>Mulai Kerja</label>
-                            <input type="date" name="mulai_kerja[]" class="form-control">
-                        </div>
-                        <div class="form-group" style="flex: 1;">
-                            <label>Selesai Kerja</label>
-                            <input type="date" name="selesai_kerja[]" class="form-control">
-                        </div>
-                    </div>
-                    <div class="form-group">
-                        <label>Alasan Keluar</label>
-                        <input type="text" name="alasan_keluar[]" class="form-control" placeholder="Tulis alasan singkat...">
-                    </div>
-                </div>
-            <?php endif; ?>
-        </div>
+                <?php endif; ?>
+            </div>
 
-        <button type="submit" name="simpan_pengalaman" class="btn-simpan-full" style="background-color: #0d6efd; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 10px;">Simpan Pengalaman Kerja</button>
-    </form>
-</div>
+            <button type="submit" name="simpan_pengalaman" class="btn-simpan-full" style="background-color: #0d6efd; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 10px;">Simpan Pengalaman Kerja</button>
+        </form>
+    </div>
 
 <!-- KARTU 3: RIWAYAT PENDIDIKAN -->
-<div class="card-profil" style="margin-top: 25px;">
+<div class="card-profil" style="margin-top: 25px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
     <form action="" method="POST">
         <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px;">
             <div class="card-title" style="color: #0d6efd; margin-bottom: 0; font-weight: 700; font-size: 16px;">Riwayat Pendidikan</div>
-            <!-- Tombol memicu fungsi JavaScript di bawah -->
             <button type="button" onclick="tambahBarisPendidikan()" style="background-color: #0d6efd; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah Jenjang</button>
         </div>
 
-        <!-- PERBAIKAN: ID diubah menjadi 'container-pendidikan' agar sinkron dengan JavaScript -->
         <div id="container-pendidikan">
             <?php if (!empty($data_pendidikan)): ?>
                 <?php foreach ($data_pendidikan as $index => $pend): ?>
@@ -820,7 +816,6 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
                     </div>
                 <?php endforeach; ?>
             <?php else: ?>
-                <!-- Form bawaan kosong jika data di database kosong -->
                 <div class="item-pendidikan-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
                     <div style="display: flex; gap: 15px; margin-bottom: 10px;">
                         <div class="form-group" style="flex: 1; margin-bottom: 0;">
@@ -846,107 +841,135 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
         </div>
 
         <button type="submit" name="simpan_pendidikan" class="btn-simpan-full" style="background-color: #0d6efd; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 10px;">Simpan Riwayat Pendidikan</button>
+    </form> <!-- FORM KARTU 3 DITUTUP SECARA VALID DI SINI -->
+</div> <!-- ELEMEN UTAMA KARTU 3 DITUTUP SECARA VALID DI SINI -->
+
+<!-- KARTU 4: UPLOAD BERKAS -->
+<div class="card-profil" style="margin-top: 25px; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px;">
+        <div class="card-title" style="color: #0d6efd; margin-bottom: 0; font-weight: 700; font-size: 16px;">Upload Berkas Pelamar</div>
+        <button type="button" onclick="tambahBarisBerkas()" style="background-color: #0d6efd; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah Berkas</button>
+    </div>
+
+    <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
+        <div id="container-berkas">
+            <?php 
+            // PERBAIKAN UTAMA: Jika kosong, jangan paksa isi array dengan 'Ijazah' agar layar tetap bersih
+            if (!empty($list_berkas)) : 
+                foreach ($list_berkas as $bk) : 
+                    $sudah_ada_file = (!empty($bk['nama_file']) && file_exists("uploads/" . $bk['nama_file']));
+            ?>
+                <div class="item-berkas-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Nama / Jenis Berkas</label>
+                        <input type="text" name="jenis_berkas[]" class="form-control" placeholder="Contoh: Ijazah / Transkrip Nilai" value="<?= htmlspecialchars($bk['jenis_berkas'] ?? ''); ?>">
+                    </div>
+                    
+                    <input type="hidden" name="file_berkas_lama[]" value="<?= htmlspecialchars($bk['nama_file'] ?? ''); ?>">
+                    
+                    <div class="form-group" style="margin-top: 10px;">
+                        <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">
+                            Pilih File Dokumen (Opsional)
+                        </label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex: 1;">
+                            
+                            <?php if ($sudah_ada_file) : ?>
+                                <a href="uploads/<?= htmlspecialchars($bk['nama_file']); ?>" target="_blank" style="background-color: #0d6efd; color: white; text-decoration: none; padding: 10px 15px; border-radius: 6px; font-size: 13px; font-weight: bold; text-align: center; white-space: nowrap;">
+                                    👁 Lihat Berkas
+                                </a>
+                            <?php else : ?>
+                                <span style="font-size: 12px; color: #64748b; font-style: italic; white-space: nowrap;">Belum ada file</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
+                    <div style="text-align: right; margin-top: 15px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
+                        <button type="button" onclick="hapusBarisBerkasManual(this)" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: bold; padding: 0;">Hapus Berkas</button>
+                    </div>
+                </div>
+            <?php 
+                endforeach;
+            else:
+            ?>
+                <!-- Tampilan infografis teks jika pelamar belum mengunggah dokumen apapun -->
+                <div id="berkas-kosong-info" style="text-align: center; padding: 20px; color: #64748b; font-style: italic; font-size: 13px;">
+                    Belum ada berkas yang ditambahkan. Klik "+ Tambah Berkas" untuk mengunggah dokumen baru.
+                </div>
+            <?php endif; ?>
+        </div>
+        <button type="submit" name="simpan_berkas" class="btn-simpan-full" style="background-color: #198754; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 10px;">Simpan Berkas Dokumen</button>
     </form>
 </div>
 
-<!-- KARTU 4: UPLOAD BERKAS -->
-            <div class="card-profil">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
-                    <div class="card-title" style="color: #0d6efd; margin-bottom: 0;">Upload Berkas Pelamar</div>
-                    <button type="button" onclick="tambahBarisBerkas()" style="background-color: #198754; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah Berkas</button>
-                </div>
-                <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
-                    <div id="container-berkas">
-                        <?php 
-                        // Jika data dari database kosong, buat satu baris kosong awal untuk diisi pelamar
-                        if (empty($list_berkas)) { 
-                            $list_berkas[] = ['jenis_berkas' => 'Ijazah', 'nama_file' => '']; 
-                        }
-                        foreach ($list_berkas as $bk) : 
-                            // VARIABEL VALIDASI: Deteksi apakah berkas baris ini sudah pernah diunggah sebelumnya
-                            $sudah_ada_file = (!empty($bk['nama_file']) && file_exists("uploads/" . $bk['nama_file']));
-                        ?>
-                            <div class="item-berkas-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-                                <div class="form-group">
-                                    <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Nama / Jenis Berkas</label>
-                                    <!-- Menambahkan placeholder instruksi agar pelamar mengetik Ijazah -->
-                                    <input type="text" name="jenis_berkas[]" class="form-control" placeholder="Contoh: Ijazah / Transkrip Nilai" value="<?= htmlspecialchars($bk['jenis_berkas'] ?? ''); ?>" required>
-                                </div>
-                                
-                                <input type="hidden" name="file_berkas_lama[]" value="<?= htmlspecialchars($bk['nama_file'] ?? ''); ?>">
-                                
-                                <div class="form-group">
-                                    <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">
-                                        <?= $sudah_ada_file ? 'Pilih File Baru (Kosongkan jika tidak ingin mengubah)' : 'Pilih File Dokumen (Wajib Diisi)'; ?>
-                                    </label>
-                                    <div style="display: flex; gap: 10px; align-items: center;">
-                                        <!-- VALIDASI DINAMIS: Jika berkas belum ada, wajib diisi (required) -->
-                                        <input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex: 1;" <?= !$sudah_ada_file ? 'required' : ''; ?>>
-                                        
-                                        <?php if ($sudah_ada_file) : ?>
-                                            <a href="uploads/<?= htmlspecialchars($bk['nama_file']); ?>" target="_blank" style="background-color: #0d6efd; color: white; text-decoration: none; padding: 10px 15px; border-radius: 6px; font-size: 13px; font-weight: bold; text-align: center; white-space: nowrap; transition: 0.2s;" onmouseover="this.style.backgroundColor='#0b5ed7'" onmouseout="this.style.backgroundColor='#0d6efd'">
-                                                👁 Lihat Berkas
-                                            </a>
-                                        <?php else : ?>
-                                            <span style="font-size: 12px; color: #dc2626; font-style: italic; white-space: nowrap;">* Berkas belum ada</span>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                                
-                                <div style="text-align: right; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
-                                    <button type="button" onclick="hapusBarisDinamis(this, 'container-berkas')" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: bold; padding: 0;">Hapus</button>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                    <button type="submit" name="simpan_berkas" class="btn-simpan-full" style="background-color: #198754; width: 100%; margin-top: 10px;">Simpan Berkas Dokumen</button>
-                </form>
+<!-- ==================== TAHAP 3: LOGIC JAVASCRIPT DINAMIS MULTI-FORM ==================== -->
+<script>
+// 1. Fungsi bantu global untuk menghapus baris form dinamis secara aman
+function hapusBarisDinamis(btn, containerId) {
+    const container = document.getElementById(containerId);
+    const baris = btn.closest('.item-pengalaman-row, .item-pendidikan-row, .item-berkas-row, .item-str-row');
+    
+    // Validasi agar menyisakan minimal 1 baris input di layar agar form tidak kosong total
+    if (container.children.length > 1) {
+        baris.remove();
+    } else {
+        alert('Minimal harus menyisakan satu baris data pada formulir ini.');
+    }
+}
+
+// 2. Handler Tambah Baris Dinamis: Riwayat Pengalaman Kerja
+function tambahBarisPengalaman() {
+    // Memastikan kecocokan ID target 'wadah-pengalaman' dari komponen HTML sebelumnya
+    const container = document.getElementById('container-pengalaman') || document.getElementById('wadah-pengalaman');
+    if (!container) return;
+
+    const html = `
+        <div class="item-pengalaman-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
+            <div style="text-align: right;"><button type="button" onclick="hapusBarisDinamis(this, '${container.id}')" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold; cursor:pointer; padding: 0;">Hapus</button></div>
+            
+            <div class="form-group">
+                <label style="font-size: 11px; font-weight: bold; color: #475569;">Nama Perusahaan / Instansi</label>
+                <!-- Atribut required dihapus -->
+                <input type="text" name="nama_perusahaan[]" class="form-control" style="padding:6px 12px; font-size:13px;">
             </div>
-        </div> <!-- PENUTUP KOLOM KANAN -->
-    </div> <!-- PENUTUP main-container -->
-
-    <!-- ==================== TAHAP 3: LOGIC JAVASCRIPT DINAMIS MULTI-FORM ==================== -->
-    <script>
-    // 1. Fungsi bantu global untuk menghapus baris form dinamis secara aman
-    function hapusBarisDinamis(btn, containerId) {
-        const container = document.getElementById(containerId);
-        const baris = btn.closest('.item-pengalaman-row, .item-pendidikan-row, .item-berkas-row, .item-str-row');
-        
-        // Validasi agar menyisakan minimal 1 baris input di layar agar form tidak kosong total
-        if (container.children.length > 1) {
-            baris.remove();
-        } else {
-            alert('Minimal harus menyisakan satu baris data pada formulir ini.');
-        }
-    }
-
-    // 2. Handler Tambah Baris Dinamis: Riwayat Pengalaman Kerja
-    function tambahBarisPengalaman() {
-        const container = document.getElementById('container-pengalaman');
-        const html = `
-            <div class="item-pengalaman-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
-                <div style="text-align: right;"><button type="button" onclick="hapusBarisDinamis(this, 'container-pengalaman')" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold; cursor:pointer; padding: 0;">Hapus</button></div>
-                <div class="form-group"><label style="font-size: 11px; font-weight: bold; color: #475569;">Nama Perusahaan / Instansi</label><input type="text" name="perusahaan[]" class="form-control" required style="padding:6px 12px; font-size:13px;"></div>
-                <div class="form-group"><label style="font-size: 11px; font-weight: bold; color: #475569;">Jabatan / Posisi</label><input type="text" name="jabatan[]" class="form-control" required style="padding:6px 12px; font-size:13px;"></div>
-                <div style="display: flex; gap: 15px; margin-bottom: 10px;">
-                    <div class="form-group" style="flex: 1; margin-bottom: 0;"><label style="font-size: 11px; font-weight: bold; color: #475569;">Mulai Kerja</label><input type="date" name="mulai_kerja[]" class="form-control" required style="padding:4px 12px; font-size:12px;"></div>
-                    <div class="form-group" style="flex: 1; margin-bottom: 0;"><label style="font-size: 11px; font-weight: bold; color: #475569;">Selesai Kerja</label><input type="date" name="selesai_kerja[]" class="form-control" style="padding:4px 12px; font-size:12px;"></div>
+            
+            <div class="form-group">
+                <label style="font-size: 11px; font-weight: bold; color: #475569;">Jabatan / Posisi</label>
+                <!-- Atribut required dihapus -->
+                <input type="text" name="jabatan[]" class="form-control" style="padding:6px 12px; font-size:13px;">
+            </div>
+            
+            <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label style="font-size: 11px; font-weight: bold; color: #475569;">Mulai Kerja</label>
+                    <!-- Atribut required dihapus -->
+                    <input type="date" name="mulai_kerja[]" class="form-control" style="padding:4px 12px; font-size:12px;">
                 </div>
-                <div class="form-group" style="margin-bottom: 0;"><label style="font-size: 11px; font-weight: bold; color: #475569;">Alasan Keluar</label><textarea name="alasan_keluar[]" class="form-control" rows="2" placeholder="Tulis alasan singkat..." style="resize: none; padding:6px 12px; font-size:13px;"></textarea></div>
-            </div>`;
-        container.insertAdjacentHTML('beforeend', html);
-    }
+                <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                    <label style="font-size: 11px; font-weight: bold; color: #475569;">Selesai Kerja</label>
+                    <input type="date" name="selesai_kerja[]" class="form-control" style="padding:4px 12px; font-size:12px;">
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 0;">
+                <label style="font-size: 11px; font-weight: bold; color: #475569;">Alasan Keluar</label>
+                <textarea name="alasan_keluar[]" class="form-control" rows="2" placeholder="Tulis alasan singkat..." style="resize: none; padding:6px 12px; font-size:13px;"></textarea>
+            </div>
+        </div>`;
+    container.insertAdjacentHTML('beforeend', html);
+}
 
 // 3. Handler Tambah Baris Dinamis: Riwayat Pendidikan (FIXED NAME & VALUE)
 function tambahBarisPendidikan() {
     const container = document.getElementById('container-pendidikan');
+    if (!container) return;
+
     const html = `
         <div class="item-pendidikan-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
             <div style="text-align: right;"><button type="button" onclick="hapusBarisDinamis(this, 'container-pendidikan')" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold; cursor:pointer; padding: 0;">Hapus</button></div>
             <div style="display: flex; gap: 15px; margin-bottom: 10px;">
                 <div class="form-group" style="flex: 1; margin-bottom: 0;">
                     <label style="font-size: 11px; font-weight: bold; color: #475569;">Jenjang</label>
-                    <!-- PERBAIKAN: Mengubah name="jenjang[]" menjadi name="pendidikan[]" -->
                     <select name="pendidikan[]" class="form-control" required style="padding:6px 12px; font-size:13px;">
                         <option value="">-- Pilih --</option>
                         <option value="SMA">SMA / SMK / MA</option>
@@ -967,83 +990,90 @@ function tambahBarisPendidikan() {
     container.insertAdjacentHTML('beforeend', html);
 }
 
-    // 4. Handler Tambah Baris Dinamis: Upload Berkas Dokumen
-    function tambahBarisBerkas() {
-        const container = document.getElementById('container-berkas');
-        const html = `
-            <div class="item-berkas-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
-                <div class="form-group"><label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Nama / Jenis Berkas</label><input type="text" name="jenis_berkas[]" class="form-control" required style="padding:6px 12px; font-size:13px;"></div>
-                <input type="hidden" name="file_berkas_lama[]" value="">
-                <div class="form-group">
-                    <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Pilih File Baru</label>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex: 1;">
-                        <span style="font-size: 12px; color: #64748b; font-style: italic; white-space: nowrap;">Berkas baru</span>
-                    </div>
-                </div>
-                <div style="text-align: right; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
-                    <button type="button" onclick="hapusBarisDinamis(this, 'container-berkas')" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: bold; padding: 0;">Hapus</button>
-                </div>
-            </div>`;
-        container.insertAdjacentHTML('beforeend', html);
-    }
+// 4. Handler Tambah Baris Dinamis: Upload Berkas Dokumen (Menjadi Opsional)
+function tambahBarisBerkas() {
+    const container = document.getElementById('container-berkas');
+    if (!container) return;
 
-// 4. Handler Tambah Baris Dinamis: STR
-function tambahBarisSTR() {
-    const container = document.getElementById('container-str');
-    
-    // Validasi pencegahan jika ID container salah/tidak ditemukan
-    if (!container) {
-        console.error("Gagal menambah baris: Elemen dengan id='container-str' tidak ditemukan di HTML Anda.");
-        alert("Sistem error: Kontainer form STR tidak ditemukan.");
-        return;
-    }
+    // Hapus info teks kosong jika ada di layar sebelum menambah baris baru
+    const infoKosong = document.getElementById('berkas-kosong-info');
+    if (infoKosong) infoKosong.remove();
 
     const html = `
-         <div class="item-str-row" style="background: #ffffff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; position: relative; margin-top: 15px;">
-            
-            <!-- Tombol Hapus Form Tambahan -->
-            <div style="position: absolute; top: 12px; right: 12px;">
-                <button type="button" onclick="hapusBarisDinamis(this, 'container-str')" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">
-                    Hapus
-                </button>
+        <div class="item-berkas-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+            <div class="form-group">
+                <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Nama / Jenis Berkas</label>
+                <input type="text" name="jenis_berkas[]" class="form-control" placeholder="Contoh: Ijazah / Sertifikat" style="padding:6px 12px; font-size:13px;">
             </div>
-            
-            <!-- Nomor STR -->
-            <div class="form-group" style="margin-bottom: 15px; margin-top: 15px;">
-                <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Nomor STR</label>
-                <input type="text" name="nomor_str[]" class="form-control" placeholder="Contoh: 13 02 7 2 1 19 123457" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+            <input type="hidden" name="file_berkas_lama[]" value="">
+            <div class="form-group" style="margin-top:10px;">
+                <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Pilih File Dokumen</label>
+                <input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
             </div>
-            
-            <!-- Tanggal Terbit & Expired -->
-            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="flex: 1;">
-                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Tanggal Terbit</label>
-                    <input type="date" name="tanggal_terbit[]" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
-                </div>
-                <div class="form-group" style="flex: 1;">
-                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Tanggal Expired (Masa Berlaku)</label>
-                    <input type="date" name="tanggal_expired[]" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
-                </div>
-            </div>
-            
-            <input type="hidden" name="file_str_lama[]" value="">
-            
-            <!-- Upload Dokumen -->
-            <div class="form-group" style="background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 0;">
-                <label style="display: block; font-weight: bold; color: #475569; font-size: 14px; margin-bottom: 4px;">Upload Dokumen STR</label>
-                <small style="display: block; color: #64748b; margin-bottom: 12px; font-size: 13px;">Format berkas yang diizinkan: PDF, JPG, JPEG, PNG (Maks. 2MB)</small>
-                
-                <div style="border: 1px solid #cbd5e1; background: #fff; padding: 10px; border-radius: 6px;">
-                    <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="font-size: 14px; width: 100%;" required>
-                </div>
+            <div style="text-align: right; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
+                <button type="button" onclick="hapusBarisBerkasManual(this)" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: bold; padding: 0;">Hapus Berkas</button>
             </div>
         </div>`;
-        
     container.insertAdjacentHTML('beforeend', html);
 }
 
-    // 5. Handler Preview Unggahan Gambar Foto Profil Instan
+// 5. Handler Tambah Baris Dinamis: STR (Menjadi Opsional)
+// Handler Tambah Baris Dinamis STR
+function tambahBarisSTR() {
+    const container = document.getElementById('container-str');
+    if (!container) return;
+
+    // Hapus teks informasi kosong jika ada
+    const infoKosong = document.getElementById('str-kosong-info');
+    if (infoKosong) infoKosong.remove();
+
+    const html = `
+         <div class="item-str-row" style="background: #ffffff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; position: relative; margin-top: 15px;">
+            <div style="text-align: right; margin-bottom: 10px;">
+                <button type="button" onclick="hapusBarisSTRManual(this)" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: bold; padding: 0;">Hapus STR</button>
+            </div>
+            <div class="form-group">
+                <label style="font-size: 11px; font-weight: bold; color: #475569;">Nomor STR</label>
+                <input type="text" name="no_str[]" class="form-control" style="padding:6px 12px; font-size:13px;">
+            </div>
+            <div style="display: flex; gap: 15px; margin-top: 10px;">
+                <div class="form-group" style="flex: 1;">
+                    <label style="font-size: 11px; font-weight: bold; color: #475569;">Tanggal Terbit</label>
+                    <input type="date" name="tanggal_terbit[]" class="form-control" style="padding:6px 12px; font-size:13px;">
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label style="font-size: 11px; font-weight: bold; color: #475569;">Tanggal Expired (Masa Berlaku)</label>
+                    <input type="date" name="berlaku_str[]" class="form-control" style="padding:6px 12px; font-size:13px;">
+                </div>
+            </div>
+            <input type="hidden" name="file_str_lama[]" value="">
+            <div class="form-group" style="margin-top: 15px;">
+                <label style="font-size: 11px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Pilih File STR</label>
+                <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png">
+            </div>
+        </div>`;
+    container.insertAdjacentHTML('beforeend', html);
+}
+
+// Fungsi Hapus Baris STR Kerja Dinamis & Pembersihan Nilai Input
+function hapusBarisSTRManual(btn) {
+    const baris = btn.closest('.item-str-row');
+    const container = document.getElementById('container-str');
+    
+    if (baris && container) {
+        if (container.getElementsByClassName('item-str-row').length > 1) {
+            baris.remove();
+        } else {
+            // Kosongkan total isinya jika baris terakhir dihapus pelamar
+            baris.remove();
+            if (container.getElementsByClassName('item-str-row').length === 0) {
+                container.insertAdjacentHTML('beforeend', '<div id="str-kosong-info" style="text-align: center; padding: 20px; color: #64748b; font-style: italic; font-size: 13px;">Belum ada data STR yang ditambahkan. Klik "+ Tambah STR Lain" jika ingin mengunggah berkas STR.</div>');
+            }
+        }
+    }
+}
+
+    // 6. Handler Preview Unggahan Gambar Foto Profil Instan
     function bacaGambar(input) {
         if (input.files && input.files[0]) {
             var reader = new FileReader();
@@ -1057,7 +1087,42 @@ function tambahBarisSTR() {
             reader.readAsDataURL(input.files[0]);
         }
     }
-    </script>
 
+    // 7.
+
+    function hapusBarisBerkasManual(btn) {
+    const baris = btn.closest('.item-berkas-row');
+    const container = document.getElementById('container-berkas');
+    
+    if (baris && container) {
+        // Jika baris yang ada lebih dari 1, langsung hapus seluruh baris beserta input hiddens-nya
+        if (container.getElementsByClassName('item-berkas-row').length > 1) {
+            baris.remove();
+        } else {
+            // Jika baris terakhir, kosongkan semua value agar PHP tahu data di database harus dibersihkan
+            const inputTeks = baris.querySelector('input[name="jenis_berkas[]"]');
+            const inputFile = baris.querySelector('input[name="file_berkas[]"]');
+            const inputLama = baris.querySelector('input[name="file_berkas_lama[]"]');
+            const teksBelumAda = baris.querySelector('.form-group span'); // Info visual "Belum ada file"
+            const tombolLihat = baris.querySelector('a'); // Tombol "Lihat Berkas" lama
+            
+            if (inputTeks) inputTeks.value = '';
+            if (inputFile) inputFile.value = '';
+            if (inputLama) inputLama.value = ''; // KUNCI UTAMA: Mengosongkan string file lama agar tidak tersimpan kembali
+            
+            // Mengubah tampilan visual agar menandakan file sudah terhapus sementara di layar
+            if (tombolLihat) tombolLihat.remove();
+            if (!teksBelumAda) {
+                const groupFile = baris.querySelector('.form-group div');
+                if (groupFile) {
+                    groupFile.insertAdjacentHTML('beforeend', '<span style="font-size: 12px; color: #64748b; font-style: italic; white-space: nowrap;">Belum ada file</span>');
+                }
+            }
+            alert('Data pada baris ini telah dikosongkan. Silakan klik tombol Simpan Berkas Dokumen.');
+        }
+    }
+}
+
+    </script>
 </body>
 </html>
