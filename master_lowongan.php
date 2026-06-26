@@ -75,10 +75,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['action'])) {
 // =========================================================================
 // 3. [CRUD - CREATE / UPDATE] PROSES SIMPAN DATA FORM POP-UP MODAL
 // =========================================================================
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['action'])) {
     $judul_lowongan   = mysqli_real_escape_string($koneksi, $_POST['judul_lowongan']);
     $jumlah_kebutuhan = intval($_POST['jumlah_kebutuhan']);
-    $status           = mysqli_real_escape_string($koneksi, $_POST['status']);
+    
+    // --- AWAL BAGIAN PERBAIKAN STATUS ---
+    $status_input = trim($_POST['status']);
+    if ($status_input == 'non aktif' || $status_input == 'Non Aktif' || $status_input == 'Ditutup') {
+        $status = 'Ditutup'; 
+    } else if ($status_input == 'aktif' || $status_input == 'Aktif') {
+        $status = 'Aktif';
+    } else {
+        $status = 'Draft';
+    }
+    // --- AKHIR BAGIAN PERBAIKAN STATUS ---
+    
     $jabatan_id       = intval($_POST['jabatan_id']);
     $unit_id          = intval($_POST['unit_id']);
     
@@ -97,6 +108,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $data_lama  = mysqli_fetch_assoc($query_lama);
         $nama_gambar = $data_lama['gambar'];
 
+        // --- SELEKSI 1: JIKA PENGGUNA MENGKLIK HAPUS GAMBAR SAJA ---
+        if (isset($_POST['hapus_gambar_saja']) && $_POST['hapus_gambar_saja'] == '1') {
+            if (!empty($nama_gambar) && file_exists($target_dir . $nama_gambar)) { 
+                unlink($target_dir . $nama_gambar); 
+            }
+            $nama_gambar = ""; 
+        }
+
+        // --- SELEKSI 2: JIKA PENGGUNA MENGUNGGAH FILE BARU ---
         if (isset($_FILES['gambar']) && $_FILES['gambar']['error'] == 0) {
             if (!empty($nama_gambar) && file_exists($target_dir . $nama_gambar)) { 
                 unlink($target_dir . $nama_gambar); 
@@ -158,18 +178,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 if (isset($_GET['delete'])) {
     $id = intval($_GET['delete']);
     
+    // 1. Ambil nama file gambar dari database sebelum datanya dihapus
     $query_gambar = mysqli_query($koneksi, "SELECT gambar FROM rekrutmen_lowongan WHERE id = $id");
     $data_gambar  = mysqli_fetch_assoc($query_gambar);
-    if (!empty($data_gambar['gambar']) && file_exists($target_dir . $data_gambar['gambar'])) {
-        unlink($target_dir . $data_gambar['gambar']);
+    
+    if ($data_gambar && !empty($data_gambar['gambar'])) {
+        $nama_file_gambar = $data_gambar['gambar'];
+        
+        // JALUR FOLDER: Pastikan variabel $target_dir sudah ada di atas. 
+        // Jika belum ada, Anda bisa mendefinisikannya langsung di sini, contoh: $target_dir = "uploads/";
+        $path_file_fisik = $target_dir . $nama_file_gambar;
+        
+        // 2. Periksa apakah file benar-benar ada di folder, lalu hapus
+        if (file_exists($path_file_fisik)) {
+            unlink($path_file_fisik);
+        }
     }
 
+    // 3. Hapus data dari database setelah file fisik terhapus
     $query_delete = "DELETE FROM rekrutmen_lowongan WHERE id = $id";
     if (mysqli_query($koneksi, $query_delete)) {
         header("Location: master_lowongan.php");
         exit;
     } else {
-        die("Gagal menghapus data: " . mysqli_error($koneksi));
+        die("Gagal menghapus data dari database: " . mysqli_error($koneksi));
     }
 }
 
@@ -405,8 +437,12 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
                             
                             <td><?= !empty($row['tanggal_mulai']) ? date('d/m/Y', strtotime($row['tanggal_mulai'])) : '-'; ?></td>
                             <td><?= !empty($row['tanggal_selesai']) ? date('d/m/Y', strtotime($row['tanggal_selesai'])) : '-'; ?></td>
-                            <td><?= $row['jumlah_kebutuhan']; ?> Org</td>
-                            <td><span style="color: <?= $row['status'] == 'Aktif' ? '#10b981' : '#ef4444'; ?>; font-weight:700;"><?= $row['status']; ?></span></td>
+<td><?= $row['jumlah_kebutuhan']; ?> Org</td>
+<td>
+    <span style="color: <?= ($row['status'] ?? '') == 'Aktif' ? '#10b981' : '#ef4444'; ?>; font-weight:700;">
+        <?= htmlspecialchars($row['status'] ?? ''); ?>
+    </span>
+</td>
                             <td>
                                 <?php if (!empty($row['gambar']) && file_exists("uploads/" . $row['gambar'])): ?>
                                     <img src="uploads/<?= $row['gambar']; ?>" width="40" height="40" style="border-radius:6px; object-fit:cover;">
@@ -440,111 +476,125 @@ $data_lowongan_edit = mysqli_fetch_assoc($query_edit);
             </div>
         </div> <!-- PENUTUP MAIN-CONTENT -->
 
-        <!-- FORM POPUP MODAL (TAMBAH / UBAH DATA) -->
-        <?php if(isset($_GET['id_edit']) || isset($_GET['tambah_baru'])): ?>
-        <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9999;">
-            <div class="modal-popup" style="margin: 0; max-height: 90vh; overflow-y: auto;">
-                <h3 style="margin-bottom: 20px; color:#1e293b;"><?= isset($data_lowongan_edit) ? 'Ubah Data Lowongan' : 'Tambah Lowongan Baru'; ?></h3>
-                
-                <form action="master_lowongan.php" method="POST" enctype="multipart/form-data">
-                    <input type="hidden" name="id" value="<?= $data_lowongan_edit['id'] ?? ''; ?>">
+<!-- FORM POPUP MODAL (TAMBAH / UBAH DATA) -->
+<?php if(isset($_GET['id_edit']) || isset($_GET['tambah_baru'])): ?>
+<div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9999;">
+    <div class="modal-popup" style="margin: 0; max-height: 90vh; overflow-y: auto;">
+        <h3 style="margin-bottom: 20px; color:#1e293b;"><?= isset($data_lowongan_edit) ? 'Ubah Data Lowongan' : 'Tambah Lowongan Baru'; ?></h3>
+        
+        <form action="master_lowongan.php" method="POST" enctype="multipart/form-data">
+            <input type="hidden" name="id" value="<?= $data_lowongan_edit['id'] ?? ''; ?>">
+            
+            <!-- INPUT HIDDEN BARU: Memberitahu PHP jika tombol hapus gambar diklik -->
+            <input type="hidden" name="hapus_gambar_saja" id="hapus_gambar_saja" value="0">
 
-                    <div class="form-group">
-                        <label>NAMA LOWONGAN / JUDUL</label>
-                        <input type="text" name="judul_lowongan" class="form-control" value="<?= $data_lowongan_edit['judul_lowongan'] ?? ''; ?>" required>
-                    </div>
-
-                    <div style="display:flex; gap:10px;">
-                        <div class="form-group" style="flex:1;">
-                            <label>JABATAN</label>
-                            <select name="jabatan_id" class="form-control" required>
-                                <option value="">-- Pilih --</option>
-                                <?php 
-                                mysqli_data_seek($list_jabatan, 0); 
-                                while($jwb = mysqli_fetch_assoc($list_jabatan)) { 
-                                    $selected = (isset($data_lowongan_edit) && $jwb['id'] == $data_lowongan_edit['jabatan_id']) ? 'selected' : '';
-                                    echo "<option value='".$jwb['id']."' $selected>".$jwb['nama_jabatan']."</option>";
-                                } 
-                                ?>
-                            </select>
-                        </div>
-                        <div class="form-group" style="flex:1;">
-                            <label>UNIT KERJA</label>
-                            <select name="unit_id" class="form-control" required>
-                                <option value="">-- Pilih --</option>
-                                <?php 
-                                mysqli_data_seek($list_unit, 0); 
-                                while($ut = mysqli_fetch_assoc($list_unit)) { 
-                                    $selected = (isset($data_lowongan_edit) && $ut['id'] == $data_lowongan_edit['unit_id']) ? 'selected' : '';
-                                    echo "<option value='".$ut['id']."' $selected>".$ut['nama_unit']."</option>";
-                                } 
-                                ?>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>DESKRIPSI LOWONGAN</label>
-                        <textarea name="deskripsi" class="form-control"><?= $data_lowongan_edit['deskripsi'] ?? ''; ?></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label>KUALIFIKASI</label>
-                        <textarea name="kualifikasi" class="form-control"><?= $data_lowongan_edit['kualifikasi'] ?? ''; ?></textarea>
-                    </div>
-
-                    <div class="form-group">
-                        <label>PERSYARATAN</label>
-                        <textarea name="persyaratan" class="form-control"><?= $data_lowongan_edit['persyaratan'] ?? ''; ?></textarea>
-                    </div>
-
-                    <div style="display:flex; gap:10px;">
-                        <div class="form-group" style="flex:1;">
-                            <label>TANGGAL MULAI</label>
-<!-- LANJUTAN DI BARIS 357 KE BAWAH -->
-                            <input type="date" name="tanggal_mulai" class="form-control" value="<?= $data_lowongan_edit['tanggal_mulai'] ?? ''; ?>">
-                        </div>
-                        <div class="form-group" style="flex:1;">
-                            <label>TANGGAL SELESAI</label>
-                            <input type="date" name="tanggal_selesai" class="form-control" value="<?= $data_lowongan_edit['tanggal_selesai'] ?? ''; ?>">
-                        </div>
-                    </div>
-
-                    <div style="display:flex; gap:10px;">
-                        <div class="form-group" style="flex:1;">
-                            <label>KUOTA KEBUTUHAN</label>
-                            <input type="number" name="jumlah_kebutuhan" class="form-control" value="<?= $data_lowongan_edit['jumlah_kebutuhan'] ?? '1'; ?>" required>
-                        </div>
-                        <div class="form-group" style="flex:1;">
-                            <label>STATUS</label>
-                            <select name="status" class="form-control">
-                                <option value="Aktif" <?= (isset($data_lowongan_edit) && $data_lowongan_edit['status'] == 'Aktif') ? 'selected' : ''; ?>>Aktif</option>
-                                <option value="Tidak Aktif" <?= (isset($data_lowongan_edit) && $data_lowongan_edit['status'] == 'Tidak Aktif') ? 'selected' : ''; ?>>Tidak Aktif</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <div class="form-group">
-                        <label>GAMBAR LOWONGAN</label>
-                        <input type="file" name="gambar" class="form-control">
-                        <?php if(!empty($data_lowongan_edit['gambar'])): ?>
-                            <div style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
-                                <img src="uploads/<?= $data_lowongan_edit['gambar']; ?>" width="60" style="border-radius: 6px;">
-                                <a href="master_lowongan.php?delete_image=<?= $data_lowongan_edit['id']; ?>" style="color: #ef4444; font-size: 12px; text-decoration: none; font-weight: bold;">Hapus Gambar</a>
-                            </div>
-                        <?php endif; ?>
-                    </div>
-
-                    <div style="display:flex; gap:10px; justify-content: flex-end; margin-top:20px;">
-                        <a href="master_lowongan.php" class="form-control" style="width:100px; text-align:center; text-decoration:none; color:#475569; background:#f1f5f9; display: flex; align-items: center; justify-content: center;">Batal</a>
-                        <button type="submit" class="btn-purple" style="padding:10px 20px; border-radius:8px;">Simpan Data</button>
-                    </div>
-                </form>
+            <div class="form-group">
+                <label>NAMA LOWONGAN / JUDUL</label>
+                <input type="text" name="judul_lowongan" class="form-control" value="<?= $data_lowongan_edit['judul_lowongan'] ?? ''; ?>" required>
             </div>
-        </div>
-        <?php endif; ?>
 
+            <div style="display:flex; gap:10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>JABATAN</label>
+                    <select name="jabatan_id" class="form-control" required>
+                        <option value="">-- Pilih --</option>
+                        <?php 
+                        mysqli_data_seek($list_jabatan, 0); 
+                        while($jwb = mysqli_fetch_assoc($list_jabatan)) { 
+                            $selected = (isset($data_lowongan_edit) && $jwb['id'] == $data_lowongan_edit['jabatan_id']) ? 'selected' : '';
+                            echo "<option value='".$jwb['id']."' $selected>".$jwb['nama_jabatan']."</option>";
+                        } 
+                        ?>
+                    </select>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>UNIT KERJA</label>
+                    <select name="unit_id" class="form-control" required>
+                        <option value="">-- Pilih --</option>
+                        <?php 
+                        mysqli_data_seek($list_unit, 0); 
+                        while($ut = mysqli_fetch_assoc($list_unit)) { 
+                            $selected = (isset($data_lowongan_edit) && $ut['id'] == $data_lowongan_edit['unit_id']) ? 'selected' : '';
+                            echo "<option value='".$ut['id']."' $selected>".$ut['nama_unit']."</option>";
+                        } 
+                        ?>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>DESKRIPSI LOWONGAN</label>
+                <textarea name="deskripsi" class="form-control"><?= $data_lowongan_edit['deskripsi'] ?? ''; ?></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>KUALIFIKASI</label>
+                <textarea name="kualifikasi" class="form-control"><?= $data_lowongan_edit['kualifikasi'] ?? ''; ?></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>PERSYARATAN</label>
+                <textarea name="persyaratan" class="form-control"><?= $data_lowongan_edit['persyaratan'] ?? ''; ?></textarea>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>TANGGAL MULAI</label>
+                    <input type="date" name="tanggal_mulai" class="form-control" value="<?= $data_lowongan_edit['tanggal_mulai'] ?? ''; ?>">
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>TANGGAL SELESAI</label>
+                    <input type="date" name="tanggal_selesai" class="form-control" value="<?= $data_lowongan_edit['tanggal_selesai'] ?? ''; ?>">
+                </div>
+            </div>
+
+            <div style="display:flex; gap:10px;">
+                <div class="form-group" style="flex:1;">
+                    <label>KUOTA KEBUTUHAN</label>
+                    <input type="number" name="jumlah_kebutuhan" class="form-control" value="<?= $data_lowongan_edit['jumlah_kebutuhan'] ?? '1'; ?>" required>
+                </div>
+                <div class="form-group" style="flex:1;">
+                    <label>STATUS</label>
+                    <select name="status" class="form-control">
+                        <option value="Aktif" <?= (isset($data_lowongan_edit) && $data_lowongan_edit['status'] == 'Aktif') ? 'selected' : ''; ?>>Aktif</option>
+                        <option value="Ditutup" <?= (isset($data_lowongan_edit) && $data_lowongan_edit['status'] == 'Ditutup') ? 'selected' : ''; ?>>Tidak Aktif / Ditutup</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>GAMBAR LOWONGAN</label>
+                <input type="file" name="gambar" class="form-control">
+                <?php if(!empty($data_lowongan_edit['gambar'])): ?>
+                    <!-- DIV CONTAINER GAMBAR DIUBAH: Ditambahkan ID agar bisa dimanipulasi JavaScript -->
+                    <div id="container-gambar-lama" style="margin-top: 10px; display: flex; align-items: center; gap: 10px;">
+                        <img src="uploads/<?= $data_lowongan_edit['gambar']; ?>" width="60" style="border-radius: 6px;">
+                        <!-- TOMBOL DIUBAH: Menggunakan button type="button" dengan onClick JS -->
+                        <button type="button" onclick="aksiHapusGambar()" style="color: #ef4444; font-size: 12px; border: none; background: none; font-weight: bold; cursor: pointer; padding: 0;">Hapus Gambar</button>
+                    </div>
+                <?php endif; ?>
+            </div>
+
+            <div style="display:flex; gap:10px; justify-content: flex-end; margin-top:20px;">
+                <a href="master_lowongan.php" class="form-control" style="width:100px; text-align:center; text-decoration:none; color:#475569; background:#f1f5f9; display: flex; align-items: center; justify-content: center;">Batal</a>
+                <button type="submit" class="btn-purple" style="padding:10px 20px; border-radius:8px;">Simpan Data</button>
+            </div>
+        </form>
     </div>
+</div>
+
+<!-- SCRIPT JAVASCRIPT UNTUK MENANGGULANGI HAPUS GAMBAR SECARA INSTAN -->
+<script>
+function aksiHapusGambar() {
+    if (confirm('Apakah Anda yakin ingin menghapus gambar lowongan ini?')) {
+        // 1. Ubah input hidden hapus_gambar_saja menjadi 1 agar dibaca PHP saat form di-submit
+        document.getElementById('hapus_gambar_saja').value = '1';
+        // 2. Sembunyikan pratinjau gambar dan teks hapus dari pandangan pengguna
+        document.getElementById('container-gambar-lama').style.setProperty('display', 'none', 'important');
+    }
+}
+</script>
+<?php endif; ?>
 
 </body>
 </html>

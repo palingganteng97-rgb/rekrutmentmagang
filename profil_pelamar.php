@@ -138,6 +138,46 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profil'])) {
 }
 
 // =========================================================================
+// 4.1 LOGIC BACKEND: PROSES HAPUS FILE FISIK & BERKAS PELAMAR (BARU)
+// =========================================================================
+if (isset($_GET['action']) && $_GET['action'] == 'hapus_file_berkas') {
+    $tabel_target = mysqli_real_escape_string($koneksi, $_GET['tabel']); // nama tabel database
+    $kolom_target = mysqli_real_escape_string($koneksi, $_GET['kolom']); // nama kolom file berkas
+    
+    // Proteksi keamanan input tabel & kolom untuk menghindari SQL Injection
+    $tabel_valid = ['pelamar_berkas', 'pelamar_str', 'pelamar_sip', 'pelamar'];
+    $kolom_valid = ['berkas_cv', 'berkas_ijazah', 'berkas_skck', 'berkas_str', 'berkas_sip', 'file_berkas', 'gambar', 'foto'];
+    
+    if (in_array($tabel_target, $tabel_valid) && in_array($kolom_target, $kolom_valid)) {
+        
+        // 1. Ambil nama file lamanya dari database terlebih dahulu
+        $query_file = mysqli_query($koneksi, "SELECT $kolom_target FROM $tabel_target WHERE pelamar_id = '$pelamar_id' OR id = '$pelamar_id'");
+        $data_file  = mysqli_fetch_assoc($query_file);
+        
+        if ($data_file && !empty($data_file[$kolom_target])) {
+            $nama_file_lama = $data_file[$kolom_target];
+            $path_file_fisik = "uploads/" . $nama_file_lama; // Folder uploads/ sesuai konfigurasi web Anda
+            
+            // 2. Hapus file fisik dari folder lokal komputer/server menggunakan unlink
+            if (file_exists($path_file_fisik)) {
+                unlink($path_file_fisik);
+            }
+        }
+        
+        // 3. Kosongkan record nama file berkas tersebut di database menjadi NULL atau string kosong
+        $query_kosongkan = "UPDATE $tabel_target SET $kolom_target = NULL WHERE pelamar_id = '$pelamar_id' OR id = '$pelamar_id'";
+        if (mysqli_query($koneksi, $query_kosongkan)) {
+            echo "<script>alert('✓ File dokumen berhasil dihapus secara permanen dari server!'); window.location.href='profil_pelamar.php';</script>";
+            exit;
+        } else {
+            die("Gagal memperbarui database: " . mysqli_error($koneksi));
+        }
+    } else {
+        die("Aksi penghapusan berkas tidak valid.");
+    }
+}
+
+// =========================================================================
 // 4A. LOGIC BACKEND: PROSES SIMPAN DATA RIWAYAT PENDIDIKAN + TAHUN LULUS (SUPER FAST)
 // =========================================================================
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_pendidikan'])) {
@@ -287,8 +327,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_str'])) {
     $file_str_lama_arr  = $_POST['file_str_lama'] ?? [];
     $sukses_insert      = true;
 
+    // 0) Ambil semua file STR lama dari DB agar bisa ikut dihapus dari folder uploads saat user menghapus baris STR
+    $q_lama_str = mysqli_query($koneksi, "SELECT file_str FROM pelamar_str WHERE pelamar_id = $pelamar_id");
+    $daftar_file_str_lama = [];
+    if ($q_lama_str) {
+        while ($r_lama_str = mysqli_fetch_assoc($q_lama_str)) {
+            if (!empty($r_lama_str['file_str'])) {
+                $daftar_file_str_lama[] = $r_lama_str['file_str'];
+            }
+        }
+    }
+
+    // 1) Hapus record STR dari database
     mysqli_query($koneksi, "DELETE FROM pelamar_str WHERE pelamar_id = $pelamar_id");
 
+    // 2) Hapus file fisik dari uploads untuk file yang tidak lagi dipakai.
+    //    Karena setelah DELETE, semua baris lama hilang dari DB, maka kita hapus semua file lama, lalu hanya re-upload/insert file yang dipilih saja.
+    //    Praktiknya: jika user tidak memilih upload baru dan baris dihapus, file lama harus ikut hilang.
+    if (!empty($daftar_file_str_lama)) {
+        foreach ($daftar_file_str_lama as $nama_file_lama) {
+            $path_lama = "uploads/" . $nama_file_lama;
+            if (file_exists($path_lama)) {
+                unlink($path_lama);
+            }
+        }
+    }
+
+    // 3) Insert ulang dari input yang tersisa
     foreach ($nomor_str_arr as $index => $nomor_str) {
         if (empty(trim($nomor_str))) continue;
 
@@ -297,12 +362,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_str'])) {
         $tgl_expired   = !empty($tgl_expired_arr[$index]) ? "'" . mysqli_real_escape_string($koneksi, $tgl_expired_arr[$index]) . "'" : "NULL";
         $nama_file_str = $file_str_lama_arr[$index] ?? '';
 
+        // Jika user tidak upload file baru tapi baris masih ada, nama file lama akan dikirim lewat file_str_lama[].
+        // File lama sudah kita hapus di atas; jadi untuk kasus ini, perlu proteksi:
+        // hanya upload file baru ketika ada file_str[].
         if (isset($_FILES['file_str']['name'][$index]) && !empty($_FILES['file_str']['name'][$index])) {
             $f_ext  = strtolower(pathinfo($_FILES['file_str']['name'][$index], PATHINFO_EXTENSION));
             if (in_array($f_ext, ['pdf', 'jpg', 'jpeg', 'png'])) {
                 $nama_file_str = "str_" . $pelamar_id . "_" . time() . "_" . $index . "." . $f_ext;
                 move_uploaded_file($_FILES['file_str']['tmp_name'][$index], "uploads/" . $nama_file_str);
             }
+        } else {
+            // tidak ada upload baru: kosongkan file agar tidak menunjuk file yang sudah terhapus
+            $nama_file_str = '';
         }
 
         $query_ins_str = "INSERT INTO pelamar_str (pelamar_id, nomor_str, tanggal_terbit, tanggal_expired, file_str, created_at, updated_at) VALUES ($pelamar_id, '$nomor_clean', $tgl_terbit, $tgl_expired, '$nama_file_str', NOW(), NOW())";
@@ -317,6 +388,22 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_berkas'])) {
     $file_berkas_lama_arr = $_POST['file_berkas_lama'] ?? [];
     $sukses_berkas        = true;
 
+    // --- FIX: jika record berkas dihapus (karena baris tidak dikirim / terhapus), maka file fisiknya ikut dihapus ---
+    // Ambil semua nama file lama milik pelamar sebelum DELETE tabel
+    $q_lama = mysqli_query($koneksi, "SELECT nama_file FROM pelamar_berkas WHERE pelamar_id = '$pelamar_id'");
+    if ($q_lama) {
+        while ($r_lama = mysqli_fetch_assoc($q_lama)) {
+            $nama_file_lama = $r_lama['nama_file'] ?? '';
+            if (!empty($nama_file_lama)) {
+                $path_file_lama = "uploads/" . $nama_file_lama;
+                if (file_exists($path_file_lama)) {
+                    unlink($path_file_lama);
+                }
+            }
+        }
+    }
+
+    // Hapus semua record berkas lama lalu insert ulang dari input yang tersisa
     mysqli_query($koneksi, "DELETE FROM pelamar_berkas WHERE pelamar_id = $pelamar_id");
 
     foreach ($jenis_berkas_arr as $index => $jenis_berkas) {
@@ -338,6 +425,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_berkas'])) {
     }
     if ($sukses_berkas) { echo "<script>alert('✓ Berkas berhasil disimpan!'); window.location.href='profil_pelamar.php';</script>"; exit; }
 }
+
 
 // 7. LOADER DATA SINKRONISASI KE FORM VIEW
 $data = mysqli_fetch_assoc(mysqli_query($koneksi, "SELECT * FROM pelamar WHERE id = $pelamar_id"));
@@ -786,6 +874,39 @@ function tambahBarisPendidikan() {
                 </div>
                 <div style="text-align: right; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
                     <button type="button" onclick="hapusBarisDinamis(this, 'container-berkas')" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: bold; padding: 0;">Hapus</button>
+                </div>
+            </div>`;
+        container.insertAdjacentHTML('beforeend', html);
+    }
+
+    // 4. Handler Tambah Baris Dinamis: STR
+    function tambahBarisSTR() {
+        const container = document.getElementById('container-str');
+        const html = `
+            <div class="item-str-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
+                <div style="text-align: right; margin-bottom: 10px;">
+                    <button type="button" onclick="hapusBarisDinamis(this, 'container-str')" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold; cursor:pointer; padding: 0;">Hapus</button>
+                </div>
+                <div class="form-group">
+                    <label style="font-size: 12px; font-weight: bold; color: #475569;">Nomor STR</label>
+                    <input type="text" name="nomor_str[]" class="form-control" value="" required>
+                </div>
+                <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+                    <div class="form-group" style="flex: 1;">
+                        <label style="font-size: 12px; font-weight: bold; color: #475569;">Tanggal Terbit</label>
+                        <input type="date" name="tanggal_terbit[]" class="form-control" value="">
+                    </div>
+                    <div class="form-group" style="flex: 1;">
+                        <label style="font-size: 12px; font-weight: bold; color: #475569;">Tanggal Expired</label>
+                        <input type="date" name="tanggal_expired[]" class="form-control" value="">
+                    </div>
+                </div>
+                <input type="hidden" name="file_str_lama[]" value="">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 12px; font-weight: bold; color: #475569;">Upload Dokumen STR</label>
+                    <div style="display: flex; gap: 10px; align-items: center;">
+                        <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex: 1;">
+                    </div>
                 </div>
             </div>`;
         container.insertAdjacentHTML('beforeend', html);

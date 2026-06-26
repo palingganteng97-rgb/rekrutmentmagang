@@ -58,8 +58,16 @@ $cari_posisi  = isset($_GET['cari']) ? mysqli_real_escape_string($koneksi, trim(
 $departemen   = isset($_GET['departemen']) && $_GET['departemen'] != 'Semua Departemen' ? mysqli_real_escape_string($koneksi, $_GET['departemen']) : '';
 $tipe_kerja   = isset($_GET['tipe']) && $_GET['tipe'] != 'Semua Tipe' ? mysqli_real_escape_string($koneksi, $_GET['tipe']) : '';
 
-// 5. PENYUSUNAN QUERY SQL LOWONGAN MURNI (PERBAIKAN KOLOM)
-$sql = "SELECT * FROM rekrutmen_lowongan WHERE status='Aktif'";
+// =========================================================================
+// 5. PENYUSUNAN QUERY SQL LOWONGAN MURNI (DENGAN FILTER TANGGAL MULAI HARI INI)
+// =========================================================================
+$tanggal_sekarang = date('Y-m-d');
+
+// MODIFIKASI: Hanya menampilkan status aktif dan tanggal_mulai sudah berjalan/terlewati hari ini
+$sql = "SELECT * FROM rekrutmen_lowongan 
+        WHERE status='Aktif' 
+        AND tanggal_mulai <= '$tanggal_sekarang' 
+        AND (tanggal_selesai >= '$tanggal_sekarang' OR tanggal_selesai IS NULL)";
 
 if (!empty($cari_posisi)) {
     // PERBAIKAN: Mengubah nama_lowongan menjadi judul_lowongan agar tidak error saat mencari
@@ -322,10 +330,8 @@ if (!$query_lowongan) {
 <div class="max-w-container-max mx-auto px-4 md:px-margin-desktop">
     
     <!-- PERBAIKAN: Menggunakan method GET dan mengarah ke section #jobs -->
-    <form method="GET" action="lowongan_pelamar.php#jobs" class="bg-surface-container p-4 md:p-6 rounded-xl mb-8">
+<form method="GET" action="lowongan_pelamar.php#jobs" class="bg-surface-container p-4 md:p-6 rounded-xl mb-8">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-            
-            <!-- Input Cari Posisi -->
             <div class="space-y-1.5">
                 <label class="font-label-sm text-label-sm text-on-surface-variant">Cari Posisi</label>
                 <div class="relative">
@@ -650,38 +656,54 @@ if (!$query_lowongan) {
         </div>
     </div>
 
-    <!-- ======================================================== -->
-    <!-- TEMPATKAN HTML MODAL POP-UP DI SINI (DI ATAS SCRIPT)     -->
-    <!-- ======================================================== -->
-    <div id="modalDetail" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl max-w-8xl w-full p-6 mx-4 relative transform scale-95 transition-transform duration-300 shadow-2xl">
-            <!-- Tombol Close -->
-            <button onclick="tutupDetail()" class="absolute right-4 top-4 text-outline hover:text-primary" type="button">
-                <span class="material-symbols-outlined">close</span>
-            </button>
+<!-- ======================================================== -->
+<!-- TEMPATKAN HTML MODAL POP-UP DI SINI (DI ATAS SCRIPT)     -->
+<!-- ======================================================== -->
+<div id="modalDetail" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+    <div class="bg-white rounded-2xl max-w-4xl w-full p-6 mx-4 relative transform scale-95 transition-transform duration-300 shadow-2xl">
+        
+        <!-- Tombol Close -->
+        <button onclick="tutupDetail()" class="absolute right-4 top-4 text-outline hover:text-primary" type="button">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+
+        <!-- Konten Detail Lowongan -->
+        <div class="space-y-4">
+            <span class="px-3 py-1 bg-primary/10 text-primary text-label-sm font-label-sm rounded-full">Aktif</span>
+            <h3 id="modalJudul" class="font-headline-md text-headline-md text-on-background mt-2">Nama Lowongan</h3>
             
-            <!-- Konten Detail Lowongan -->
-            <div class="space-y-4">
-                <span class="px-3 py-1 bg-primary/10 text-primary text-label-sm font-label-sm rounded-full">Aktif</span>
-                <h3 id="modalJudul" class="font-headline-md text-headline-md text-on-background mt-2">Nama Lowongan</h3>
-                
-                <div class="border-t border-outline-variant/30 my-2"></div>
-                
-                <div class="space-y-3 text-on-surface-variant text-body-md overflow-y-auto max-h-[350px] pr-2">
-                    <div>
-                        <p class="font-semibold text-primary mb-1">Deskripsi & Kualifikasi:</p>
-                        <p id="modalDeskripsi" class="whitespace-pre-line text-justify text-on-surface-variant"></p>
-                    </div>
-                    <div class="bg-surface-container-low p-3 rounded-xl flex justify-between text-label-md mt-2">
-                        <span>Jumlah Kebutuhan: <strong id="modalKebutuhan">0</strong> orang</span>
-                    </div>
+            <div class="border-t border-outline-variant/30 my-2"></div>
+            
+            <!-- Ditambahkan max-h agar muat menampung deskripsi, kualifikasi, dan persyaratan saat di-scroll -->
+            <div class="space-y-4 text-on-surface-variant text-body-md overflow-y-auto max-h-[400px] pr-2">
+                <!-- Deskripsi -->
+                <div>
+                    <p class="font-semibold text-primary mb-1">Deskripsi :</p>
+                    <p id="modalDeskripsi" class="whitespace-pre-line text-justify text-on-surface-variant"></p>
                 </div>
-                
-                <div class="border-t border-outline-variant/30 my-2"></div>
-                <p class="text-label-sm text-outline">Batas Pendaftaran: <span id="modalDeadline" class="font-bold">-</span></p>
+
+                <!-- BARU: Kualifikasi -->
+                <div>
+                    <p class="font-semibold text-primary mb-1">Kualifikasi :</p>
+                    <p id="modalKualifikasi" class="whitespace-pre-line text-justify text-on-surface-variant"></p>
+                </div>
+
+                <!-- BARU: Persyaratan -->
+                <div>
+                    <p class="font-semibold text-primary mb-1">Persyaratan Dokumen :</p>
+                    <p id="modalPersyaratan" class="whitespace-pre-line text-justify text-on-surface-variant"></p>
+                </div>
+
+                <div class="bg-surface-container-low p-3 rounded-xl flex justify-between text-label-md mt-2">
+                    <span>Jumlah Kebutuhan: <strong id="modalKebutuhan">0</strong> orang</span>
+                </div>
             </div>
+            
+            <div class="border-t border-outline-variant/30 my-2"></div>
+            <p class="text-label-sm text-outline">Batas Pendaftaran: <span id="modalDeadline" class="font-bold">-</span></p>
         </div>
     </div>
+</div>
 
 <script>
     // 1. FUNGSI ANCHOR SCROLL HALUS
@@ -728,6 +750,12 @@ if (!$query_lowongan) {
                 if (data) {
                     document.getElementById('modalJudul').innerText = data.nama_lowongan || data.judul_lowongan || 'Lowongan';
                     document.getElementById('modalDeskripsi').innerText = data.deskripsi || '-';
+                    
+                    // --- TAMBAHKAN DUA BARIS BARU INI ---
+                    document.getElementById('modalKualifikasi').innerText = data.kualifikasi || '-';
+                    document.getElementById('modalPersyaratan').innerText = data.persyaratan || '-';
+                    // ------------------------------------
+                    
                     document.getElementById('modalKebutuhan').innerText = data.jumlah_kebutuhan || '0';
                     document.getElementById('modalDeadline').innerText = data.tanggal_selesai || '-';
                     
