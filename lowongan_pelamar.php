@@ -22,7 +22,7 @@ $pelamar_id   = $_SESSION['pelamar_id'] ?? 0;
 $pelamar_nama = $_SESSION['pelamar_nama'] ?? '';
 
 // =========================================================================
-// 3. LOGIKA MEMPROSES LAMARAN FINAL (POST) - VALIDASI DEADLINE & DUPLIKAT
+// 3. LOGIKA MEMPROSES LAMARAN FINAL (POST)
 // =========================================================================
 if (isset($_POST['kirim_lamaran_final'])) {
     if (!$pelamar_id) {
@@ -33,7 +33,6 @@ if (isset($_POST['kirim_lamaran_final'])) {
     $lowongan_id = (int)$_POST['lowongan_id'];
     $tanggal_sekarang = date('Y-m-d');
 
-    // VALIDASI BACKEND: Cek apakah lowongan yang dilamar sudah melewati deadline
     $cek_deadline = mysqli_query($koneksi, "SELECT tanggal_selesai FROM rekrutmen_lowongan WHERE id='$lowongan_id'");
     if ($cek_deadline && mysqli_num_rows($cek_deadline) > 0) {
         $row_deadline = mysqli_fetch_assoc($cek_deadline);
@@ -45,7 +44,6 @@ if (isset($_POST['kirim_lamaran_final'])) {
         }
     }
 
-    // Cek duplikasi lamaran
     $cek = mysqli_query($koneksi, "SELECT id FROM rekrutmen_lamaran WHERE lowongan_id='$lowongan_id' AND pelamar_id='$pelamar_id'");
 
     if (mysqli_num_rows($cek) > 0) {
@@ -58,10 +56,9 @@ if (isset($_POST['kirim_lamaran_final'])) {
             $row_enum = mysqli_fetch_assoc($cek_enum);
             $type = $row_enum['Type'];
             preg_match_all("/'([^']+)'/", $type, $matches);
-            if (!empty($matches[1])) { $status_final = $matches[1][0]; }
+            if (!empty($matches)) { $status_final = $matches; }
         }
 
-        // Simpan ke database
         mysqli_query($koneksi, "INSERT INTO rekrutmen_lamaran (lowongan_id, pelamar_id, tanggal_lamaran, status, created_at) VALUES ('$lowongan_id', '$pelamar_id', NOW(), '$status_final', NOW())");
         echo "<script>alert('✓ Selamat! Lamaran pekerjaan Anda berhasil terkirim.'); window.location.href='lowongan_pelamar.php';</script>";
         exit;
@@ -69,61 +66,46 @@ if (isset($_POST['kirim_lamaran_final'])) {
 }
 
 // =========================================================================
-// 4. LOGIKA MENANGKAP PARAMETER FILTER (GET) - UTUH & SINKRON
+// 4. LOGIKA MENANGKAP PARAMETER FILTER (GET) - KUNCI INDEKS URL
 // =========================================================================
 $cari_posisi  = isset($_GET['cari']) ? trim($_GET['cari']) : '';
 $departemen   = isset($_GET['departemen']) && $_GET['departemen'] != 'Semua Departemen' ? trim($_GET['departemen']) : '';
 $tipe_kerja   = isset($_GET['tipe']) && $_GET['tipe'] != 'Semua Tipe' ? trim($_GET['tipe']) : '';
 
 // =========================================================================
-// 5 & 6. PROSES AMBIL DATA DAN FILTER DATA MENGGUNAKAN ARRAY PHP (ANTI-GAGAL)
+// 5. PENYUSUNAN QUERY SQL LOWONGAN MURNI (AMANKAN PRIORITAS STRUKTUR WHERE)
 // =========================================================================
 $tanggal_sekarang = date('Y-m-d');
 
-// Ambil seluruh data dasar lowongan aktif murni dari database
-$sql_dasar = "SELECT * FROM rekrutmen_lowongan 
-              WHERE status='Aktif' 
-              AND tanggal_mulai <= '$tanggal_sekarang'
-              ORDER BY tanggal_selesai ASC";
+$sql = "SELECT * FROM rekrutmen_lowongan 
+        WHERE status='Aktif' 
+        AND tanggal_mulai <= '$tanggal_sekarang'";
 
-$result_dasar = mysqli_query($koneksi, $sql_dasar);
-if (!$result_dasar) {
-    die("Gagal memuat lowongan: " . mysqli_error($koneksi));
+// SINKRONISASI TOTAL: Memaksa query menyaring teks secara Case-Insensitive menggunakan LOWER()
+if ($cari_posisi !== '') {
+    $search_db = mysqli_real_escape_string($koneksi, strtolower($cari_posisi));
+    $sql .= " AND (LOWER(judul_lowongan) LIKE '%$search_db%' OR LOWER(deskripsi) LIKE '%$search_db%')";
 }
 
-// Lakukan penyaringan data menggunakan Array internal PHP agar Case-Insensitive (Aman Huruf Besar/Kecil)
-$list_lowongan_filtered = [];
-while ($row = mysqli_fetch_assoc($result_dasar)) {
-    
-    // Penyaringan kata kunci posisi pencarian
-    if ($cari_posisi !== '') {
-        // Ratakan jenis huruf menjadi kecil semua lewat PHP agar pencarian strpos akurat
-        $judul_lowercase     = mb_strtolower($row['judul_lowongan'] ?? '', 'UTF-8');
-        $deskripsi_lowercase = mb_strtolower($row['deskripsi'] ?? '', 'UTF-8');
-        $kata_kunci_user     = mb_strtolower($cari_posisi, 'UTF-8');
+if (!empty($departemen)) {
+    $dep_db = mysqli_real_escape_string($koneksi, $departemen);
+    $sql .= " AND unit = '$dep_db'";
+}
 
-        // Jika keyword TIDAK ditemukan baik di judul maupun deskripsi, maka lewati baris ini
-        if (strpos($judul_lowercase, $kata_kunci_user) === false && strpos($deskripsi_lowercase, $kata_kunci_user) === false) {
-            continue;
-        }
-    }
+if (!empty($tipe_kerja)) {
+    $tipe_db = mysqli_real_escape_string($koneksi, $tipe_kerja);
+    $sql .= " AND tipe = '$tipe_db'";
+}
 
-    // Penyaringan kategori Departemen / Unit kerja
-    if (!empty($departemen)) {
-        if (($row['unit'] ?? '') != $departemen) {
-            continue;
-        }
-    }
+$sql .= " ORDER BY tanggal_selesai ASC";
 
-    // Penyaringan Tipe Kerja (Kontrak/Tetap/Magang)
-    if (!empty($tipe_kerja)) {
-        if (($row['tipe'] ?? '') != $tipe_kerja) {
-            continue;
-        }
-    }
+// =========================================================================
+// 6. EKSEKUSI QUERY FINAL KE DATABASE
+// =========================================================================
+$query_lowongan = mysqli_query($koneksi, $sql);
 
-    // Masukkan data lowongan yang lolos penyaringan ke dalam array final
-    $list_lowongan_filtered[] = $row;
+if (!$query_lowongan) {
+    die("Gagal memuat lowongan: " . mysqli_error($koneksi));
 }
 
 // =========================================================================
@@ -138,7 +120,6 @@ if ($pelamar_id > 0) {
     
     if ($query_pelamar && mysqli_num_rows($query_pelamar) > 0) {
         $data_pelamar = mysqli_fetch_assoc($query_pelamar);
-        
         $folder_foto = "uploads/"; 
         $nama_foto   = $data_pelamar['foto'] ?? '';
 
@@ -383,73 +364,107 @@ if ($pelamar_id > 0) {
 </div>
 </section>
 
-<!-- Job Listings Container (PERBAIKAN TATA LETAK SEJAJAR) -->
-<div class="max-w-container-max mx-auto px-4 md:px-margin-desktop mb-12" style="max-w: 1200px; margin-left: auto; margin-right: auto; padding-left: 20px; padding-right: 20px;">
+<!-- ==================== AREA FILTER & DAFTAR LOWONGAN ==================== -->
+<div class="max-w-container-max mx-auto px-4 md:px-margin-desktop mb-12" style="max-w: 1200px; margin-left: auto; margin-right: auto; padding-left: 20px; padding-right: 20px; margin-top: 30px;">
     
-    <!-- Job Listings Grid -->
+    <!-- 1. KOMPONEN FILTER PENCARIAN -->
+    <form method="GET" action="lowongan_pelamar.php" class="bg-surface-container p-4 md:p-6 rounded-xl mb-8" style="background-color: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #e2e8f0;">
+        <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
+            
+            <div style="flex: 1; min-width: 250px;">
+                <label style="display: block; margin-bottom: 6px; font-weight: 600; color: #475569; font-size: 13px;">Cari Posisi Lowongan</label>
+                <div style="position: relative; display: flex; align-items: center;">
+                    <!-- Atribut value wajib mencetak isi variabel $cari_posisi secara langsung -->
+                    <input type="text" name="cari" value="<?php echo htmlspecialchars($cari_posisi); ?>" placeholder="Masukkan nama lowongan (Contoh: Perawat)..." style="width: 100%; padding: 10px 15px; border-radius: 8px; border: 1px solid #cbd5e1; outline: none; font-size: 14px;">
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 10px;">
+                <button type="submit" style="background-color: #00695c; color: white; border: none; padding: 11px 22px; border-radius: 8px; font-weight: 600; font-size: 14px; cursor: pointer;">
+                    Filter Lowongan
+                </button>
+                <?php if ($cari_posisi !== ''): ?>
+                    <a href="lowongan_pelamar.php" style="background-color: #e2e8f0; color: #1e293b; text-decoration: none; padding: 11px 22px; border-radius: 8px; font-weight: 600; font-size: 14px; text-align: center; display: inline-block; line-height: 1.2;">
+                        Lihat Semua
+                    </a>
+                <?php endif; ?>
+            </div>
+
+        </div>
+    </form>
+
+    <!-- 2. GRID LISTING KARTU LOWONGAN (FIX AKURASI TARGET JUDUL ONLY) -->
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 24px;">
     <?php 
-        // Ambil tanggal hari ini (Format: YYYY-MM-DD)
         $tanggal_sekarang = date('Y-m-d');
+        $jumlah_kartu_tampil = 0; 
 
-        // SINKRONISASI: Menggunakan array hasil filter dari backend bagian atas
-        if (!empty($list_lowongan_filtered)) {
-            
-            // Perulangan beralih dari WHILE menjadi FOREACH
-            foreach ($list_lowongan_filtered as $row_lowongan): 
+        // AMBIL INPUT FILTER LANGSUNG DARI URL AGAR ANTI-GAGAL
+        $kata_kunci_url = isset($_GET['cari']) ? trim($_GET['cari']) : '';
+
+        // Eksekusi ulang query murni untuk memastikan data selalu segar dan ada
+        $query_ekstra = mysqli_query($koneksi, "SELECT * FROM rekrutmen_lowongan WHERE status='Aktif' AND tanggal_mulai <= '$tanggal_sekarang' ORDER BY tanggal_selesai ASC");
+
+        if ($query_ekstra && mysqli_num_rows($query_ekstra) > 0) {
+            while ($row_lowongan = mysqli_fetch_assoc($query_ekstra)): 
                 
-                // Ambil tanggal selesai asli dari database untuk komparasi logika
-                $tanggal_selesai_db = $row_lowongan['tanggal_selesai'];
+                // 🔥 KUNCI UTAMA: Hanya periksa kecocokan pada JUDUL LOWONGAN agar deskripsi/jabatan tidak mengacaukan filter
+                if ($kata_kunci_url !== '') {
+                    $judul_db     = mb_strtolower($row_lowongan['judul_lowongan'] ?? '', 'UTF-8');
+                    $keyword_user = mb_strtolower($kata_kunci_url, 'UTF-8');
 
-                // Mengubah format tanggal deadline untuk tampilan user (contoh: 30 Okt 2026)
+                    // FIX: Jika keyword TIDAK ditemukan di dalam judul lowongan, langsung buang/lewati kartu ini!
+                    if (strpos($judul_db, $keyword_user) === false) {
+                        continue;
+                    }
+                }
+
+                $jumlah_kartu_tampil++; 
+                
+                $tanggal_selesai_db = $row_lowongan['tanggal_selesai'];
                 $deadline = date('d M Y', strtotime($tanggal_selesai_db));
                 
-                // Logika penanda status (badge) berdasarkan tanggal saat ini
                 if ($tanggal_sekarang > $tanggal_selesai_db) {
-                    $badge_class = "bg-danger/10 text-danger";
                     $badge_text = "Ditutup";
                     $is_expired = true;
                 } else {
-                    $badge_class = "bg-success/10 text-success";
                     $badge_text = "Aktif";
                     $is_expired = false;
                 }
         ?>
                 <!-- Job Card Dinamis -->
-                <div class="bg-white border border-outline-variant/30 p-5 rounded-xl premium-shadow premium-shadow-hover transition-all group flex flex-col justify-between" style="background: #fff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 280px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+                <div class="bg-white border border-outline-variant/30 p-5 rounded-xl" style="background: #fff; border: 1px solid #e2e8f0; padding: 20px; border-radius: 12px; display: flex; flex-direction: column; justify-content: space-between; min-height: 280px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
                     <div>
                         <div class="flex justify-between items-start mb-3" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
-                            <span class="px-3 py-1 <?php echo $badge_class; ?> text-label-sm font-label-sm rounded-full" style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; background-color: #e8f5e9; color: #2e7d32;">
+                            <span class="px-3 py-1 text-label-sm font-label-sm rounded-full" style="padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; background-color: #e8f5e9; color: #2e7d32;">
                                 <?php echo $badge_text; ?>
                             </span>
-                            <span class="text-outline text-label-sm font-label-sm" style="color: #64748b; font-size: 12px;">Deadline: <?php echo $deadline; ?></span>
+                            <span style="color: #64748b; font-size: 12px;">Deadline: <?php echo $deadline; ?></span>
                         </div>
                         
-                        <!-- Menampilkan Judul Lowongan -->
-                        <h4 class="font-headline-sm text-headline-sm mb-2 group-hover:text-primary transition-colors" style="font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">
+                        <h4 style="font-size: 20px; font-weight: 700; color: #1e293b; margin-bottom: 8px;">
                             <?php echo htmlspecialchars($row_lowongan['judul_lowongan'] ?? 'Lowongan Kerja'); ?>
                         </h4>
 
-                        <div class="flex flex-wrap gap-y-2 gap-x-3 mb-4" style="display: flex; align-items: center; gap: 6px; color: #64748b; font-size: 14px; margin-bottom: 12px;">
+                        <div style="display: flex; align-items: center; gap: 6px; color: #64748b; font-size: 14px; margin-bottom: 12px;">
                             <span class="material-symbols-outlined" style="font-size: 18px;">medical_services</span>
                             <?php echo htmlspecialchars($row_lowongan['unit'] ?? 'Lowongan Tersedia'); ?>
                         </div>
                         
-                        <!-- Menampilkan Deskripsi Singkat -->
-                        <div class="space-y-2 mb-6 text-on-surface-variant text-body-md" style="color: #475569; font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
-                            <p class="text-label-md text-outline line-clamp-3">
+                        <div style="color: #475569; font-size: 14px; line-height: 1.5; margin-bottom: 20px;">
+                            <p class="line-clamp-3">
                                 <?php echo htmlspecialchars($row_lowongan['deskripsi'] ?? 'Silakan klik detail untuk melihat kualifikasi lengkap.'); ?>
                             </p>
                         </div>
                     </div>
                     
-                    <div class="flex gap-3 mt-auto w-full items-center justify-center" style="display: flex; gap: 10px; margin-top: auto;">
+                    <div style="display: flex; gap: 10px; margin-top: auto;">
                         <?php if ($is_expired) : ?>
-                            <div class="w-full py-2.5 bg-red-50 text-red-600 border border-red-200 rounded-xl font-label-md text-label-md text-center italic font-medium" style="width: 100%; text-align: center; color: #dc2626; padding: 10px; background: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px; font-style: italic;">
+                            <div style="width: 100%; text-align: center; color: #dc2626; padding: 10px; background: #fef2f2; border: 1px solid #fee2e2; border-radius: 8px; font-style: italic; font-size: 14px;">
                                 Lowongan telah berakhir
                             </div>
                         <?php else : ?>
-                            <button type="button" onclick="bukaDetail(<?php echo $row_lowongan['id']; ?>)" class="flex-1 py-2.5 border border-primary text-primary rounded-xl font-label-md text-label-md hover:bg-primary/5 transition-all text-center block" style="flex: 1; padding: 10px; border: 1px solid #0d6efd; color: #0d6efd; background: transparent; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                            <button type="button" onclick="bukaDetail(<?php echo $row_lowongan['id']; ?>)" style="flex: 1; padding: 10px; border: 1px solid #0d6efd; color: #0d6efd; background: transparent; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">
                                 Lihat Detail
                             </button>
                             
@@ -466,11 +481,11 @@ if ($pelamar_id > 0) {
                             ?>
 
                             <?php if ($sudah_lamar) : ?>
-                                <button type="button" class="flex-1 py-2.5 bg-gray-400 text-white rounded-xl font-label-md text-label-md cursor-not-allowed text-center block shadow-none" disabled style="flex: 1; padding: 10px; background: #94a3b8; color: white; border: none; border-radius: 8px; cursor: not-allowed;">
+                                <button type="button" disabled style="flex: 1; padding: 10px; background: #94a3b8; color: white; border: none; border-radius: 8px; cursor: not-allowed; font-weight: 600; font-size: 14px;">
                                     ✓ Sudah Dilamar
                                 </button>
                             <?php else : ?>
-                                <button type="button" onclick="prosesLamar(<?php echo $row_lowongan['id']; ?>)" class="flex-1 py-2.5 bg-primary text-white rounded-xl font-label-md text-label-md hover:brightness-110 shadow-sm transition-all text-center block" style="flex: 1; padding: 10px; background: #00695c; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                                <button type="button" onclick="prosesLamar(<?php echo $row_lowongan['id']; ?>)" style="flex: 1; padding: 10px; background: #00695c; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">
                                     Lamar
                                 </button>
                             <?php endif; ?>
@@ -478,22 +493,22 @@ if ($pelamar_id > 0) {
                     </div>
                 </div>
         <?php 
-            endforeach; 
-        } else { 
+            endwhile;
+        }
+
+        // Tampilan pesan kosong jika tidak ada kartu yang lolos filter
+        if ($jumlah_kartu_tampil === 0) { 
         ?>
-            <!-- Tampilan pesan informatif jika kata kunci pencarian salah / lowongan tidak ada -->
-            <div class="col-span-1 md:col-span-2 lg:col-span-3 text-center py-12 bg-surface-container rounded-xl w-full" style="grid-column: 1 / -1; text-align: center; padding: 40px; background: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1;">
-                <span class="material-symbols-outlined text-outline text-[48px] mb-2" style="color: #64748b; font-size: 48px;">search_off</span>
-                <p class="text-outline font-body-lg text-body-lg italic" style="color: #64748b; font-style: italic; margin-top: 10px; font-size: 15px;">
-                    Maaf, posisi lowongan "<?php echo htmlspecialchars($cari_posisi); ?>" tidak ditemukan.
+            <div style="grid-column: 1 / -1; text-align: center; padding: 40px; background: #f8fafc; border-radius: 12px; border: 1px dashed #cbd5e1; width: 100%;">
+                <span class="material-symbols-outlined" style="color: #64748b; font-size: 48px; display: block; margin-bottom: 10px;">search_off</span>
+                <p style="color: #64748b; font-style: italic; font-size: 15px;">
+                    Maaf, posisi lowongan "<?php echo htmlspecialchars($kata_kunci_url); ?>" tidak ditemukan.
                 </p>
             </div>
         <?php 
         } 
         ?>
-    </div> <!-- Penutup kontainer grid lowongan -->
-</div> <!-- Penutup kontainer center pembatas luar -->
-
+    </div>
 
 <!-- Recruitment Process Section -->
 <section class="py-14 bg-surface-container-low overflow-hidden transition-all duration-1000 opacity-100 translate-y-0">
