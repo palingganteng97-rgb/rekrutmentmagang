@@ -103,10 +103,29 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['update_profil'])) {
     }
 
     $query_foto_part = "";
+
     if (!empty($_FILES['foto']['name'])) {
-        $nama_file_foto = time() . "_" . $_FILES['foto']['name'];
+
+        // Ambil nama foto lama dari database
+        $qFoto = mysqli_query($koneksi, "SELECT foto FROM pelamar WHERE id='$pelamar_id'");
+        $dFoto = mysqli_fetch_assoc($qFoto);
+
+        // Hapus foto lama jika ada
+        if (!empty($dFoto['foto'])) {
+            $foto_lama = "uploads/" . $dFoto['foto'];
+
+            if (file_exists($foto_lama)) {
+                unlink($foto_lama);
+            }
+        }
+
+        // Buat nama file baru agar tidak bentrok
+        $ext = strtolower(pathinfo($_FILES['foto']['name'], PATHINFO_EXTENSION));
+        $nama_file_foto = "foto_" . $pelamar_id . "_" . time() . "." . $ext;
+
+        // Upload foto baru
         if (move_uploaded_file($_FILES['foto']['tmp_name'], "uploads/" . $nama_file_foto)) {
-            $query_foto_part = ", foto = '$nama_file_foto'";
+            $query_foto_part = ", foto='$nama_file_foto'";
         }
     }
 
