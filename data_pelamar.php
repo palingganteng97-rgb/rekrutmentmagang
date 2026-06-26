@@ -390,14 +390,14 @@ ORDER BY rl.id DESC
 
 <!-- ==================== MODAL OVERLAY POP-UP DETAIL PELAMAR ==================== -->
 <div id="detailModal" style="
-    display: none; 
-    position: fixed; 
-    inset: 0; 
-    background-color: rgba(15, 23, 42, 0.6); 
+    display: none;
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.6);
     backdrop-filter: blur(4px);
-    z-index: 9999; 
-    align-items: center; 
-    justify-content: center; 
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
     font-family: system-ui, -apple-system, sans-serif;
     box-sizing: border-box;
 ">
