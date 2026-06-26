@@ -388,7 +388,6 @@ ORDER BY rl.id DESC
     </div>
 </div>
 
-
 <!-- ==================== MODAL OVERLAY POP-UP DETAIL PELAMAR ==================== -->
 <div id="detailModal" style="
     display: none; 
