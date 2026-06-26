@@ -477,14 +477,14 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
     <!-- KONTEN UTAMA (SISTEM GRID 2 KOLOM) -->
     <div class="main-container">
         
-        <!-- ==================== KOLOM SEBELAH KIRI ==================== -->
+<!-- ==================== KOLOM SEBELAH KIRI ==================== -->
         <div>
             <!-- KARTU 1: BIODATA -->
             <div class="card-profil">
                 <div class="card-title" style="color: #0d6efd; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Biodata Profil Pelamar</div>
                 <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
                     
-                    <!-- FOTO PROFIL -->
+                    <!-- FOTO PROFIL (Tetap Opsional / Tidak required agar fleksibel) -->
                     <div style="text-align: center; margin-bottom: 25px; background: #fafafa; padding: 20px; border-radius: 8px; border: 1px dashed #cbd5e1;">
                         <label style="display: block; font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 10px;">Foto Profil</label>
                         <div class="avatar-wrapper" style="position: relative; width: 110px; height: 110px; margin: 0 auto; cursor: pointer;" onclick="document.getElementById('inputFoto').click();">
@@ -499,94 +499,110 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
                         <input type="file" id="inputFoto" name="foto" accept="image/*" style="display: none;" onchange="bacaGambar(this)">
                     </div>
 
+                    <!-- VALIDASI: Menambahkan atribut required pada semua field di bawah ini -->
                     <div class="form-group"><label>Nama Lengkap</label><input type="text" name="nama_lengkap" class="form-control" value="<?= htmlspecialchars($data['nama_lengkap'] ?? ''); ?>" required></div>
-                    <div class="form-group"><label>NIK (Nomor Induk Kependudukan)</label><input type="text" name="nik" class="form-control" value="<?= htmlspecialchars($data['nik'] ?? ''); ?>" required></div>
+                    <div class="form-group"><label>NIK (Nomor Induk Kependudukan)</label><input type="text" name="nik" class="form-control" value="<?= htmlspecialchars($data['nik'] ?? ''); ?>" required minlength="16" maxlength="16"></div>
                     
                     <div style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;"><label>Tempat Lahir</label><input type="text" name="tempat_lahir" class="form-control" value="<?= htmlspecialchars($data['tempat_lahir'] ?? ''); ?>"></div>
-                        <div class="form-group" style="flex: 1;"><label>Tanggal Lahir</label><input type="date" name="tanggal_lahir" class="form-control" value="<?= $data['tanggal_lahir'] ?? ''; ?>"></div>
+                        <div class="form-group" style="flex: 1;"><label>Tempat Lahir</label><input type="text" name="tempat_lahir" class="form-control" value="<?= htmlspecialchars($data['tempat_lahir'] ?? ''); ?>" required></div>
+                        <div class="form-group" style="flex: 1;"><label>Tanggal Lahir</label><input type="date" name="tanggal_lahir" class="form-control" value="<?= $data['tanggal_lahir'] ?? ''; ?>" required></div>
                     </div>
                     
                     <div style="display: flex; gap: 15px;">
                         <div class="form-group" style="flex: 1;">
                             <label>Jenis Kelamin</label>
-                            <select name="jenis_kelamin" class="form-control">
+                            <select name="jenis_kelamin" class="form-control" required>
+                                <option value="">-- Pilih Jenis Kelamin --</option>
                                 <option value="Laki-laki" <?= ($data['jenis_kelamin'] ?? '') == 'Laki-laki' ? 'selected' : ''; ?>>Laki-laki</option>
                                 <option value="Perempuan" <?= ($data['jenis_kelamin'] ?? '') == 'Perempuan' ? 'selected' : ''; ?>>Perempuan</option>
                             </select>
                         </div>
-                        <div class="form-group" style="flex: 1;"><label>Agama</label><input type="text" name="agama" class="form-control" value="<?= htmlspecialchars($data['agama'] ?? ''); ?>"></div>
+                        <div class="form-group" style="flex: 1;"><label>Agama</label><input type="text" name="agama" class="form-control" value="<?= htmlspecialchars($data['agama'] ?? ''); ?>" required></div>
                     </div>
 
                     <div style="display: flex; gap: 15px;">
-<div class="form-group" style="flex: 1;">
-    <label>Status Hubungan / Sosial</label>
-    <!-- PERBAIKAN: Ganti name dari status_hubungan menjadi status_sosial -->
-    <select name="status_sosial" class="form-control">
-        <option value="">-- Pilih Status --</option>
-        <option value="Belum Kawin" <?= ($data['status_sosial'] ?? '') == 'Belum Kawin' ? 'selected' : ''; ?>>Belum Kawin</option>
-        <option value="Kawin" <?= ($data['status_sosial'] ?? '') == 'Kawin' ? 'selected' : ''; ?>>Kawin</option>
-    </select>
-</div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Status Hubungan / Sosial</label>
+                            <select name="status_sosial" class="form-control" required>
+                                <option value="">-- Pilih Status --</option>
+                                <option value="Belum Kawin" <?= ($data['status_sosial'] ?? '') == 'Belum Kawin' ? 'selected' : ''; ?>>Belum Kawin</option>
+                                <option value="Kawin" <?= ($data['status_sosial'] ?? '') == 'Kawin' ? 'selected' : ''; ?>>Kawin</option>
+                            </select>
+                        </div>
 
                         <div class="form-group" style="flex: 1;">
                             <label>Nomor Telepon / WhatsApp</label>
-                            <input type="tel" name="no_telepon" class="form-control" placeholder="Contoh: 08123456789" value="<?= htmlspecialchars($data['no_telepon'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^0-9]/g, '');">
+                            <input type="tel" name="no_telepon" class="form-control" placeholder="Contoh: 08123456789" value="<?= htmlspecialchars($data['no_telepon'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^0-9]/g, '');" required minlength="10">
                         </div>
                     </div>
 
                     <div style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;"><label>Kota</label><input type="text" name="kota" class="form-control" value="<?= htmlspecialchars($data['kota'] ?? ''); ?>"></div>
-                        <div class="form-group" style="flex: 1;"><label>Provinsi</label><input type="text" name="provinsi" class="form-control" value="<?= htmlspecialchars($data['provinsi'] ?? ''); ?>"></div>
+                        <div class="form-group" style="flex: 1;"><label>Kota</label><input type="text" name="kota" class="form-control" value="<?= htmlspecialchars($data['kota'] ?? ''); ?>" required></div>
+                        <div class="form-group" style="flex: 1;"><label>Provinsi</label><input type="text" name="provinsi" class="form-control" value="<?= htmlspecialchars($data['provinsi'] ?? ''); ?>" required></div>
                     </div>
                     
-                    <div class="form-group"><label>Alamat Rumah Lengkap</label><textarea name="alamat" class="form-control" rows="3" style="resize: none;"><?= htmlspecialchars($data['alamat'] ?? ''); ?></textarea></div>
+                    <div class="form-group"><label>Alamat Rumah Lengkap</label><textarea name="alamat" class="form-control" rows="3" style="resize: none;" required><?= htmlspecialchars($data['alamat'] ?? ''); ?></textarea></div>
                     <button type="submit" name="update_profil" class="btn-simpan-full">Perbarui Biodata Profil</button>
                 </form>
             </div>
 
-            <!-- KARTU 5: DATA STR (PINDAH KE SINI AGAR PAS DAN SEIMBANG) -->
-            <div class="card-profil">
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
-                    <div class="card-title" style="color: #0d6efd; margin-bottom: 0;">Data Surat Tanda Registrasi (STR)</div>
-                    <button type="button" onclick="tambahBarisSTR()" style="background-color: #d97706; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah STR</button>
-                </div>
-                <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
-                    <div id="container-str">
-                        <?php 
-                        if (empty($list_str)) { $list_str[] = ['nomor_str' => '', 'tanggal_terbit' => '', 'tanggal_expired' => '', 'file_str' => '']; }
-                        foreach ($list_str as $str) : 
-                        ?>
-                            <div class="item-str-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
-                                <div style="text-align: right; margin-bottom: 10px;">
-                                    <button type="button" onclick="hapusBarisDinamis(this, 'container-str')" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold; cursor:pointer; padding: 0;">Hapus</button>
-                                </div>
-                                <div class="form-group">
-                                    <label style="font-size: 12px; font-weight: bold; color: #475569;">Nomor STR</label>
-                                    <input type="text" name="nomor_str[]" class="form-control" value="<?= htmlspecialchars($str['nomor_str'] ?? ''); ?>" required>
-                                </div>
-                                <div style="display: flex; gap: 15px; margin-bottom: 10px;">
-                                    <div class="form-group" style="flex: 1;"><label style="font-size: 12px; font-weight: bold; color: #475569;">Tanggal Terbit</label><input type="date" name="tanggal_terbit[]" class="form-control" value="<?= $str['tanggal_terbit'] ?? ''; ?>"></div>
-                                    <div class="form-group" style="flex: 1;"><label style="font-size: 12px; font-weight: bold; color: #475569;">Tanggal Expired</label><input type="date" name="tanggal_expired[]" class="form-control" value="<?= $str['tanggal_expired'] ?? ''; ?>"></div>
-                                </div>
-                                <input type="hidden" name="file_str_lama[]" value="<?= htmlspecialchars($str['file_str'] ?? ''); ?>">
-                                <div class="form-group" style="margin-bottom: 0;">
-                                    <label style="font-size: 12px; font-weight: bold; color: #475569;">Upload Dokumen STR</label>
-                                    <div style="display: flex; gap: 10px; align-items: center;">
-                                        <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex: 1;">
-                                                                                <?php if (!empty($str['file_str'])) : ?>
-                                            <a href="uploads/<?= htmlspecialchars($str['file_str']); ?>" target="_blank" style="background-color: #0d6efd; color: white; text-decoration: none; padding: 10px 14px; border-radius: 6px; font-size: 13px; font-weight: bold; white-space: nowrap;">👁 Lihat STR</a>
-                                        <?php endif; ?>
-                                    </div>
-                                </div>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                    <button type="submit" name="simpan_str" class="btn-simpan-full" style="background-color: #d97706; width: 100%; margin-top: 10px;">Simpan Data STR</button>
-                </form>
+<!-- KARTU 2: DATA SURAT TANDA REGISTRASI (STR) -->
+<div class="card-profil" style="margin-top: 20px;">
+    <div class="card-title" style="color: #ea580c; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+        Data Surat Tanda Registrasi (STR)
+    </div>
+    
+    <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
+        
+        <div class="form-group">
+            <label>Nomor STR</label>
+            <input type="text" name="no_str" class="form-control" placeholder="Contoh: 13 02 7 2 1 19 123457" value="<?= htmlspecialchars($data_str['no_str'] ?? ''); ?>" required>
+        </div>
+        
+        <div style="display: flex; gap: 15px;">
+            <div class="form-group" style="flex: 1;">
+                <label>Tanggal Terbit</label>
+                <input type="date" name="tanggal_terbit" class="form-control" value="<?= $data_str['tanggal_terbit'] ?? ''; ?>" required>
             </div>
+            <div class="form-group" style="flex: 1;">
+                <label>Tanggal Expired (Masa Berlaku)</label>
+                <input type="date" name="tanggal_expired" class="form-control" value="<?= $data_str['tanggal_expired'] ?? ''; ?>" required>
+            </div>
+        </div>
+        
+        <div class="form-group" style="background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 10px;">
+            <label style="font-weight: bold; color: #475569;">Upload Dokumen STR</label>
+            <small style="display: block; color: #64748b; margin-bottom: 8px;">Format berkas yang diizinkan: PDF, JPG, JPEG, PNG (Maks. 2MB)</small>
+            
+            <?php 
+            // Menggunakan tabel pelamar_str sesuai dengan relasi database Anda
+            $file_str_lama = $data_str['file_str'] ?? '';
+            $sudah_ada_file = (!empty($file_str_lama) && file_exists("uploads/" . $file_str_lama));
+            ?>
 
-        </div> <!-- PENUTUP KOLOM SEBELAH KIRI -->
+            <!-- Jika BELUM ada file di folder uploads, input wajib diisi (required) -->
+            <input type="file" name="file_str" class="form-control" accept=".pdf,.jpg,.jpeg,.png" <?= !$sudah_ada_file ? 'required' : ''; ?>>
+            
+            <?php if ($sudah_ada_file) : ?>
+                <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px;">
+                    <span style="color: #16a34a; font-size: 12px; display: flex; align-items: center; gap: 4px;">
+                        <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span>
+                        Berkas STR sudah tersimpan
+                    </span>
+                    <a href="uploads/<?= htmlspecialchars($file_str_lama); ?>" target="_blank" style="font-size: 12px; color: #0d6efd; text-decoration: underline;">[ Lihat Berkas ]</a>
+                </div>
+            <?php else : ?>
+                <small style="display: block; margin-top: 6px; color: #dc2626; font-style: italic;">* Anda belum mengunggah file dokumen STR</small>
+            <?php endif; ?>
+        </div>
+
+        <button type="submit" name="simpan_str" class="btn-simpan-full" style="background: #ea580c; border-color: #ea580c; margin-top: 15px;">
+            Simpan Data STR
+        </button>
+    </form>
+</div>
+
+</div> <!-- PENUTUP KOLOM SEBELAH KIRI -->
         
         <!-- ==================== KOLOM KANAN: PENGALAMAN, PENDIDIKAN, BERKAS ==================== -->
         <div>            
@@ -748,7 +764,7 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
     </form>
 </div>
 
-            <!-- KARTU 4: UPLOAD BERKAS -->
+<!-- KARTU 4: UPLOAD BERKAS -->
             <div class="card-profil">
                 <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
                     <div class="card-title" style="color: #0d6efd; margin-bottom: 0;">Upload Berkas Pelamar</div>
@@ -757,28 +773,37 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
                 <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
                     <div id="container-berkas">
                         <?php 
-                        if (empty($list_berkas)) { $list_berkas[] = ['jenis_berkas' => '', 'nama_file' => '']; }
+                        // Jika data dari database kosong, buat satu baris kosong awal untuk diisi pelamar
+                        if (empty($list_berkas)) { 
+                            $list_berkas[] = ['jenis_berkas' => 'Ijazah', 'nama_file' => '']; 
+                        }
                         foreach ($list_berkas as $bk) : 
+                            // VARIABEL VALIDASI: Deteksi apakah berkas baris ini sudah pernah diunggah sebelumnya
+                            $sudah_ada_file = (!empty($bk['nama_file']) && file_exists("uploads/" . $bk['nama_file']));
                         ?>
                             <div class="item-berkas-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
                                 <div class="form-group">
                                     <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Nama / Jenis Berkas</label>
-                                    <input type="text" name="jenis_berkas[]" class="form-control" value="<?= htmlspecialchars($bk['jenis_berkas'] ?? ''); ?>" required>
+                                    <!-- Menambahkan placeholder instruksi agar pelamar mengetik Ijazah -->
+                                    <input type="text" name="jenis_berkas[]" class="form-control" placeholder="Contoh: Ijazah / Transkrip Nilai" value="<?= htmlspecialchars($bk['jenis_berkas'] ?? ''); ?>" required>
                                 </div>
                                 
                                 <input type="hidden" name="file_berkas_lama[]" value="<?= htmlspecialchars($bk['nama_file'] ?? ''); ?>">
                                 
                                 <div class="form-group">
-                                    <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Pilih File Baru (Kosongkan jika tidak ingin mengubah)</label>
+                                    <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">
+                                        <?= $sudah_ada_file ? 'Pilih File Baru (Kosongkan jika tidak ingin mengubah)' : 'Pilih File Dokumen (Wajib Diisi)'; ?>
+                                    </label>
                                     <div style="display: flex; gap: 10px; align-items: center;">
-                                        <input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex: 1;">
+                                        <!-- VALIDASI DINAMIS: Jika berkas belum ada, wajib diisi (required) -->
+                                        <input type="file" name="file_berkas[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex: 1;" <?= !$sudah_ada_file ? 'required' : ''; ?>>
                                         
-                                        <?php if (!empty($bk['nama_file'])) : ?>
+                                        <?php if ($sudah_ada_file) : ?>
                                             <a href="uploads/<?= htmlspecialchars($bk['nama_file']); ?>" target="_blank" style="background-color: #0d6efd; color: white; text-decoration: none; padding: 10px 15px; border-radius: 6px; font-size: 13px; font-weight: bold; text-align: center; white-space: nowrap; transition: 0.2s;" onmouseover="this.style.backgroundColor='#0b5ed7'" onmouseout="this.style.backgroundColor='#0d6efd'">
                                                 👁 Lihat Berkas
                                             </a>
                                         <?php else : ?>
-                                            <span style="font-size: 12px; color: #64748b; font-style: italic; white-space: nowrap;">Belum ada file</span>
+                                            <span style="font-size: 12px; color: #dc2626; font-style: italic; white-space: nowrap;">* Berkas belum ada</span>
                                         <?php endif; ?>
                                     </div>
                                 </div>
@@ -792,7 +817,6 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
                     <button type="submit" name="simpan_berkas" class="btn-simpan-full" style="background-color: #198754; width: 100%; margin-top: 10px;">Simpan Berkas Dokumen</button>
                 </form>
             </div>
-
         </div> <!-- PENUTUP KOLOM KANAN -->
     </div> <!-- PENUTUP main-container -->
 
