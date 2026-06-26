@@ -93,7 +93,9 @@ if (!$query_lowongan) {
 }
 ?>
 
-<!DOCTYPE html><html class="scroll-smooth" lang="id" style=""><head>
+<!DOCTYPE html>
+<html class="scroll-smooth" lang="id">
+<head>
 <meta charset="utf-8">
 <meta content="width=device-width, initial-scale=1.0" name="viewport">
 <title>Karir - RSI Kendal | Bergabung Bersama Kami</title>

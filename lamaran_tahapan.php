@@ -231,6 +231,8 @@ if (!$query_progress) {
             gap: 32px; 
             overflow-y: auto; 
         }
+
+
         .content-header h1 { 
             font-size: 26px; 
             font-weight: 800; 
@@ -417,56 +419,62 @@ if (!$query_progress) {
                     <th style="padding: 14px 16px; text-align: left; font-size: 13px; color: #475569; font-weight: 700;">DESKRIPSI SINGKAT</th>
                 </tr>
             </thead>
-            <tbody>
-                <?php if (!empty($lowongan_kerja)) : ?>
-                    <?php foreach ($lowongan_kerja as $lk) : ?>
-                        <?php 
-                            $nama_posisi = $lk['posisi'] ?? ''; 
-                            $is_active_row = ($filter_lowongan === $nama_posisi) ? 'background-color: #f5f3ff; cursor: pointer; font-weight: 600;' : 'cursor: pointer;';
-                        ?>
-                        <tr style="<?php echo $is_active_row; ?> border-bottom: 1px solid #cbd5e1; transition: background 0.1s;" onclick="window.location.href='lamaran_tahapan.php?lowongan=<?php echo urlencode($nama_posisi); ?>';" onmouseover="this.style.backgroundColor='#f8fafc'" onmouseout="this.style.backgroundColor='<?php echo ($filter_lowongan === $nama_posisi) ? '#f5f3ff' : 'transparent'; ?>'">
-                            <td style="padding: 14px 16px; border-right: 1px solid #cbd5e1; text-align: center;">
-                                <span style="background-color: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; display: inline-block;">NEW</span>
-                            </td>
-                            <td style="padding: 14px 16px; border-right: 1px solid #cbd5e1; color: #0f172a;">
-                                <strong>Posisi: <?php echo htmlspecialchars($nama_posisi); ?></strong>
-                            </td>
-                            <!-- MODIFIKASI TERKUNCI: Memotong teks panjang menjadi satu baris tipis -->
-                            <td style="padding: 14px 16px; color: #475569; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?php echo htmlspecialchars($lk['deskripsi'] ?? '-'); ?>">
-                                <?php echo htmlspecialchars($lk['deskripsi'] ?? '-'); ?>
-                            </td>
-                        </tr>
-                    <?php endforeach; ?>
-                <?php else : ?>
-                    <tr>
-                        <td colspan="3" style="text-align: center; padding: 32px; color:#64748b; font-style:italic; font-size: 13px; background: #f8fafc;">Belum ada kuota data master lowongan aktif.</td>
-                    </tr>
-                <?php endif; ?>
-            </tbody>
+<tbody>
+    <?php if (!empty($lowongan_kerja)) : ?>
+        <?php foreach ($lowongan_kerja as $lk) : ?>
+            <?php 
+                $nama_posisi = $lk['posisi'] ?? ''; 
+                // Mengubah latar default non-aktif ke putih solid (#ffffff) agar tidak menimpa border
+                $is_active_row = ($filter_lowongan === $nama_posisi) ? 'background-color: #f5f3ff; cursor: pointer; font-weight: 600;' : 'background-color: #ffffff; cursor: pointer;';
+            ?>
+            <tr style="<?php echo $is_active_row; ?> transition: background 0.1s;" 
+                onclick="window.location.href='lamaran_tahapan.php?lowongan=<?php echo urlencode($nama_posisi); ?>';" 
+                onmouseover="this.style.backgroundColor='#f8fafc'" 
+                onmouseout="this.style.backgroundColor='<?php echo ($filter_lowongan === $nama_posisi) ? '#f5f3ff' : '#ffffff'; ?>'">
+                
+                <!-- Ditambahkan border-bottom di setiap elemen TD di bawah ini -->
+                <td style="padding: 14px 16px; border-right: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; text-align: center;">
+                    <span style="background-color: #dbeafe; color: #1d4ed8; border: 1px solid #bfdbfe; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 800; display: inline-block;">NEW</span>
+                </td>
+                <td style="padding: 14px 16px; border-right: 1px solid #cbd5e1; border-bottom: 1px solid #cbd5e1; color: #0f172a;">
+                    <strong>Posisi: <?php echo htmlspecialchars($nama_posisi); ?></strong>
+                </td>
+                <td style="padding: 14px 16px; border-bottom: 1px solid #cbd5e1; color: #475569; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="<?php echo htmlspecialchars($lk['deskripsi'] ?? '-'); ?>">
+                    <?php echo htmlspecialchars($lk['deskripsi'] ?? '-'); ?>
+                </td>
+            </tr>
+        <?php endforeach; ?>
+    <?php else : ?>
+        <tr>
+            <td colspan="3" style="text-align: center; padding: 32px; color:#64748b; font-style:italic; font-size: 13px; background: #f8fafc; border-bottom: 1px solid #cbd5e1;">Belum ada kuota data master lowongan aktif.</td>
+        </tr>
+    <?php endif; ?>
+</tbody>
         </table>
     </div>
 </section>
-            <!-- TABEL PROGRESS SELEKSI -->
-            <section>
-                <div class="section-header">
-                    <!-- Judul dinamis yang mengabarkan status filter aktif saat ini -->
-                    <div class="section-title">
-                        Progress Rekrutmen Terbaru 
-                        <?php echo !empty($filter_lowongan) ? " - Formasi " . htmlspecialchars($filter_lowongan) : ""; ?>
-                    </div>
-                </div>
-                <div class="table-wrapper">
-                    <table>
-                            <thead>
-                                <tr>
-                                    <th>NAMA PELAMAR</th>
-                                    <th>FORMASI LOWONGAN</th>
-                                    <th>TANGGAL UPDATE</th>
-                                    <th>STATUS TAHAP</th>
-                                    <th style="text-align: center; width: 100px;">AKSI</th> <!-- TAMBAHKAN INI -->
-                                </tr>
-                            </thead>
-                    <tbody>
+
+<!-- TABEL PROGRESS SELEKSI -->
+<section style="border-top: 1px solid #cbd5e1; padding-top: 25px; margin-top: 25px;">
+    <div class="section-header">
+        <div class="section-title">
+            Progress Rekrutmen Terbaru 
+            <?php echo !empty($filter_lowongan) ? " - Formasi " . htmlspecialchars($filter_lowongan) : ""; ?>
+        </div>
+    </div>
+    <div class="table-wrapper">
+        <table>
+            <thead>
+                <tr>
+                    <th>NAMA PELAMAR</th>
+                    <th>FORMASI LOWONGAN</th>
+                    <th>TANGGAL UPDATE</th>
+                    <th>STATUS TAHAP</th>
+                    <th style="text-align: center; width: 100px;">AKSI</th>
+                </tr>
+            </thead>
+            <tbody>
+                
 <?php // KONDISIONAL PEMBUKA YANG DIKEMBALIKAN AGAR TIDAK SYNTAX ERROR
 if ($query_progress && mysqli_num_rows($query_progress) > 0) : ?>
     <?php while ($row = mysqli_fetch_assoc($query_progress)) : ?>
