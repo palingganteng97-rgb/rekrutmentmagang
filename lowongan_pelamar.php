@@ -609,7 +609,7 @@ if (!$query_lowongan) {
     <!-- TEMPATKAN HTML MODAL POP-UP DI SINI (DI ATAS SCRIPT)     -->
     <!-- ======================================================== -->
     <div id="modalDetail" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
-        <div class="bg-white rounded-2xl max-w-lg w-full p-6 mx-4 relative transform scale-95 transition-transform duration-300 shadow-2xl">
+        <div class="bg-white rounded-2xl max-w-8xl w-full p-6 mx-4 relative transform scale-95 transition-transform duration-300 shadow-2xl">
             <!-- Tombol Close -->
             <button onclick="tutupDetail()" class="absolute right-4 top-4 text-outline hover:text-primary" type="button">
                 <span class="material-symbols-outlined">close</span>
