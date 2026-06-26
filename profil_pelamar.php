@@ -327,59 +327,69 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['simpan_str'])) {
     $file_str_lama_arr  = $_POST['file_str_lama'] ?? [];
     $sukses_insert      = true;
 
-    // 0) Ambil semua file STR lama dari DB agar bisa ikut dihapus dari folder uploads saat user menghapus baris STR
+    // 0) Ambil semua file STR lama dari DB untuk dicocokkan nanti
     $q_lama_str = mysqli_query($koneksi, "SELECT file_str FROM pelamar_str WHERE pelamar_id = $pelamar_id");
-    $daftar_file_str_lama = [];
+    $daftar_file_str_db = [];
     if ($q_lama_str) {
         while ($r_lama_str = mysqli_fetch_assoc($q_lama_str)) {
             if (!empty($r_lama_str['file_str'])) {
-                $daftar_file_str_lama[] = $r_lama_str['file_str'];
+                $daftar_file_str_db[] = $r_lama_str['file_str'];
             }
         }
     }
 
-    // 1) Hapus record STR dari database
+    // 1) Cari file yang benar-benar dihapus oleh user (ada di DB tapi tidak dikirim lagi lewat form)
+    $file_yang_harus_dihapus = array_diff($daftar_file_str_db, $file_str_lama_arr);
+    foreach ($file_yang_harus_dihapus as $nama_file_hapus) {
+        $path_hapus = "uploads/" . $nama_file_hapus;
+        if (file_exists($path_hapus)) {
+            unlink($path_hapus);
+        }
+    }
+
+    // 2) Hapus semua record lama di database untuk pelamar ini
     mysqli_query($koneksi, "DELETE FROM pelamar_str WHERE pelamar_id = $pelamar_id");
 
-    // 2) Hapus file fisik dari uploads untuk file yang tidak lagi dipakai.
-    //    Karena setelah DELETE, semua baris lama hilang dari DB, maka kita hapus semua file lama, lalu hanya re-upload/insert file yang dipilih saja.
-    //    Praktiknya: jika user tidak memilih upload baru dan baris dihapus, file lama harus ikut hilang.
-    if (!empty($daftar_file_str_lama)) {
-        foreach ($daftar_file_str_lama as $nama_file_lama) {
-            $path_lama = "uploads/" . $nama_file_lama;
-            if (file_exists($path_lama)) {
-                unlink($path_lama);
-            }
-        }
-    }
-
-    // 3) Insert ulang dari input yang tersisa
+    // 3) Insert ulang data dari form
     foreach ($nomor_str_arr as $index => $nomor_str) {
         if (empty(trim($nomor_str))) continue;
 
         $nomor_clean   = mysqli_real_escape_string($koneksi, $nomor_str);
         $tgl_terbit    = !empty($tgl_terbit_arr[$index]) ? "'" . mysqli_real_escape_string($koneksi, $tgl_terbit_arr[$index]) . "'" : "NULL";
         $tgl_expired   = !empty($tgl_expired_arr[$index]) ? "'" . mysqli_real_escape_string($koneksi, $tgl_expired_arr[$index]) . "'" : "NULL";
-        $nama_file_str = $file_str_lama_arr[$index] ?? '';
+        
+        // Ambil nama file lama sebagai default bawaan baris tersebut
+        $nama_file_str = !empty($file_str_lama_arr[$index]) ? mysqli_real_escape_string($koneksi, $file_str_lama_arr[$index]) : '';
 
-        // Jika user tidak upload file baru tapi baris masih ada, nama file lama akan dikirim lewat file_str_lama[].
-        // File lama sudah kita hapus di atas; jadi untuk kasus ini, perlu proteksi:
-        // hanya upload file baru ketika ada file_str[].
+        // Cek apakah ada file baru yang diunggah untuk baris ini
         if (isset($_FILES['file_str']['name'][$index]) && !empty($_FILES['file_str']['name'][$index])) {
             $f_ext  = strtolower(pathinfo($_FILES['file_str']['name'][$index], PATHINFO_EXTENSION));
+            
             if (in_array($f_ext, ['pdf', 'jpg', 'jpeg', 'png'])) {
+                // Jika sebelumnya ada file lama di baris ini, hapus fisik file lamanya terlebih dahulu sebelum diganti
+                if (!empty($nama_file_str) && file_exists("uploads/" . $nama_file_str)) {
+                    unlink("uploads/" . $nama_file_str);
+                }
+                
+                // Set nama berkas baru yang unik
                 $nama_file_str = "str_" . $pelamar_id . "_" . time() . "_" . $index . "." . $f_ext;
                 move_uploaded_file($_FILES['file_str']['tmp_name'][$index], "uploads/" . $nama_file_str);
             }
-        } else {
-            // tidak ada upload baru: kosongkan file agar tidak menunjuk file yang sudah terhapus
-            $nama_file_str = '';
         }
 
-        $query_ins_str = "INSERT INTO pelamar_str (pelamar_id, nomor_str, tanggal_terbit, tanggal_expired, file_str, created_at, updated_at) VALUES ($pelamar_id, '$nomor_clean', $tgl_terbit, $tgl_expired, '$nama_file_str', NOW(), NOW())";
-        if (!mysqli_query($koneksi, $query_ins_str)) { $sukses_insert = false; }
+        // Jalankan query insert kembali
+        $query_ins_str = "INSERT INTO pelamar_str (pelamar_id, nomor_str, tanggal_terbit, tanggal_expired, file_str, created_at, updated_at) 
+                          VALUES ($pelamar_id, '$nomor_clean', $tgl_terbit, $tgl_expired, '$nama_file_str', NOW(), NOW())";
+        
+        if (!mysqli_query($koneksi, $query_ins_str)) { 
+            $sukses_insert = false; 
+        }
     }
-    if ($sukses_insert) { echo "<script>alert('✓ Data STR berhasil disimpan!'); window.location.href='profil_pelamar.php';</script>"; exit; }
+
+    if ($sukses_insert) { 
+        echo "<script>alert('✓ Data STR berhasil disimpan!'); window.location.href='profil_pelamar.php';</script>"; 
+        exit; 
+    }
 }
 
 // 6. LOGIC BACKEND: PROSES SIMPAN BERKAS DOKUMEN
@@ -478,143 +488,199 @@ while ($r = mysqli_fetch_assoc($q_str)) { $list_str[] = $r; }
     <div class="main-container">
         
 <!-- ==================== KOLOM SEBELAH KIRI ==================== -->
-        <div>
-            <!-- KARTU 1: BIODATA -->
-            <div class="card-profil">
-                <div class="card-title" style="color: #0d6efd; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">Biodata Profil Pelamar</div>
-                <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
-                    
-                    <!-- FOTO PROFIL (Tetap Opsional / Tidak required agar fleksibel) -->
-                    <div style="text-align: center; margin-bottom: 25px; background: #fafafa; padding: 20px; border-radius: 8px; border: 1px dashed #cbd5e1;">
-                        <label style="display: block; font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 10px;">Foto Profil</label>
-                        <div class="avatar-wrapper" style="position: relative; width: 110px; height: 110px; margin: 0 auto; cursor: pointer;" onclick="document.getElementById('inputFoto').click();">
-                            <?php if (!empty($data['foto'])) : ?>
-                                <img id="previewFoto" src="uploads/<?= htmlspecialchars($data['foto']); ?>" style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid #cbd5e1;">
-                            <?php else : ?>
-                                <div id="placeholderFoto" style="width: 110px; height: 110px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; border: 3px solid #cbd5e1;">Belum Ada Foto</div>
-                                <img id="previewFoto" src="" style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid #cbd5e1; display: none;">
-                            <?php endif; ?>
-                        </div>
-                        <small style="display: block; margin-top: 8px; color: #64748b; font-size: 11px;">Klik gambar di atas untuk mengganti foto berkas</small>
-                        <input type="file" id="inputFoto" name="foto" accept="image/*" style="display: none;" onchange="bacaGambar(this)">
-                    </div>
-
-                    <!-- VALIDASI: Menambahkan atribut required pada semua field di bawah ini -->
-                    <div class="form-group"><label>Nama Lengkap</label><input type="text" name="nama_lengkap" class="form-control" value="<?= htmlspecialchars($data['nama_lengkap'] ?? ''); ?>" required></div>
-                    <div class="form-group"><label>NIK (Nomor Induk Kependudukan)</label><input type="text" name="nik" class="form-control" value="<?= htmlspecialchars($data['nik'] ?? ''); ?>" required minlength="16" maxlength="16"></div>
-                    
-                    <div style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;"><label>Tempat Lahir</label><input type="text" name="tempat_lahir" class="form-control" value="<?= htmlspecialchars($data['tempat_lahir'] ?? ''); ?>" required></div>
-                        <div class="form-group" style="flex: 1;"><label>Tanggal Lahir</label><input type="date" name="tanggal_lahir" class="form-control" value="<?= $data['tanggal_lahir'] ?? ''; ?>" required></div>
-                    </div>
-                    
-                    <div style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label>Jenis Kelamin</label>
-                            <select name="jenis_kelamin" class="form-control" required>
-                                <option value="">-- Pilih Jenis Kelamin --</option>
-                                <option value="Laki-laki" <?= ($data['jenis_kelamin'] ?? '') == 'Laki-laki' ? 'selected' : ''; ?>>Laki-laki</option>
-                                <option value="Perempuan" <?= ($data['jenis_kelamin'] ?? '') == 'Perempuan' ? 'selected' : ''; ?>>Perempuan</option>
-                            </select>
-                        </div>
-                        <div class="form-group" style="flex: 1;"><label>Agama</label><input type="text" name="agama" class="form-control" value="<?= htmlspecialchars($data['agama'] ?? ''); ?>" required></div>
-                    </div>
-
-                    <div style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;">
-                            <label>Status Hubungan / Sosial</label>
-                            <select name="status_sosial" class="form-control" required>
-                                <option value="">-- Pilih Status --</option>
-                                <option value="Belum Kawin" <?= ($data['status_sosial'] ?? '') == 'Belum Kawin' ? 'selected' : ''; ?>>Belum Kawin</option>
-                                <option value="Kawin" <?= ($data['status_sosial'] ?? '') == 'Kawin' ? 'selected' : ''; ?>>Kawin</option>
-                            </select>
-                        </div>
-
-                        <div class="form-group" style="flex: 1;">
-                            <label>Nomor Telepon / WhatsApp</label>
-                            <input type="tel" name="no_telepon" class="form-control" placeholder="Contoh: 08123456789" value="<?= htmlspecialchars($data['no_telepon'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^0-9]/g, '');" required minlength="10">
-                        </div>
-                    </div>
-
-                    <div style="display: flex; gap: 15px;">
-                        <div class="form-group" style="flex: 1;"><label>Kota</label><input type="text" name="kota" class="form-control" value="<?= htmlspecialchars($data['kota'] ?? ''); ?>" required></div>
-                        <div class="form-group" style="flex: 1;"><label>Provinsi</label><input type="text" name="provinsi" class="form-control" value="<?= htmlspecialchars($data['provinsi'] ?? ''); ?>" required></div>
-                    </div>
-                    
-                    <div class="form-group"><label>Alamat Rumah Lengkap</label><textarea name="alamat" class="form-control" rows="3" style="resize: none;" required><?= htmlspecialchars($data['alamat'] ?? ''); ?></textarea></div>
-                    <button type="submit" name="update_profil" class="btn-simpan-full">Perbarui Biodata Profil</button>
-                </form>
+<div>
+    <!-- KARTU 1: BIODATA -->
+    <div class="card-profil" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <div class="card-title" style="color: #0d6efd; font-weight: bold; font-size: 18px; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+            Biodata Profil Pelamar
+        </div>
+        <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
+            
+            <!-- FOTO PROFIL -->
+            <div style="text-align: center; margin-bottom: 25px; background: #fafafa; padding: 20px; border-radius: 8px; border: 1px dashed #cbd5e1;">
+                <label style="display: block; font-size: 13px; font-weight: bold; color: #475569; margin-bottom: 10px;">Foto Profil</label>
+                <div class="avatar-wrapper" style="position: relative; width: 110px; height: 110px; margin: 0 auto; cursor: pointer;" onclick="document.getElementById('inputFoto').click();">
+                    <?php if (!empty($data['foto'])) : ?>
+                        <img id="previewFoto" src="uploads/<?= htmlspecialchars($data['foto']); ?>" style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid #cbd5e1;">
+                    <?php else : ?>
+                        <div id="placeholderFoto" style="width: 110px; height: 110px; border-radius: 50%; background: #e2e8f0; display: flex; align-items: center; justify-content: center; color: #64748b; font-size: 12px; border: 3px solid #cbd5e1;">Belum Ada Foto</div>
+                        <img id="previewFoto" src="" style="width: 110px; height: 110px; border-radius: 50%; object-fit: cover; border: 3px solid #cbd5e1; display: none;">
+                    <?php endif; ?>
+                </div>
+                <small style="display: block; margin-top: 8px; color: #64748b; font-size: 11px;">Klik gambar di atas untuk mengganti foto berkas</small>
+                <input type="file" id="inputFoto" name="foto" accept="image/*" style="display: none;" onchange="bacaGambar(this)">
             </div>
+
+            <!-- INPUT FIELD BIODATA -->
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Nama Lengkap</label>
+                <input type="text" name="nama_lengkap" class="form-control" value="<?= htmlspecialchars($data['nama_lengkap'] ?? ''); ?>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 15px;">
+                <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">NIK (Nomor Induk Kependudukan)</label>
+                <input type="text" name="nik" class="form-control" value="<?= htmlspecialchars($data['nik'] ?? ''); ?>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required minlength="16" maxlength="16">
+            </div>
+            
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Tempat Lahir</label>
+                    <input type="text" name="tempat_lahir" class="form-control" value="<?= htmlspecialchars($data['tempat_lahir'] ?? ''); ?>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Tanggal Lahir</label>
+                    <input type="date" name="tanggal_lahir" class="form-control" value="<?= $data['tanggal_lahir'] ?? ''; ?>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Jenis Kelamin</label>
+                    <select name="jenis_kelamin" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+                        <option value="">-- Pilih Jenis Kelamin --</option>
+                        <option value="Laki-laki" <?= ($data['jenis_kelamin'] ?? '') == 'Laki-laki' ? 'selected' : ''; ?>>Laki-laki</option>
+                        <option value="Perempuan" <?= ($data['jenis_kelamin'] ?? '') == 'Perempuan' ? 'selected' : ''; ?>>Perempuan</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Agama</label>
+                    <input type="text" name="agama" class="form-control" value="<?= htmlspecialchars($data['agama'] ?? ''); ?>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Status Hubungan / Sosial</label>
+                    <select name="status_sosial" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+                        <option value="">-- Pilih Status --</option>
+                        <option value="Belum Kawin" <?= ($data['status_sosial'] ?? '') == 'Belum Kawin' ? 'selected' : ''; ?>>Belum Kawin</option>
+                        <option value="Kawin" <?= ($data['status_sosial'] ?? '') == 'Kawin' ? 'selected' : ''; ?>>Kawin</option>
+                    </select>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Nomor Telepon / WhatsApp</label>
+                    <input type="tel" name="no_telepon" class="form-control" placeholder="Contoh: 08123456789" value="<?= htmlspecialchars($data['no_telepon'] ?? ''); ?>" oninput="this.value = this.value.replace(/[^0-9]/g, '');" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required minlength="10">
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Kota</label>
+                    <input type="text" name="kota" class="form-control" value="<?= htmlspecialchars($data['kota'] ?? ''); ?>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Provinsi</label>
+                    <input type="text" name="provinsi" class="form-control" value="<?= htmlspecialchars($data['provinsi'] ?? ''); ?>" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+                </div>
+            </div>
+            
+            <div class="form-group" style="margin-bottom: 20px;">
+                <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Alamat Rumah Lengkap</label>
+                <textarea name="alamat" class="form-control" rows="3" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; resize: none;" required><?= htmlspecialchars($data['alamat'] ?? ''); ?></textarea>
+            </div>
+            <button type="submit" name="update_profil" class="btn-simpan-full" style="width: 100%; background: #0d6efd; color: #fff; border: 1px solid #0d6efd; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer;">Perbarui Biodata Profil</button>
+        </form>
+    </div>
 
 <!-- KARTU 2: DATA SURAT TANDA REGISTRASI (STR) -->
 <div class="card-profil" style="margin-top: 20px;">
-    <div class="card-title" style="color: #ea580c; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
-        Data Surat Tanda Registrasi (STR)
+    <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px;">
+        <div class="card-title" style="color: #198754; margin-bottom: 0;">Data Surat Tanda Registrasi (STR)</div>
+        <button type="button" onclick="tambahBarisSTR()" style="background-color: #198754; color: white; border: none; padding: 5px 10px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah STR Lain</button>
     </div>
     
     <form action="" method="POST" enctype="multipart/form-data" style="margin-top: 15px;">
-        
-        <div class="form-group">
-            <label>Nomor STR</label>
-            <input type="text" name="no_str" class="form-control" placeholder="Contoh: 13 02 7 2 1 19 123457" value="<?= htmlspecialchars($data_str['no_str'] ?? ''); ?>" required>
-        </div>
-        
-        <div style="display: flex; gap: 15px;">
-            <div class="form-group" style="flex: 1;">
-                <label>Tanggal Terbit</label>
-                <input type="date" name="tanggal_terbit" class="form-control" value="<?= $data_str['tanggal_terbit'] ?? ''; ?>" required>
-            </div>
-            <div class="form-group" style="flex: 1;">
-                <label>Tanggal Expired (Masa Berlaku)</label>
-                <input type="date" name="tanggal_expired" class="form-control" value="<?= $data_str['tanggal_expired'] ?? ''; ?>" required>
-            </div>
-        </div>
-        
-        <div class="form-group" style="background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-top: 10px;">
-            <label style="font-weight: bold; color: #475569;">Upload Dokumen STR</label>
-            <small style="display: block; color: #64748b; margin-bottom: 8px;">Format berkas yang diizinkan: PDF, JPG, JPEG, PNG (Maks. 2MB)</small>
-            
+        <!-- Wadah Utama Form STR -->
+        <div id="container-str">
             <?php 
-            // Menggunakan tabel pelamar_str sesuai dengan relasi database Anda
-            $file_str_lama = $data_str['file_str'] ?? '';
-            $sudah_ada_file = (!empty($file_str_lama) && file_exists("uploads/" . $file_str_lama));
-            ?>
-
-            <!-- Jika BELUM ada file di folder uploads, input wajib diisi (required) -->
-            <input type="file" name="file_str" class="form-control" accept=".pdf,.jpg,.jpeg,.png" <?= !$sudah_ada_file ? 'required' : ''; ?>>
+            // 1. Ambil data STR pelamar dari database
+            $q_tampil_str = mysqli_query($koneksi, "SELECT * FROM pelamar_str WHERE pelamar_id = $pelamar_id ORDER BY id ASC");
             
-            <?php if ($sudah_ada_file) : ?>
-                <div style="margin-top: 8px; display: flex; align-items: center; gap: 6px;">
-                    <span style="color: #16a34a; font-size: 12px; display: flex; align-items: center; gap: 4px;">
-                        <span class="material-symbols-outlined" style="font-size:16px;">check_circle</span>
-                        Berkas STR sudah tersimpan
-                    </span>
-                    <a href="uploads/<?= htmlspecialchars($file_str_lama); ?>" target="_blank" style="font-size: 12px; color: #0d6efd; text-decoration: underline;">[ Lihat Berkas ]</a>
-                </div>
-            <?php else : ?>
-                <small style="display: block; margin-top: 6px; color: #dc2626; font-style: italic;">* Anda belum mengunggah file dokumen STR</small>
-            <?php endif; ?>
-        </div>
+            // Jika data di database kosong, buat 1 form kosong bawaan awal
+            $list_str = [];
+            if (mysqli_num_rows($q_tampil_str) == 0) {
+                $list_str[] = ['nomor_str' => '', 'tanggal_terbit' => '', 'tanggal_expired' => '', 'file_str' => ''];
+            } else {
+                while ($row = mysqli_fetch_assoc($q_tampil_str)) {
+                    $list_str[] = $row;
+                }
+            }
 
-        <button type="submit" name="simpan_str" class="btn-simpan-full" style="background: #ea580c; border-color: #ea580c; margin-top: 15px;">
-            Simpan Data STR
-        </button>
+            $index = 0;
+            foreach ($list_str as $str) : 
+                $file_lama = $str['file_str'] ?? '';
+                $ada_file_fisik = (!empty($file_lama) && file_exists("uploads/" . $file_lama));
+            ?>
+                <!-- DESAIN DISAMAKAN: Latar belakang abu-abu, border putus-putus, jarak 12px -->
+                <div class="item-str-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 12px; border-radius: 6px; margin-bottom: 12px;">
+                    
+                    <!-- Input Nomor STR -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Nomor STR</label>
+                        <input type="text" name="nomor_str[]" class="form-control" placeholder="Contoh: 13 02 7 2 1 19 123457" value="<?= htmlspecialchars($str['nomor_str'] ?? ''); ?>" required>
+                    </div>
+                    
+                    <!-- Input Tanggal Terbit & Expired -->
+                    <div style="display: flex; gap: 15px; margin-bottom: 10px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Tanggal Terbit</label>
+                            <input type="date" name="tanggal_terbit[]" class="form-control" value="<?= $str['tanggal_terbit'] ?? ''; ?>" required>
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">Tanggal Expired (Masa Berlaku)</label>
+                            <input type="date" name="tanggal_expired[]" class="form-control" value="<?= $str['tanggal_expired'] ?? ''; ?>" required>
+                        </div>
+                    </div>
+                    
+                    <input type="hidden" name="file_str_lama[]" value="<?= htmlspecialchars($file_lama); ?>">
+                    
+                    <!-- Bagian Upload & Tombol Lihat Berkas (Sama persis seperti Kartu Berkas) -->
+                    <div class="form-group">
+                        <label style="font-size: 12px; font-weight: bold; color: #475569; display: block; margin-bottom: 5px;">
+                            <?= $ada_file_fisik ? 'Pilih File Baru (Kosongkan jika tidak ingin mengubah)' : 'Pilih File Dokumen STR (Wajib Diisi)'; ?>
+                        </label>
+                        <div style="display: flex; gap: 10px; align-items: center;">
+                            <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex: 1;" <?= !$ada_file_fisik ? 'required' : ''; ?>>
+                            
+                            <?php if ($ada_file_fisik) : ?>
+                                <a href="uploads/<?= htmlspecialchars($file_lama); ?>" target="_blank" style="background-color: #0d6efd; color: white; text-decoration: none; padding: 10px 15px; border-radius: 6px; font-size: 13px; font-weight: bold; text-align: center; white-space: nowrap; transition: 0.2s;" onmouseover="this.style.backgroundColor='#0b5ed7'" onmouseout="this.style.backgroundColor='#0d6efd'">
+                                    👁 Lihat Berkas
+                                </a>
+                            <?php else : ?>
+                                <span style="font-size: 12px; color: #dc2626; font-style: italic; white-space: nowrap;">* Berkas belum ada</span>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    
+                    <!-- TOMBOL HAPUS DI BAWAH KANAN (Sama persis seperti Kartu Berkas Anda) -->
+                    <div style="text-align: right; margin-top: 10px; border-top: 1px solid #e2e8f0; padding-top: 8px;">
+                        <button type="button" onclick="hapusBarisDinamis(this, 'container-str')" style="background: none; border: none; color: #dc3545; font-size: 12px; cursor: pointer; font-weight: bold; padding: 0;">Hapus</button>
+                    </div>
+                </div>
+            <?php 
+                $index++;
+                endforeach; 
+            ?>
+        </div>
+        <!-- Tombol Simpan Utama Hijau -->
+        <button type="submit" name="simpan_str" class="btn-simpan-full" style="background-color: #198754; width: 100%; margin-top: 10px;">Simpan Seluruh Data STR</button>
     </form>
 </div>
 
-</div> <!-- PENUTUP KOLOM SEBELAH KIRI -->
-        
-        <!-- ==================== KOLOM KANAN: PENGALAMAN, PENDIDIKAN, BERKAS ==================== -->
-        <div>            
-        <!-- KARTU 2: PENGALAMAN KERJA (FIXED SINKRONISASI TOMBOL SUBMIT) -->
-        <div class="card-profil">
-            <!-- Tag pembuka form diletakkan di paling atas kartu agar membungkus seluruh elemen di dalamnya -->
-            <form action="" method="POST" enctype="multipart/form-data">        
-                
-                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px;">
-                    <div class="card-title" style="color: #0d6efd; margin-bottom: 0; font-weight: 700; font-size: 16px;">Riwayat Pengalaman Kerja</div>
-                    <button type="button" onclick="tambahBarisPengalaman()" style="background-color: #0d6efd; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah Pengalaman</button>
-                </div>
+</div> <!-- PENTING: Penutup Div Kolom Sebelah Kiri -->
+
+
+<!-- ==================== KOLOM SEBELAH KANAN ==================== -->
+<div style="flex: 1; min-width: 0;">            
+    
+    <!-- KARTU 2: PENGALAMAN KERJA -->
+    <div class="card-profil" style="background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+        <form action="" method="POST" enctype="multipart/form-data">        
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #f1f5f9; padding-bottom: 10px; margin-bottom: 20px;">
+                <div class="card-title" style="color: #0d6efd; margin-bottom: 0; font-weight: 700; font-size: 16px;">Riwayat Pengalaman Kerja</div>
+                <button type="button" onclick="tambahBarisPengalaman()" style="background-color: #0d6efd; color: white; border: none; padding: 6px 12px; border-radius: 4px; font-size: 11px; font-weight: bold; cursor: pointer;">+ Tambah Pengalaman</button>
+            </div>
 
  <!-- Wadah target id untuk JavaScript agar baris baru tidak merusak form layout -->
         <div id="wadah-pengalaman">
@@ -903,38 +969,60 @@ function tambahBarisPendidikan() {
         container.insertAdjacentHTML('beforeend', html);
     }
 
-    // 4. Handler Tambah Baris Dinamis: STR
-    function tambahBarisSTR() {
-        const container = document.getElementById('container-str');
-        const html = `
-            <div class="item-str-row" style="background: #fafafa; border: 1px dashed #cbd5e1; padding: 15px; border-radius: 6px; margin-bottom: 12px;">
-                <div style="text-align: right; margin-bottom: 10px;">
-                    <button type="button" onclick="hapusBarisDinamis(this, 'container-str')" style="background:none; border:none; color:#dc3545; font-size:12px; font-weight:bold; cursor:pointer; padding: 0;">Hapus</button>
-                </div>
-                <div class="form-group">
-                    <label style="font-size: 12px; font-weight: bold; color: #475569;">Nomor STR</label>
-                    <input type="text" name="nomor_str[]" class="form-control" value="" required>
-                </div>
-                <div style="display: flex; gap: 15px; margin-bottom: 10px;">
-                    <div class="form-group" style="flex: 1;">
-                        <label style="font-size: 12px; font-weight: bold; color: #475569;">Tanggal Terbit</label>
-                        <input type="date" name="tanggal_terbit[]" class="form-control" value="">
-                    </div>
-                    <div class="form-group" style="flex: 1;">
-                        <label style="font-size: 12px; font-weight: bold; color: #475569;">Tanggal Expired</label>
-                        <input type="date" name="tanggal_expired[]" class="form-control" value="">
-                    </div>
-                </div>
-                <input type="hidden" name="file_str_lama[]" value="">
-                <div class="form-group" style="margin-bottom: 0;">
-                    <label style="font-size: 12px; font-weight: bold; color: #475569;">Upload Dokumen STR</label>
-                    <div style="display: flex; gap: 10px; align-items: center;">
-                        <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="flex: 1;">
-                    </div>
-                </div>
-            </div>`;
-        container.insertAdjacentHTML('beforeend', html);
+// 4. Handler Tambah Baris Dinamis: STR
+function tambahBarisSTR() {
+    const container = document.getElementById('container-str');
+    
+    // Validasi pencegahan jika ID container salah/tidak ditemukan
+    if (!container) {
+        console.error("Gagal menambah baris: Elemen dengan id='container-str' tidak ditemukan di HTML Anda.");
+        alert("Sistem error: Kontainer form STR tidak ditemukan.");
+        return;
     }
+
+    const html = `
+         <div class="item-str-row" style="background: #ffffff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 8px; margin-bottom: 20px; position: relative; margin-top: 15px;">
+            
+            <!-- Tombol Hapus Form Tambahan -->
+            <div style="position: absolute; top: 12px; right: 12px;">
+                <button type="button" onclick="hapusBarisDinamis(this, 'container-str')" style="background: #dc2626; color: white; border: none; padding: 4px 10px; border-radius: 4px; font-size: 11px; cursor: pointer; font-weight: bold;">
+                    Hapus
+                </button>
+            </div>
+            
+            <!-- Nomor STR -->
+            <div class="form-group" style="margin-bottom: 15px; margin-top: 15px;">
+                <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Nomor STR</label>
+                <input type="text" name="nomor_str[]" class="form-control" placeholder="Contoh: 13 02 7 2 1 19 123457" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+            </div>
+            
+            <!-- Tanggal Terbit & Expired -->
+            <div style="display: flex; gap: 15px; margin-bottom: 15px;">
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Tanggal Terbit</label>
+                    <input type="date" name="tanggal_terbit[]" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+                </div>
+                <div class="form-group" style="flex: 1;">
+                    <label style="display: block; font-weight: bold; color: #334155; margin-bottom: 6px; font-size: 14px;">Tanggal Expired (Masa Berlaku)</label>
+                    <input type="date" name="tanggal_expired[]" class="form-control" style="width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box;" required>
+                </div>
+            </div>
+            
+            <input type="hidden" name="file_str_lama[]" value="">
+            
+            <!-- Upload Dokumen -->
+            <div class="form-group" style="background: #fafafa; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 0;">
+                <label style="display: block; font-weight: bold; color: #475569; font-size: 14px; margin-bottom: 4px;">Upload Dokumen STR</label>
+                <small style="display: block; color: #64748b; margin-bottom: 12px; font-size: 13px;">Format berkas yang diizinkan: PDF, JPG, JPEG, PNG (Maks. 2MB)</small>
+                
+                <div style="border: 1px solid #cbd5e1; background: #fff; padding: 10px; border-radius: 6px;">
+                    <input type="file" name="file_str[]" class="form-control" accept=".pdf,.jpg,.jpeg,.png" style="font-size: 14px; width: 100%;" required>
+                </div>
+            </div>
+        </div>`;
+        
+    container.insertAdjacentHTML('beforeend', html);
+}
 
     // 5. Handler Preview Unggahan Gambar Foto Profil Instan
     function bacaGambar(input) {
