@@ -14,11 +14,63 @@ if (!$koneksi) {
     die("Koneksi database gagal: " . mysqli_connect_error());
 }
 
-// Target folder penyimpanan gambar banner
+// Target folder penyimpanan gambar banner / berkas
 $target_dir = "uploads/";
 if (!file_exists($target_dir)) {
     mkdir($target_dir, 0777, true);
 }
+
+// =========================================================================
+// [INTEGRASI BARU] 4. [CRUD - DELETE] PROSES HAPUS DATA & GAMBAR VIA GET
+// =========================================================================
+
+// --- AKSI A: HAPUS GAMBAR / BERKASNYA SAJA DARI PREVIEW MODAL ---
+if (isset($_GET['action']) && $_GET['action'] == 'hapus_berkas_pelamar' && isset($_GET['id'])) {
+    $id = intval($_GET['id']);
+    
+    // 1. Cari nama file berkas yang tersimpan di database
+    $query_cari = mysqli_query($koneksi, "SELECT gambar FROM rekrutmen_lowongan WHERE id = $id");
+    $data_file  = mysqli_fetch_assoc($query_cari);
+    
+    if ($data_file && !empty($data_file['gambar'])) {
+        $path_file = $target_dir . $data_file['gambar'];
+        
+        // 2. Hapus file fisik dari folder uploads jika ada
+        if (file_exists($path_file)) {
+            unlink($path_file);
+        }
+        
+        // 3. Kosongkan nama file di database
+        mysqli_query($koneksi, "UPDATE rekrutmen_lowongan SET gambar = '' WHERE id = $id");
+    }
+    
+    // Kembali ke halaman utama lowongan pelamar dengan mematikan parameter agar data ter-refresh
+    header("Location: lowongan_pelamar.php"); 
+    exit;
+}
+
+// --- AKSI B: HAPUS SELURUH DATA REKORD BESERTA BERKASNYA ---
+if (isset($_GET['action']) && $_GET['action'] == 'delete_total' && isset($_GET['id'])) {
+    $id = intval($_GET['id']);
+    
+    // 1. Ambil nama berkas sebelum rekord data dihapus dari database
+    $query_cari = mysqli_query($koneksi, "SELECT gambar FROM rekrutmen_lowongan WHERE id = $id");
+    $data_file  = mysqli_fetch_assoc($query_cari);
+    
+    if ($data_file && !empty($data_file['gambar'])) {
+        $path_file = $target_dir . $data_file['gambar'];
+        if (file_exists($path_file)) {
+            unlink($path_file);
+        }
+    }
+    
+    // 2. Hapus data rekord dari database
+    mysqli_query($koneksi, "DELETE FROM rekrutmen_lowongan WHERE id = $id");
+    
+    header("Location: lowongan_pelamar.php");
+    exit;
+}
+
 
 // =========================================================================
 // 2. [CRUD - CREATE / UPDATE] PROSES FORM & VALIDASI ANTI-DUPLIKAT
@@ -163,14 +215,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && !isset($_POST['action'])) {
 
         $query_insert = "INSERT INTO rekrutmen_lowongan (kode_lowongan, jabatan_id, unit_id, judul_lowongan, jumlah_kebutuhan, deskripsi, kualifikasi, persyaratan, tanggal_mulai, tanggal_selesai, status, gambar, created_by, created_at) 
                          VALUES ('$kode_lowongan', $jabatan_id, $unit_id, '$judul_lowongan', $jumlah_kebutuhan, '$deskripsi', '$kualifikasi', '$persyaratan', $tanggal_mulai, $tanggal_selesai, '$status', '$nama_gambar', $created_by, '$waktu_sekarang')";
-        
+
         if (!mysqli_query($koneksi, $query_insert)) {
             die("Gagal menambah data: " . mysqli_error($koneksi));
         }
     }
     header("Location: master_lowongan.php");
     exit;
-}
+} // <--- PERBAIKAN: Tanda penutup ini ditambahkan untuk menutup blok REQUEST_METHOD == POST
 
 // =========================================================================
 // 4. [CRUD - DELETE] PROSES HAPUS REKORD DATA
@@ -184,9 +236,6 @@ if (isset($_GET['delete'])) {
     
     if ($data_gambar && !empty($data_gambar['gambar'])) {
         $nama_file_gambar = $data_gambar['gambar'];
-        
-        // JALUR FOLDER: Pastikan variabel $target_dir sudah ada di atas. 
-        // Jika belum ada, Anda bisa mendefinisikannya langsung di sini, contoh: $target_dir = "uploads/";
         $path_file_fisik = $target_dir . $nama_file_gambar;
         
         // 2. Periksa apakah file benar-benar ada di folder, lalu hapus
