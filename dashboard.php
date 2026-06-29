@@ -22,57 +22,64 @@ $stat_lowongan = getTotal($conn,"SELECT COUNT(*) total FROM rekrutmen_lowongan")
 $stat_pelamar  = getTotal($conn,"SELECT COUNT(*) total FROM pelamar");
 $stat_pool     = getTotal($conn,"SELECT COUNT(*) total FROM talent_pool");
 
+// Normalisasi status pelamar
 $stat_baru = getTotal($conn,"
-SELECT COUNT(*) total
-FROM lamaran_tahapan
-WHERE status IS NULL OR UPPER(TRIM(status))='PENDING'
+    SELECT COUNT(*) AS total
+    FROM lamaran_tahapan
+    WHERE status IS NULL OR UPPER(TRIM(status)) IN ('PENDING','PENDING ','PENDNING')
 ");
 
 $stat_proses = getTotal($conn,"
-SELECT COUNT(*) total
-FROM lamaran_tahapan
-WHERE UPPER(TRIM(status))='PROSES'
+    SELECT COUNT(*) AS total
+    FROM lamaran_tahapan
+    WHERE UPPER(TRIM(status)) = 'PROSES'
 ");
 
 $stat_lulus = getTotal($conn,"
-SELECT COUNT(*) total
-FROM lamaran_tahapan
-WHERE UPPER(TRIM(status)) IN ('LULUS','DITERIMA','TERIMA')
+    SELECT COUNT(*) AS total
+    FROM lamaran_tahapan
+    WHERE UPPER(TRIM(status)) IN ('LULUS','DITERIMA','TERIMA')
 ");
 
 $stat_tolak = getTotal($conn,"
-SELECT COUNT(*) total
-FROM lamaran_tahapan
-WHERE UPPER(TRIM(status)) IN ('TOLAK','DITOLAK','TIDAK LULUS')
+    SELECT COUNT(*) AS total
+    FROM lamaran_tahapan
+    WHERE UPPER(TRIM(status)) IN ('TIDAK LULUS','TIDAKLULUS','TOLAK','DITOLAK')
 ");
 
-$jabatan_label=[];
-$jabatan_data=[];
 
-$q=mysqli_query($conn,"
-SELECT mj.nama_jabatan,COUNT(rl.id) jumlah
-FROM mst_jabatan mj
-LEFT JOIN rekrutmen_lowongan rw ON rw.jabatan_id=mj.id
-LEFT JOIN rekrutmen_lamaran rl ON rl.lowongan_id=rw.id
-GROUP BY mj.id
-ORDER BY jumlah DESC
+// 1. Grafik Jabatan (Diperbaiki agar kompatibel ONLY_FULL_GROUP_BY dan hanya lowongan aktif)
+$jabatan_label = [];
+$jabatan_data  = [];
+
+$q = mysqli_query($conn, "
+    SELECT mj.id, mj.nama_jabatan, COUNT(rl.id) AS jumlah
+    FROM rekrutmen_lowongan rw
+    INNER JOIN mst_jabatan mj ON rw.jabatan_id = mj.id
+    LEFT JOIN rekrutmen_lamaran rl ON rl.lowongan_id = rw.id
+    GROUP BY mj.id, mj.nama_jabatan
+    HAVING jumlah > 0
+    ORDER BY jumlah DESC
 ");
 
-while($r=mysqli_fetch_assoc($q)){
-    $jabatan_label[]=$r['nama_jabatan'];
-    $jabatan_data[]=(int)$r['jumlah'];
+while($r = mysqli_fetch_assoc($q)){
+    $jabatan_label[] = $r['nama_jabatan'];
+    $jabatan_data[]  = (int)$r['jumlah'];
 }
 
+
+// 2. Grafik Unit (Diperbaiki agar kompatibel ONLY_FULL_GROUP_BY dan hanya lowongan aktif)
 $unit_label = [];
 $unit_data  = [];
 
-$q_unit = mysqli_query($conn,"
-SELECT mu.nama_unit, COUNT(rl.id) jumlah
-FROM mst_unit mu
-LEFT JOIN rekrutmen_lowongan rw ON rw.unit_id = mu.id
-LEFT JOIN rekrutmen_lamaran rl ON rl.lowongan_id = rw.id
-GROUP BY mu.id
-ORDER BY jumlah DESC
+$q_unit = mysqli_query($conn, "
+    SELECT mu.id, mu.nama_unit, COUNT(rl.id) AS jumlah
+    FROM rekrutmen_lowongan rw
+    INNER JOIN mst_unit mu ON rw.unit_id = mu.id
+    LEFT JOIN rekrutmen_lamaran rl ON rl.lowongan_id = rw.id
+    GROUP BY mu.id, mu.nama_unit
+    HAVING jumlah > 0
+    ORDER BY jumlah DESC
 ");
 
 while($r = mysqli_fetch_assoc($q_unit)){
@@ -80,26 +87,28 @@ while($r = mysqli_fetch_assoc($q_unit)){
     $unit_data[]  = (int)$r['jumlah'];
 }
 
+
+// 3. Grafik Tren Bulanan (Sudah benar, ditambahkan optimasi nama bulan Bahasa Indonesia jika diperlukan)
 $bulan_label = [];
 $bulan_data  = [];
 
-$q_bulan = mysqli_query($conn,"
-SELECT
-YEAR(created_at) AS tahun,
-MONTH(created_at) AS bulan_angka,
-DATE_FORMAT(MIN(created_at),'%M %Y') AS bulan,
-COUNT(*) AS jumlah
-FROM rekrutmen_lamaran
-GROUP BY YEAR(created_at), MONTH(created_at)
-ORDER BY tahun, bulan_angka
+$q_bulan = mysqli_query($conn, "
+    SELECT
+        YEAR(created_at) AS tahun,
+        MONTH(created_at) AS bulan_angka,
+        DATE_FORMAT(MIN(created_at), '%b %Y') AS bulan, -- Menggunakan '%b' agar nama bulan lebih pendek (Jan, Feb, Mar) di grafik
+        COUNT(*) AS jumlah
+    FROM rekrutmen_lamaran
+    GROUP BY YEAR(created_at), MONTH(created_at)
+    ORDER BY tahun, bulan_angka
 ");
 
-while($r=mysqli_fetch_assoc($q_bulan)){
+while($r = mysqli_fetch_assoc($q_bulan)){
     $bulan_label[] = $r['bulan'];
     $bulan_data[]  = (int)$r['jumlah'];
 }
-
 ?>
+
 <!DOCTYPE html>
 <html lang="id">
 <head>
@@ -303,83 +312,98 @@ while($r=mysqli_fetch_assoc($q_bulan)){
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <script>
-new Chart(document.getElementById('chartJabatan'),{
-    type:'bar',
-    data:{
-        labels: <?= json_encode($jabatan_label) ?>,
-        datasets:[{
-            label:'Jumlah Pelamar',
-            data: <?= json_encode($jabatan_data) ?>,
-            backgroundColor:'#4f46e5',
-            borderRadius:8
-        }]
-    },
-    options:{
-        responsive:true,
-        maintainAspectRatio:false
-    }
-});
+function safeChart(id, config){
+    const el = document.getElementById(id);
+    if(!el) return;
+    if(typeof Chart === 'undefined') return;
+    new Chart(el, config);
+}
 
-new Chart(document.getElementById('chartStatus'),{
-    type:'doughnut',
-    data:{
-        labels:['Pending','Proses','Diterima','Ditolak'],
-        datasets:[{
-            data:[
-                <?= $stat_baru ?>,
-                <?= $stat_proses ?>,
-                <?= $stat_lulus ?>,
-                <?= $stat_tolak ?>
-            ],
-            backgroundColor:[
-                '#f59e0b',
-                '#3b82f6',
-                '#10b981',
-                '#ef4444'
-            ]
-        }]
-    },
-    options:{
-        responsive:true,
-        maintainAspectRatio:false
-    }
-});
+document.addEventListener('DOMContentLoaded', function(){
+    // 1. Grafik Jabatan (Bar)
+    safeChart('chartJabatan', {
+        type: 'bar',
+        data: {
+            labels: <?= json_encode($jabatan_label) ?>,
+            datasets: [{
+                label: 'Jumlah Pelamar',
+                data: <?= json_encode($jabatan_data) ?>,
+                backgroundColor: '#4f46e5',
+                borderRadius: 8
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
 
-new Chart(document.getElementById('chartUnit'),{
-    type:'bar',
-    data:{
-        labels: <?=json_encode($unit_label)?>,
-        datasets:[{
-            label:'Jumlah Pelamar',
-            data: <?=json_encode($unit_data)?>,
-            backgroundColor:'#10b981'
-        }]
-    },
-    options:{
-        responsive:true,
-        maintainAspectRatio:false
-    }
-});
+    // Debugging Console log
+    console.log('chartStatus values:', {
+        pending: <?= (int)$stat_baru ?>,
+        proses: <?= (int)$stat_proses ?>,
+        diterima: <?= (int)$stat_lulus ?>,
+        ditolak: <?= (int)$stat_tolak ?>
+    });
 
-new Chart(document.getElementById('chartBulan'),{
-    type:'line',
-    data:{
-        labels: <?=json_encode($bulan_label)?>,
-        datasets:[{
-            label:'Jumlah Pelamar',
-            data: <?=json_encode($bulan_data)?>,
-            borderColor:'#4f46e5',
-            backgroundColor:'rgba(79,70,229,0.15)',
-            fill:true,
-            tension:0.3
-        }]
-    },
-    options:{
-        responsive:true,
-        maintainAspectRatio:false
-    }
+    // 2. Grafik Status Pelamar (Doughnut) - Diubah ke safeChart
+    safeChart('chartStatus', {
+        type: 'doughnut',
+        data: {
+            labels: ['Pending', 'Proses', 'Diterima', 'Ditolak'],
+            datasets: [{
+                data: [
+                    <?= (int)$stat_baru ?>, 
+                    <?= (int)$stat_proses ?>, 
+                    <?= (int)$stat_lulus ?>, 
+                    <?= (int)$stat_tolak ?>
+                ],
+                backgroundColor: ['#f59e0b', '#3b82f6', '#10b981', '#ef4444']
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    // 3. Grafik Unit (Bar) - Diubah ke safeChart
+    safeChart('chartUnit', {
+        type: 'bar',
+        data: {
+            labels: <?= json_encode($unit_label) ?>,
+            datasets: [{
+                label: 'Jumlah Pelamar',
+                data: <?= json_encode($unit_data) ?>,
+                backgroundColor: '#10b981'
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+
+    // 4. Grafik Tren Bulanan (Line) - Diubah ke safeChart
+    safeChart('chartBulan', {
+        type: 'line',
+        data: {
+            labels: <?= json_encode($bulan_label) ?>,
+            datasets: [{
+                label: 'Jumlah Pelamar',
+                data: <?= json_encode($bulan_data) ?>,
+                borderColor: '#4f46e5',
+                backgroundColor: 'rgba(79,70,229,0.15)',
+                fill: true,
+                tension: 0.3
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
 });
 </script>
 </body>
