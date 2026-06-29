@@ -365,8 +365,7 @@ if ($pelamar_id > 0) {
 </section>
 
 <!-- ==================== AREA FILTER & DAFTAR LOWONGAN ==================== -->
-<div class="max-w-container max-w-auto px-4 md:px-margin-desktop mb-12" style="max-width: 1200px; margin-left: auto">
-    
+<div class="max-w-container max-w-auto px-4 md:px-margin-desktop mb-12" style="max-width: 1200px; margin-left: auto">   
     <!-- 1. KOMPONEN FILTER PENCARIAN -->
     <form method="GET" action="lowongan_pelamar.php" class="bg-surface-container p-4 md:p-6 rounded-xl mb-8" style="background-color: #f8fafc; padding: 20px; border-radius: 12px; margin-bottom: 25px; border: 1px solid #e2e8f0;">
         <div style="display: flex; flex-wrap: wrap; gap: 15px; align-items: flex-end;">
